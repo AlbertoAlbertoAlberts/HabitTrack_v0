@@ -21,6 +21,7 @@ import {
 import { getScoresForDate, setScore } from '../actions/dailyScores'
 import { commitIfNeeded, isLocked } from '../actions/dayLocks'
 import { addTodo, completeTodo, deleteTodo, restoreTodo } from '../actions/todos'
+import { setDailyViewMode, setSelectedDate } from '../actions/uiState'
 
 type Listener = () => void
 
@@ -84,6 +85,14 @@ export const appStore = {
     // Day locks
     commitIfNeeded(date: LocalDateString) {
       setState(commitIfNeeded(state, date))
+    },
+
+    // UI state
+    setSelectedDate(date: LocalDateString) {
+      setState(setSelectedDate(state, date))
+    },
+    setDailyViewMode(mode: 'category' | 'priority') {
+      setState(setDailyViewMode(state, mode))
     },
 
     // Todos

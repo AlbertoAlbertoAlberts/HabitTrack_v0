@@ -7,6 +7,9 @@ export function DebugPanel() {
   const state = useAppState()
   const [error, setError] = useState<string | null>(null)
 
+  const selectedDate = state.uiState.selectedDate
+  const locked = Boolean(state.dayLocks[selectedDate])
+
   const categoryIds = useMemo(
     () => Object.values(state.categories).sort((a, b) => a.sortIndex - b.sortIndex).map((c) => c.id),
     [state.categories],
@@ -21,7 +24,7 @@ export function DebugPanel() {
 
   return (
     <section style={{ marginTop: 16 }}>
-      <h2 style={{ margin: 0, fontSize: 16 }}>Debug actions (Phase 2)</h2>
+      <h2 style={{ margin: 0, fontSize: 16 }}>Debug actions (Phase 3)</h2>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
         <button
@@ -50,12 +53,11 @@ export function DebugPanel() {
 
         <button
           type="button"
-          disabled={!firstHabitId}
+          disabled={!firstHabitId || locked}
           onClick={() => {
             if (!firstHabitId) return
-            const date = state.uiState.selectedDate
             try {
-              appStore.actions.setScore(date, firstHabitId, 2)
+              appStore.actions.setScore(selectedDate, firstHabitId, 2)
               setError(null)
             } catch (e) {
               setError(e instanceof Error ? e.message : String(e))
@@ -78,9 +80,10 @@ export function DebugPanel() {
 
         <button
           type="button"
+          disabled={locked}
           onClick={() => {
             try {
-              appStore.actions.commitIfNeeded(state.uiState.selectedDate)
+              appStore.actions.commitIfNeeded(selectedDate)
               setError(null)
             } catch (e) {
               setError(e instanceof Error ? e.message : String(e))
@@ -121,8 +124,8 @@ export function DebugPanel() {
                 sortIndex: h.sortIndex,
               })),
             selectedDate: state.uiState.selectedDate,
-            locked: Boolean(state.dayLocks[state.uiState.selectedDate]),
-            scoresForSelectedDate: state.dailyScores[state.uiState.selectedDate] ?? {},
+            locked,
+            scoresForSelectedDate: state.dailyScores[selectedDate] ?? {},
             todos: Object.values(state.todos)
               .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0))
               .map((t) => ({ id: t.id, text: t.text, sortIndex: t.sortIndex ?? null })),

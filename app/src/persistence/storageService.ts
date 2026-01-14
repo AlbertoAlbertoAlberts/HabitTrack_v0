@@ -22,6 +22,7 @@ function normalizeSortIndices<T extends { id: string; sortIndex: number }>(
 }
 
 function repairStateV1(state: AppStateV1): AppStateV1 {
+  const repairNow = new Date().toISOString()
   const categoryIds = new Set(Object.keys(state.categories))
 
   // Remove habits whose categoryId no longer exists
@@ -75,6 +76,13 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     if (dailyScores[date] && Object.keys(dailyScores[date]).length > 0) {
       dayLocks[date] = lockedAt
     }
+  }
+
+  // Recovery rule: after reload, we do not resume sessions.
+  // Any date that has at least one score must be considered locked.
+  for (const [date, scoresForDay] of Object.entries(dailyScores)) {
+    if (Object.keys(scoresForDay).length === 0) continue
+    if (!dayLocks[date]) dayLocks[date] = repairNow
   }
 
   return {
