@@ -242,3 +242,24 @@ export function repositionHabitAfterPriorityChange(state: AppStateV1, habitId: H
   if (!habit) return state
   return repositionHabitOnly(state, habitId, habit.priority, false)
 }
+
+export function renameHabit(state: AppStateV1, habitId: HabitId, name: string): AppStateV1 {
+  const habit = state.habits[habitId]
+  if (!habit) return state
+
+  const trimmed = name.trim()
+  if (!trimmed) return state
+  if (habit.name === trimmed) return state
+
+  return {
+    ...state,
+    habits: {
+      ...state.habits,
+      [habitId]: {
+        ...habit,
+        name: trimmed,
+        updatedAt: nowIso(),
+      },
+    },
+  }
+}

@@ -7,10 +7,12 @@ import type {
   Score,
   TodoArchiveId,
   TodoId,
+  WeeklyTaskId,
 } from '../types'
 
 import { loadState, saveState } from '../../persistence/storageService'
 import { addCategory, deleteCategory, reorderCategories } from '../actions/categories'
+import { renameCategory } from '../actions/categories'
 import {
   addHabit,
   deleteHabit,
@@ -19,10 +21,19 @@ import {
   setHabitPriority,
   setHabitPriorityValue,
   repositionHabitAfterPriorityChange,
+  renameHabit,
 } from '../actions/habits'
 import { getScoresForDate, setScore } from '../actions/dailyScores'
 import { commitIfNeeded, isLocked } from '../actions/dayLocks'
 import { addTodo, completeTodo, deleteTodo, restoreTodo } from '../actions/todos'
+import {
+  addWeeklyTask,
+  adjustWeeklyCompletionForDate,
+  deleteWeeklyTask,
+  renameWeeklyTask,
+  reorderWeeklyTasks,
+  setWeeklyTaskTargetPerWeek,
+} from '../actions/weeklyTasks'
 import {
   selectOverviewCategory,
   selectOverviewHabit,
@@ -71,6 +82,9 @@ export const appStore = {
     reorderCategories(orderedIds: CategoryId[]) {
       setState(reorderCategories(state, orderedIds))
     },
+    renameCategory(categoryId: CategoryId, name: string) {
+      setState(renameCategory(state, categoryId, name))
+    },
 
     // Habits
     addHabit(categoryId: CategoryId, name: string, priority?: Priority) {
@@ -94,6 +108,9 @@ export const appStore = {
     repositionHabitAfterPriorityChange(habitId: HabitId) {
       setState(repositionHabitAfterPriorityChange(state, habitId))
     },
+    renameHabit(habitId: HabitId, name: string) {
+      setState(renameHabit(state, habitId, name))
+    },
 
     // Daily scores
     setScore(date: LocalDateString, habitId: HabitId, score: Score) {
@@ -112,7 +129,7 @@ export const appStore = {
     setDailyViewMode(mode: 'category' | 'priority') {
       setState(setDailyViewMode(state, mode))
     },
-    setDailyLeftMode(mode: 'normal' | 'reorder' | 'delete' | 'priorityEdit') {
+    setDailyLeftMode(mode: 'normal' | 'reorder' | 'delete' | 'priorityEdit' | 'rename') {
       setState(setDailyLeftMode(state, mode))
     },
 
@@ -148,6 +165,31 @@ export const appStore = {
     },
     restoreTodo(archiveId: TodoArchiveId) {
       setState(restoreTodo(state, archiveId))
+    },
+
+    // Weekly tasks (not locked)
+    addWeeklyTask(name: string, targetPerWeek?: number) {
+      setState(addWeeklyTask(state, name, targetPerWeek))
+    },
+    deleteWeeklyTask(weeklyTaskId: WeeklyTaskId) {
+      setState(deleteWeeklyTask(state, weeklyTaskId))
+    },
+    renameWeeklyTask(weeklyTaskId: WeeklyTaskId, name: string) {
+      setState(renameWeeklyTask(state, weeklyTaskId, name))
+    },
+    setWeeklyTaskTargetPerWeek(weeklyTaskId: WeeklyTaskId, targetPerWeek: number) {
+      setState(setWeeklyTaskTargetPerWeek(state, weeklyTaskId, targetPerWeek))
+    },
+    reorderWeeklyTasks(orderedWeeklyTaskIds: WeeklyTaskId[]) {
+      setState(reorderWeeklyTasks(state, orderedWeeklyTaskIds))
+    },
+    adjustWeeklyCompletionForDate(
+      weekStartDate: LocalDateString,
+      date: LocalDateString,
+      weeklyTaskId: WeeklyTaskId,
+      delta: 1 | -1,
+    ) {
+      setState(adjustWeeklyCompletionForDate(state, weekStartDate, date, weeklyTaskId, delta))
     },
   },
 

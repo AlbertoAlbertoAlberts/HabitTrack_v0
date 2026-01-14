@@ -3,6 +3,8 @@ import type { AppStateV1, SchemaVersion } from '../domain/types'
 const STORAGE_KEY = 'habitTracker.appState'
 const CURRENT_SCHEMA_VERSION: SchemaVersion = 1
 
+type ImportResult = { ok: true } | { ok: false; error: string }
+
 function toLocalDateString(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -24,6 +26,17 @@ function normalizeSortIndices<T extends { id: string; sortIndex: number }>(
 function repairStateV1(state: AppStateV1): AppStateV1 {
   const repairNow = new Date().toISOString()
   const today = toLocalDateString(new Date())
+
+  function parseLocalDateString(value: string): Date {
+    const [y, m, d] = value.split('-').map((v) => Number(v))
+    return new Date(y, m - 1, d)
+  }
+
+  function addDaysLocal(date: string, deltaDays: number): string {
+    const dt = parseLocalDateString(date)
+    dt.setDate(dt.getDate() + deltaDays)
+    return toLocalDateString(dt)
+  }
 
   function isValidLocalDateString(value: unknown): value is string {
     if (typeof value !== 'string') return false
@@ -134,12 +147,99 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     }
   }
 
+  // Weekly tasks: normalize and remove invalid progress
+  const weeklyTasksInput = (state as Partial<AppStateV1>).weeklyTasks ?? {}
+
+  for (const task of Object.values(weeklyTasksInput)) {
+    if (!Number.isFinite(task.targetPerWeek) || task.targetPerWeek < 1) {
+      task.targetPerWeek = 1
+    }
+    task.targetPerWeek = Math.floor(task.targetPerWeek)
+    if (task.targetPerWeek > 7) task.targetPerWeek = 7
+  }
+
+  const weeklyTasks = normalizeSortIndices(weeklyTasksInput)
+  const validWeeklyTaskIds = new Set(Object.keys(weeklyTasks))
+
+  const weeklyProgressInput = (state as Partial<AppStateV1>).weeklyProgress ?? {}
+  const weeklyCompletionDaysInput = (state as Partial<AppStateV1>).weeklyCompletionDays ?? {}
+
+  // Normalize weeklyCompletionDays, and if missing, synthesize it from weeklyProgressInput.
+  const weeklyCompletionDays: AppStateV1['weeklyCompletionDays'] = {}
+
+  for (const [weekStartDate, byTask] of Object.entries(weeklyCompletionDaysInput)) {
+    if (!isValidLocalDateString(weekStartDate)) continue
+    const weekEndDate = addDaysLocal(weekStartDate, 6)
+
+    const nextForWeek: Record<string, string[]> = {}
+    for (const [taskId, days] of Object.entries(byTask ?? {})) {
+      if (!validWeeklyTaskIds.has(taskId)) continue
+      if (!Array.isArray(days)) continue
+
+      const uniq = new Set<string>()
+      for (const raw of days) {
+        if (!isValidLocalDateString(raw)) continue
+        if (raw < weekStartDate || raw > weekEndDate) continue
+        uniq.add(raw)
+      }
+
+      const sorted = Array.from(uniq).sort()
+      const limited = sorted.slice(0, weeklyTasks[taskId].targetPerWeek)
+      if (limited.length > 0) nextForWeek[taskId] = limited
+    }
+
+    if (Object.keys(nextForWeek).length > 0) weeklyCompletionDays[weekStartDate] = nextForWeek
+  }
+
+  // Synthesize from weeklyProgressInput for any missing task/week combos.
+  for (const [weekStartDate, progressByTaskId] of Object.entries(weeklyProgressInput)) {
+    if (!isValidLocalDateString(weekStartDate)) continue
+    const weekEndDate = addDaysLocal(weekStartDate, 6)
+
+    const weekObj = (weeklyCompletionDays[weekStartDate] ??= {})
+
+    for (const [taskId, rawCount] of Object.entries(progressByTaskId ?? {})) {
+      if (!validWeeklyTaskIds.has(taskId)) continue
+      if (Array.isArray(weekObj[taskId]) && weekObj[taskId]!.length > 0) continue
+
+      const count = typeof rawCount === 'number' && Number.isFinite(rawCount) ? Math.floor(rawCount) : 0
+      const clamped = Math.max(0, Math.min(count, weeklyTasks[taskId].targetPerWeek))
+      if (clamped <= 0) continue
+
+      const synthesized: string[] = []
+      for (let i = 0; i < 7 && synthesized.length < clamped; i++) {
+        const d = addDaysLocal(weekStartDate, i)
+        if (d < weekStartDate || d > weekEndDate) continue
+        synthesized.push(d)
+      }
+      if (synthesized.length > 0) weekObj[taskId] = synthesized
+    }
+
+    if (Object.keys(weekObj).length === 0) delete weeklyCompletionDays[weekStartDate]
+  }
+
+  // Derive weeklyProgress from weeklyCompletionDays (kept for compatibility/export).
+  const weeklyProgress: AppStateV1['weeklyProgress'] = {}
+  for (const [weekStartDate, byTask] of Object.entries(weeklyCompletionDays)) {
+    const nextForWeek: Record<string, number> = {}
+    for (const [taskId, days] of Object.entries(byTask)) {
+      if (!validWeeklyTaskIds.has(taskId)) continue
+      const count = Array.isArray(days) ? days.length : 0
+      const clamped = Math.max(0, Math.min(count, weeklyTasks[taskId].targetPerWeek))
+      if (clamped > 0) nextForWeek[taskId] = clamped
+    }
+    if (Object.keys(nextForWeek).length > 0) weeklyProgress[weekStartDate] = nextForWeek
+  }
+
   return {
     ...state,
     categories,
     habits: normalizedHabits,
     dailyScores,
     dayLocks,
+    weeklyTasks,
+    weeklyProgress,
+    weeklyCompletionDays,
     uiState: {
       ...state.uiState,
       // Never resume priority edit mode after reload.
@@ -170,6 +270,10 @@ export function createDefaultState(now: Date = new Date()): AppStateV1 {
     habits: {},
     dailyScores: {},
     dayLocks: {},
+
+    weeklyTasks: {},
+    weeklyProgress: {},
+    weeklyCompletionDays: {},
 
     todos: {},
     todoArchive: {},
@@ -244,4 +348,38 @@ export function saveState(state: AppStateV1): void {
 
 export function clearState(): void {
   localStorage.removeItem(STORAGE_KEY)
+}
+
+export function exportBackupJson(state?: AppStateV1): string {
+  const toExport = state ?? loadState()
+  return JSON.stringify(toExport, null, 2)
+}
+
+export function importBackupJson(json: string): ImportResult {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(json)
+  } catch {
+    return { ok: false, error: 'Nederīgs JSON.' }
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return { ok: false, error: 'Nederīgs rezerves kopijas formāts (nav objekts).' }
+  }
+
+  const candidate = parsed as Partial<AppStateV1>
+  if (candidate.schemaVersion !== CURRENT_SCHEMA_VERSION) {
+    return {
+      ok: false,
+      error: `Nederīga schemaVersion ${String(candidate.schemaVersion)} (gaidīts ${CURRENT_SCHEMA_VERSION}).`,
+    }
+  }
+
+  if (!candidate.uiState || !candidate.meta) {
+    return { ok: false, error: 'Nederīgs rezerves kopijas formāts (trūkst uiState/meta).' }
+  }
+
+  const repaired = repairStateV1(parsed as AppStateV1)
+  saveState(repaired)
+  return { ok: true }
 }

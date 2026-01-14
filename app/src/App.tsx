@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
-import TopNav from './components/TopNav'
 import ArchivePage from './pages/ArchivePage/ArchivePage'
 import DailyPage from './pages/DailyPage/DailyPage'
 import OverviewPage from './pages/OverviewPage/OverviewPage'
@@ -8,7 +7,6 @@ import OverviewPage from './pages/OverviewPage/OverviewPage'
 export default function App() {
   return (
     <>
-      <TopNav />
       <main style={{ padding: 16 }}>
         <Routes>
           <Route path="/" element={<DailyPage />} />

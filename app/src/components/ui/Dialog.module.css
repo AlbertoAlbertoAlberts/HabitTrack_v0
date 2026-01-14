@@ -1,0 +1,140 @@
+.backdropDialog {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.backdropDialog::backdrop {
+  background: rgba(17, 24, 39, 0.35);
+  backdrop-filter: blur(2px);
+  animation: dialogBackdropIn var(--t-med) var(--ease-out);
+}
+
+.backdropDialog[open] .panel {
+  animation: dialogIn var(--t-med) var(--ease-out);
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dialogBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.panel {
+  width: min(520px, calc(100vw - 32px));
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg-strong);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.35);
+  padding: 14px;
+  transition:
+    background-color var(--t-med) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-med) var(--ease-out);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+}
+
+.closeBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  cursor: pointer;
+}
+
+.body {
+  display: grid;
+  gap: 10px;
+}
+
+.row {
+  display: grid;
+  gap: 6px;
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.input {
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--btn-border);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0 10px;
+  color: inherit;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.btnPrimary {
+  border-color: rgba(79, 70, 229, 0.45);
+  background: rgba(79, 70, 229, 0.12);
+}
+
+.btnDanger {
+  border-color: rgba(220, 38, 38, 0.55);
+  background: rgba(220, 38, 38, 0.10);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}

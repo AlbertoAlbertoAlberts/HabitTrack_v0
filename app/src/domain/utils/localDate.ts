@@ -25,3 +25,16 @@ export function todayLocalDateString(now: Date = new Date()): LocalDateString {
 export function isToday(date: LocalDateString, now: Date = new Date()): boolean {
   return date === todayLocalDateString(now)
 }
+
+// Monday-based week start (Latvia): returns the LocalDateString for the Monday of the given date's week.
+export function weekStartMonday(date: LocalDateString): LocalDateString {
+  const dt = parseLocalDateString(date)
+  const day = dt.getDay() // 0=Sun, 1=Mon, ... 6=Sat
+  const daysSinceMonday = (day + 6) % 7 // Mon=0, Tue=1, ... Sun=6
+  dt.setDate(dt.getDate() - daysSinceMonday)
+  return toLocalDateString(dt)
+}
+
+export function weekStartMondayFromDate(date: Date): LocalDateString {
+  return weekStartMonday(toLocalDateString(date))
+}

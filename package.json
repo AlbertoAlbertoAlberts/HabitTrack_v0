@@ -1,0 +1,12 @@
+{
+  "name": "habittrack-root",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "install:app": "npm --prefix app install",
+    "dev": "npm --prefix app run dev -- --host",
+    "build": "npm --prefix app run build",
+    "preview": "npm --prefix app run preview -- --host",
+    "lint": "npm --prefix app run lint"
+  }
+}

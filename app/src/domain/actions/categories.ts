@@ -93,3 +93,24 @@ export function reorderCategories(state: AppStateV1, orderedIds: CategoryId[]): 
     categories: normalizeCategorySortIndices(next),
   }
 }
+
+export function renameCategory(state: AppStateV1, categoryId: CategoryId, name: string): AppStateV1 {
+  const cat = state.categories[categoryId]
+  if (!cat) return state
+
+  const trimmed = name.trim()
+  if (!trimmed) return state
+  if (cat.name === trimmed) return state
+
+  return {
+    ...state,
+    categories: {
+      ...state.categories,
+      [categoryId]: {
+        ...cat,
+        name: trimmed,
+        updatedAt: nowIso(),
+      },
+    },
+  }
+}

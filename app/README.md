@@ -1,3 +1,25 @@
+# HabitTrack
+
+This repo contains the Vite React app in the `app/` folder.
+
+## Run (recommended)
+
+From the repo root:
+
+- `npm run dev`
+- `npm run build`
+
+These commands forward to the `app/` workspace.
+
+## Run (direct)
+
+From `./app`:
+
+- `npm run dev -- --host`
+- `npm run build`
+
+If you run `npm run dev` from the repo root without the root scripts, it will fail because the Vite project lives in `app/`.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

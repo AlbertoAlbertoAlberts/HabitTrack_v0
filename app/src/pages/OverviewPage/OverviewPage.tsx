@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
 import { appStore } from '../../domain/store/appStore'
@@ -9,6 +9,13 @@ import type { Habit, LocalDateString, OverviewMode, Score } from '../../domain/t
 import styles from './OverviewPage.module.css'
 
 type ChartPoint = { date: LocalDateString; value: number }
+
+function formatDateLabel(date: LocalDateString): string {
+  // Input is YYYY-MM-DD (local). Display as DD.MM.YYYY.
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(date)
+  if (!m) return date
+  return `${m[3]}.${m[2]}.${m[1]}`
+}
 
 function clampMin(value: number, min: number): number {
   return value < min ? min : value
@@ -58,13 +65,6 @@ function buildSeries(
 
 export function OverviewPage() {
   const state = useAppState()
-
-  // Default behaviour: whenever you open Overview, start in Overall mode.
-  useEffect(() => {
-    if (appStore.getState().uiState.overviewMode !== 'overall') {
-      appStore.actions.setOverviewMode('overall')
-    }
-  }, [])
 
   const endDate = state.uiState.overviewWindowEndDate
   const rangeDays = state.uiState.overviewRangeDays
@@ -162,8 +162,8 @@ export function OverviewPage() {
           const y = paddingTop + (innerH - t * stepY)
           return (
             <g key={t}>
-              <line x1={paddingLeft} x2={width - paddingRight} y1={y} y2={y} stroke="rgba(255,255,255,0.10)" />
-              <text x={paddingLeft - 8} y={y + 4} fontSize={11} textAnchor="end" fill="rgba(255,255,255,0.7)">
+              <line x1={paddingLeft} x2={width - paddingRight} y1={y} y2={y} stroke="rgba(17,24,39,0.10)" />
+              <text x={paddingLeft - 8} y={y + 4} fontSize={11} textAnchor="end" fill="rgba(17,24,39,0.65)">
                 {t}
               </text>
             </g>
@@ -181,7 +181,7 @@ export function OverviewPage() {
               y={height - 8}
               fontSize={11}
               textAnchor="middle"
-              fill="rgba(255,255,255,0.7)"
+              fill="rgba(17,24,39,0.65)"
             >
               {label}
             </text>
@@ -189,9 +189,9 @@ export function OverviewPage() {
         })}
 
         {/* series */}
-        <path d={lineD} fill="none" stroke="#9aa4ff" strokeWidth={2} />
+        <path d={lineD} fill="none" stroke="#4f46e5" strokeWidth={2} />
         {points.map((p) => (
-          <circle key={p.date} cx={p.x} cy={p.y} r={3} fill="#9aa4ff" />
+          <circle key={p.date} cx={p.x} cy={p.y} r={3} fill="#4f46e5" />
         ))}
       </svg>
     )
@@ -199,91 +199,74 @@ export function OverviewPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.topBar}>
-        <Link to="/" className={styles.smallBtn} style={{ textDecoration: 'none' }}>
-          Daily
-        </Link>
+      <div className={styles.overviewTop}>
+        <section className={styles.panel}>
+          <div className={styles.overviewHeader}>
+            <h2 className={styles.panelTitle} style={{ margin: 0 }}>
+              PĀRSKATS
+            </h2>
 
-        <button
-          type="button"
-          className={`${styles.smallBtn} ${rangeDays === 7 ? styles.smallBtnActive : ''}`}
-          onClick={() => appStore.actions.setOverviewRangeDays(7)}
-        >
-          7
-        </button>
-        <button
-          type="button"
-          className={`${styles.smallBtn} ${rangeDays === 30 ? styles.smallBtnActive : ''}`}
-          onClick={() => appStore.actions.setOverviewRangeDays(30)}
-        >
-          30
-        </button>
+            <div className={styles.windowNav}>
+              <button type="button" className={styles.smallBtn} onClick={() => appStore.actions.shiftOverviewWindow(-1)}>
+                ←
+              </button>
+              <span className={styles.muted}>
+                {formatDateLabel(startDate)} → {formatDateLabel(endDate)}
+              </span>
+              <button type="button" className={styles.smallBtn} onClick={() => appStore.actions.shiftOverviewWindow(1)}>
+                →
+              </button>
+            </div>
+          </div>
 
-        <button type="button" className={styles.smallBtn} onClick={() => appStore.actions.shiftOverviewWindow(-1)}>
-          ←
-        </button>
-        <button type="button" className={styles.smallBtn} onClick={() => appStore.actions.shiftOverviewWindow(1)}>
-          →
-        </button>
+          <div className={styles.chartWrap}>{chart}</div>
 
-        <span className={styles.muted}>
-          {startDate} → {endDate}
-        </span>
+          <div className={styles.legend}>
+            <span className={styles.kpi}>
+              <strong>Total</strong>: {total}
+            </span>
+            <span className={styles.kpi}>
+              <strong>Avg</strong>: {avg.toFixed(2)}
+            </span>
+            <span className={styles.kpi}>
+              <strong>Y max</strong>: {yMax}
+            </span>
+            <span className={styles.kpi}>
+              <strong>Habits</strong>: {habitIds.length}
+            </span>
+          </div>
+        </section>
+
+        <aside className={styles.rightRail}>
+          <Link to="/" className={styles.smallBtn} style={{ textDecoration: 'none' }}>
+            SĀKUMA LAPA
+          </Link>
+
+          <button
+            type="button"
+            className={`${styles.smallBtn} ${rangeDays === 7 ? styles.smallBtnActive : ''}`}
+            onClick={() => appStore.actions.setOverviewRangeDays(7)}
+          >
+            7 dienas
+          </button>
+          <button
+            type="button"
+            className={`${styles.smallBtn} ${rangeDays === 30 ? styles.smallBtnActive : ''}`}
+            onClick={() => appStore.actions.setOverviewRangeDays(30)}
+          >
+            30 dienas
+          </button>
+        </aside>
       </div>
 
-      <div className={styles.layout}>
+      <div className={styles.bottomRow}>
         <section className={styles.panel}>
-          <h2 className={styles.panelTitle}>Filters</h2>
-
-          <div className={styles.topBar}>
-            <button
-              type="button"
-              className={`${styles.smallBtn} ${mode === 'overall' ? styles.smallBtnActive : ''}`}
-              onClick={() => appStore.actions.setOverviewMode('overall')}
-            >
-              Overall
-            </button>
-            <button
-              type="button"
-              className={`${styles.smallBtn} ${mode === 'priority1' ? styles.smallBtnActive : ''}`}
-              onClick={() => appStore.actions.setOverviewMode('priority1')}
-            >
-              P1
-            </button>
-            <button
-              type="button"
-              className={`${styles.smallBtn} ${mode === 'priority2' ? styles.smallBtnActive : ''}`}
-              onClick={() => appStore.actions.setOverviewMode('priority2')}
-            >
-              P2
-            </button>
-            <button
-              type="button"
-              className={`${styles.smallBtn} ${mode === 'priority3' ? styles.smallBtnActive : ''}`}
-              onClick={() => appStore.actions.setOverviewMode('priority3')}
-            >
-              P3
-            </button>
-            <button
-              type="button"
-              className={`${styles.smallBtn} ${mode === 'category' ? styles.smallBtnActive : ''}`}
-              onClick={() => appStore.actions.setOverviewMode('category')}
-            >
-              Category
-            </button>
-            <button
-              type="button"
-              className={`${styles.smallBtn} ${mode === 'habit' ? styles.smallBtnActive : ''}`}
-              onClick={() => appStore.actions.setOverviewMode('habit')}
-            >
-              Habit
-            </button>
-          </div>
+          <h3 className={styles.panelTitle}>Atlase</h3>
 
           {showCategoryList ? (
             <>
-              <p className={styles.muted} style={{ marginTop: 10 }}>
-                Pick a category
+              <p className={styles.muted} style={{ marginTop: 0 }}>
+                Izvēlies kategoriju
               </p>
               <div className={styles.list}>
                 {categories.map((c) => {
@@ -300,15 +283,15 @@ export function OverviewPage() {
                     </div>
                   )
                 })}
-                {categories.length === 0 ? <p className={styles.muted}>No categories.</p> : null}
+                {categories.length === 0 ? <p className={styles.muted}>Nav kategoriju.</p> : null}
               </div>
             </>
           ) : null}
 
           {showHabitList ? (
             <>
-              <p className={styles.muted} style={{ marginTop: 10 }}>
-                Pick a habit
+              <p className={styles.muted} style={{ marginTop: 0 }}>
+                Izvēlies ieradumu
               </p>
               <div className={styles.list}>
                 {habits.map((h) => {
@@ -327,29 +310,62 @@ export function OverviewPage() {
                     </div>
                   )
                 })}
-                {habits.length === 0 ? <p className={styles.muted}>No habits.</p> : null}
+                {habits.length === 0 ? <p className={styles.muted}>Nav ieradumu.</p> : null}
               </div>
             </>
-          ) : null}
+          ) : (
+            <p className={styles.muted} style={{ marginTop: 0 }}>
+              Atlase pieejama režīmos “Kategorija” un “Ieradums”.
+            </p>
+          )}
         </section>
 
         <section className={styles.panel}>
-          <h2 className={styles.panelTitle}>Chart</h2>
-          <div className={styles.chartWrap}>{chart}</div>
+          <h3 className={styles.panelTitle}>Filtrs</h3>
 
-          <div className={styles.legend}>
-            <span className={styles.kpi}>
-              <strong>Total</strong>: {total}
-            </span>
-            <span className={styles.kpi}>
-              <strong>Avg</strong>: {avg.toFixed(2)}
-            </span>
-            <span className={styles.kpi}>
-              <strong>Y max</strong>: {yMax}
-            </span>
-            <span className={styles.kpi}>
-              <strong>Habits</strong>: {habitIds.length}
-            </span>
+          <div className={styles.filtersGrid}>
+            <button
+              type="button"
+              className={`${styles.smallBtn} ${mode === 'overall' ? styles.smallBtnActive : ''}`}
+              onClick={() => appStore.actions.setOverviewMode('overall')}
+            >
+              Kopējais rezultāts
+            </button>
+            <button
+              type="button"
+              className={`${styles.smallBtn} ${mode === 'priority1' ? styles.smallBtnActive : ''}`}
+              onClick={() => appStore.actions.setOverviewMode('priority1')}
+            >
+              Prioritāte 1
+            </button>
+            <button
+              type="button"
+              className={`${styles.smallBtn} ${mode === 'priority2' ? styles.smallBtnActive : ''}`}
+              onClick={() => appStore.actions.setOverviewMode('priority2')}
+            >
+              Prioritāte 2
+            </button>
+            <button
+              type="button"
+              className={`${styles.smallBtn} ${mode === 'priority3' ? styles.smallBtnActive : ''}`}
+              onClick={() => appStore.actions.setOverviewMode('priority3')}
+            >
+              Prioritāte 3
+            </button>
+            <button
+              type="button"
+              className={`${styles.smallBtn} ${mode === 'category' ? styles.smallBtnActive : ''}`}
+              onClick={() => appStore.actions.setOverviewMode('category')}
+            >
+              Kategorija
+            </button>
+            <button
+              type="button"
+              className={`${styles.smallBtn} ${mode === 'habit' ? styles.smallBtnActive : ''}`}
+              onClick={() => appStore.actions.setOverviewMode('habit')}
+            >
+              Atsevišķa sadaļa
+            </button>
           </div>
         </section>
       </div>
