@@ -17,11 +17,23 @@ import {
   moveHabit,
   reorderHabits,
   setHabitPriority,
+  setHabitPriorityValue,
+  repositionHabitAfterPriorityChange,
 } from '../actions/habits'
 import { getScoresForDate, setScore } from '../actions/dailyScores'
 import { commitIfNeeded, isLocked } from '../actions/dayLocks'
 import { addTodo, completeTodo, deleteTodo, restoreTodo } from '../actions/todos'
-import { setDailyViewMode, setSelectedDate } from '../actions/uiState'
+import {
+  selectOverviewCategory,
+  selectOverviewHabit,
+  setDailyLeftMode,
+  setDailyViewMode,
+  setOverviewMode,
+  setOverviewRangeDays,
+  setOverviewWindowEndDate,
+  setSelectedDate,
+  shiftOverviewWindow,
+} from '../actions/uiState'
 
 type Listener = () => void
 
@@ -76,6 +88,12 @@ export const appStore = {
     setHabitPriority(habitId: HabitId, newPriority: Priority) {
       setState(setHabitPriority(state, habitId, newPriority))
     },
+    setHabitPriorityValue(habitId: HabitId, newPriority: Priority) {
+      setState(setHabitPriorityValue(state, habitId, newPriority))
+    },
+    repositionHabitAfterPriorityChange(habitId: HabitId) {
+      setState(repositionHabitAfterPriorityChange(state, habitId))
+    },
 
     // Daily scores
     setScore(date: LocalDateString, habitId: HabitId, score: Score) {
@@ -93,6 +111,29 @@ export const appStore = {
     },
     setDailyViewMode(mode: 'category' | 'priority') {
       setState(setDailyViewMode(state, mode))
+    },
+    setDailyLeftMode(mode: 'normal' | 'reorder' | 'delete' | 'priorityEdit') {
+      setState(setDailyLeftMode(state, mode))
+    },
+
+    // Overview UI state
+    setOverviewRangeDays(rangeDays: 7 | 30) {
+      setState(setOverviewRangeDays(state, rangeDays))
+    },
+    shiftOverviewWindow(direction: -1 | 1) {
+      setState(shiftOverviewWindow(state, direction))
+    },
+    setOverviewMode(mode: AppStateV1['uiState']['overviewMode']) {
+      setState(setOverviewMode(state, mode))
+    },
+    selectOverviewCategory(categoryId: CategoryId | null) {
+      setState(selectOverviewCategory(state, categoryId))
+    },
+    selectOverviewHabit(habitId: HabitId | null) {
+      setState(selectOverviewHabit(state, habitId))
+    },
+    setOverviewWindowEndDate(date: LocalDateString) {
+      setState(setOverviewWindowEndDate(state, date))
     },
 
     // Todos

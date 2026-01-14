@@ -25,11 +25,62 @@ function renumberHabits(habits: Habit[]): Habit[] {
   return habits.map((h, idx) => ({ ...h, sortIndex: idx }))
 }
 
+function repositionHabitOnly(
+  state: AppStateV1,
+  habitId: HabitId,
+  priorityToUse: Priority,
+  setPriority: boolean,
+): AppStateV1 {
+  const habit = state.habits[habitId]
+  if (!habit) return state
+
+  const categoryId = habit.categoryId
+  const habits = getHabitsInCategory(state, categoryId)
+  const index = habits.findIndex((h) => h.id === habitId)
+  if (index === -1) return state
+
+  const updated: Habit = {
+    ...habit,
+    priority: setPriority ? priorityToUse : habit.priority,
+    updatedAt: nowIso(),
+  }
+
+  const others = habits.filter((h) => h.id !== habitId)
+
+  // Keep other items fixed; only move this one as little as possible.
+  const lastHigher =
+    others
+      .map((h, i) => ({ h, i }))
+      .filter(({ h }) => h.priority < priorityToUse)
+      .map(({ i }) => i)
+      .at(-1) ?? -1
+
+  const firstLower =
+    others
+      .map((h, i) => ({ h, i }))
+      .find(({ h }) => h.priority > priorityToUse)?.i ?? others.length
+
+  const minIndex = lastHigher + 1
+  const maxIndex = firstLower
+  const clampedIndex = Math.max(minIndex, Math.min(index, maxIndex))
+
+  const next = [...others]
+  next.splice(clampedIndex, 0, updated)
+
+  const renumbered = renumberHabits(next)
+  const nextHabits: AppStateV1['habits'] = { ...state.habits }
+  renumbered.forEach((h) => {
+    nextHabits[h.id] = { ...h, updatedAt: h.id === habitId ? updated.updatedAt : nowIso() }
+  })
+
+  return { ...state, habits: nextHabits }
+}
+
 export function addHabit(
   state: AppStateV1,
   categoryId: CategoryId,
   name: string,
-  priority: Priority = 3,
+  priority: Priority = 1,
 ): AppStateV1 {
   if (!state.categories[categoryId]) return state
 
@@ -47,13 +98,15 @@ export function addHabit(
     updatedAt: createdAt,
   }
 
-  return {
+  // Insert new habit according to priority ordering rules (only the new habit moves).
+  const withNew: AppStateV1 = {
     ...state,
     habits: {
       ...state.habits,
       [id]: habit,
     },
   }
+  return repositionHabitOnly(withNew, id, priority, true)
 }
 
 export function deleteHabit(state: AppStateV1, habitId: HabitId): AppStateV1 {
@@ -158,48 +211,34 @@ export function setHabitPriority(
   habitId: HabitId,
   newPriority: Priority,
 ): AppStateV1 {
+  return repositionHabitOnly(state, habitId, newPriority, true)
+}
+
+// Phase 5: priority edit mode changes priority but delays reordering until exit.
+export function setHabitPriorityValue(
+  state: AppStateV1,
+  habitId: HabitId,
+  newPriority: Priority,
+): AppStateV1 {
   const habit = state.habits[habitId]
   if (!habit) return state
+  if (habit.priority === newPriority) return state
 
-  const categoryId = habit.categoryId
-  const habits = getHabitsInCategory(state, categoryId)
-  const index = habits.findIndex((h) => h.id === habitId)
-  if (index === -1) return state
-
-  const updated: Habit = {
-    ...habit,
-    priority: newPriority,
-    updatedAt: nowIso(),
+  return {
+    ...state,
+    habits: {
+      ...state.habits,
+      [habitId]: {
+        ...habit,
+        priority: newPriority,
+        updatedAt: nowIso(),
+      },
+    },
   }
+}
 
-  const others = habits.filter((h) => h.id !== habitId)
-
-  // Keep other items fixed; only move this one as little as possible.
-  const lastHigher =
-    others
-      .map((h, i) => ({ h, i }))
-      .filter(({ h }) => h.priority < newPriority)
-      .map(({ i }) => i)
-      .at(-1) ?? -1
-
-  const firstLower =
-    others
-      .map((h, i) => ({ h, i }))
-      .find(({ h }) => h.priority > newPriority)?.i ?? others.length
-
-  const minIndex = lastHigher + 1
-  const maxIndex = firstLower
-
-  const clampedIndex = Math.max(minIndex, Math.min(index, maxIndex))
-
-  const next = [...others]
-  next.splice(clampedIndex, 0, updated)
-
-  const renumbered = renumberHabits(next)
-  const nextHabits: AppStateV1['habits'] = { ...state.habits }
-  renumbered.forEach((h) => {
-    nextHabits[h.id] = { ...h, updatedAt: h.id === habitId ? updated.updatedAt : nowIso() }
-  })
-
-  return { ...state, habits: nextHabits }
+export function repositionHabitAfterPriorityChange(state: AppStateV1, habitId: HabitId): AppStateV1 {
+  const habit = state.habits[habitId]
+  if (!habit) return state
+  return repositionHabitOnly(state, habitId, habit.priority, false)
 }

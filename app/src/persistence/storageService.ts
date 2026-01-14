@@ -23,6 +23,17 @@ function normalizeSortIndices<T extends { id: string; sortIndex: number }>(
 
 function repairStateV1(state: AppStateV1): AppStateV1 {
   const repairNow = new Date().toISOString()
+  const today = toLocalDateString(new Date())
+
+  function isValidLocalDateString(value: unknown): value is string {
+    if (typeof value !== 'string') return false
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+    const [y, m, d] = value.split('-').map((v) => Number(v))
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return false
+    const dt = new Date(y, m - 1, d)
+    return toLocalDateString(dt) === value
+  }
+
   const categoryIds = new Set(Object.keys(state.categories))
 
   // Remove habits whose categoryId no longer exists
@@ -85,12 +96,60 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     if (!dayLocks[date]) dayLocks[date] = repairNow
   }
 
+  // UI state repair (Overview): clamp values and clear invalid selections.
+  const overviewRangeDays = state.uiState.overviewRangeDays === 7 ? 7 : 30
+
+  const validOverviewModes: AppStateV1['uiState']['overviewMode'][] = [
+    'overall',
+    'priority1',
+    'priority2',
+    'priority3',
+    'category',
+    'habit',
+  ]
+  const overviewMode = validOverviewModes.includes(state.uiState.overviewMode)
+    ? state.uiState.overviewMode
+    : 'overall'
+
+  let overviewWindowEndDate = isValidLocalDateString(state.uiState.overviewWindowEndDate)
+    ? state.uiState.overviewWindowEndDate
+    : today
+  if (overviewWindowEndDate > today) overviewWindowEndDate = today
+
+  let overviewSelectedCategoryId = state.uiState.overviewSelectedCategoryId
+  let overviewSelectedHabitId = state.uiState.overviewSelectedHabitId
+
+  if (overviewMode !== 'category') overviewSelectedCategoryId = null
+  if (overviewMode !== 'habit') overviewSelectedHabitId = null
+
+  if (overviewMode === 'category') {
+    if (overviewSelectedCategoryId && !categoryIds.has(overviewSelectedCategoryId)) {
+      overviewSelectedCategoryId = null
+    }
+  }
+
+  if (overviewMode === 'habit') {
+    if (overviewSelectedHabitId && !validHabitIds.has(overviewSelectedHabitId)) {
+      overviewSelectedHabitId = null
+    }
+  }
+
   return {
     ...state,
     categories,
     habits: normalizedHabits,
     dailyScores,
     dayLocks,
+    uiState: {
+      ...state.uiState,
+      // Never resume priority edit mode after reload.
+      dailyLeftMode: state.uiState.dailyLeftMode === 'priorityEdit' ? 'normal' : state.uiState.dailyLeftMode,
+      overviewRangeDays,
+      overviewMode,
+      overviewWindowEndDate,
+      overviewSelectedCategoryId,
+      overviewSelectedHabitId,
+    },
   }
 }
 
