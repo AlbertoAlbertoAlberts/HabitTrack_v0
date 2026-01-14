@@ -14,7 +14,61 @@ export function DailyPage() {
   const [newTodoText, setNewTodoText] = useState('')
   const pendingPriorityChangedRef = useRef<Set<string>>(new Set())
 
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null)
+
   const isPriorityEdit = state.uiState.dailyLeftMode === 'priorityEdit'
+  const isReorderMode = state.uiState.dailyLeftMode === 'reorder'
+  const isDeleteMode = state.uiState.dailyLeftMode === 'delete'
+
+  function flushPendingPriorityChanges() {
+    if (pendingPriorityChangedRef.current.size === 0) return
+    for (const habitId of pendingPriorityChangedRef.current) {
+      appStore.actions.repositionHabitAfterPriorityChange(habitId)
+    }
+    pendingPriorityChangedRef.current.clear()
+  }
+
+  function setLeftMode(next: 'normal' | 'reorder' | 'delete' | 'priorityEdit') {
+    if (isPriorityEdit && next !== 'priorityEdit') {
+      flushPendingPriorityChanges()
+    }
+    appStore.actions.setDailyLeftMode(next)
+  }
+
+  function reorderIds<T extends string>(ids: T[], idToMove: T, targetIndex: number): T[] {
+    const currentIndex = ids.indexOf(idToMove)
+    if (currentIndex === -1) return ids
+
+    const next = ids.slice()
+    next.splice(currentIndex, 1)
+    const clamped = Math.max(0, Math.min(targetIndex, next.length))
+    next.splice(clamped, 0, idToMove)
+    return next
+  }
+
+  function parseDragPayload(payload: string):
+    | { kind: 'category'; categoryId: string }
+    | { kind: 'habit'; habitId: string; fromCategoryId: string }
+    | null {
+    try {
+      const parsed = JSON.parse(payload) as unknown
+      if (!parsed || typeof parsed !== 'object') return null
+      const obj = parsed as any
+      if (obj.kind === 'category' && typeof obj.categoryId === 'string') {
+        return { kind: 'category', categoryId: obj.categoryId }
+      }
+      if (
+        obj.kind === 'habit' &&
+        typeof obj.habitId === 'string' &&
+        typeof obj.fromCategoryId === 'string'
+      ) {
+        return { kind: 'habit', habitId: obj.habitId, fromCategoryId: obj.fromCategoryId }
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
 
   // Phase 3: commit-on-leave day session controller.
   // - Commit previous date when selectedDate changes
@@ -27,11 +81,9 @@ export function DailyPage() {
       appStore.actions.commitIfNeeded(previous)
 
       // Leaving the day/page should also finalize any pending priority changes.
-      if (pendingPriorityChangedRef.current.size > 0) {
-        for (const habitId of pendingPriorityChangedRef.current) {
-          appStore.actions.repositionHabitAfterPriorityChange(habitId)
-        }
-        pendingPriorityChangedRef.current.clear()
+      flushPendingPriorityChanges()
+      if (appStore.getState().uiState.dailyLeftMode === 'priorityEdit') {
+        appStore.actions.setDailyLeftMode('normal')
       }
 
       activeDateRef.current = next
@@ -42,24 +94,14 @@ export function DailyPage() {
     const handler = () => {
       appStore.actions.commitIfNeeded(activeDateRef.current)
 
-      if (pendingPriorityChangedRef.current.size > 0) {
-        for (const habitId of pendingPriorityChangedRef.current) {
-          appStore.actions.repositionHabitAfterPriorityChange(habitId)
-        }
-        pendingPriorityChangedRef.current.clear()
-      }
+      flushPendingPriorityChanges()
     }
     window.addEventListener('beforeunload', handler)
     return () => {
       window.removeEventListener('beforeunload', handler)
       appStore.actions.commitIfNeeded(activeDateRef.current)
 
-      if (pendingPriorityChangedRef.current.size > 0) {
-        for (const habitId of pendingPriorityChangedRef.current) {
-          appStore.actions.repositionHabitAfterPriorityChange(habitId)
-        }
-        pendingPriorityChangedRef.current.clear()
-      }
+      flushPendingPriorityChanges()
     }
   }, [])
 
@@ -146,19 +188,36 @@ export function DailyPage() {
 
           <span style={{ flex: 1 }} />
 
+          <button
+            type="button"
+            className={`${styles.smallBtn} ${state.uiState.dailyLeftMode === 'normal' ? styles.smallBtnActive : ''}`}
+            onClick={() => setLeftMode('normal')}
+            title="Normal mode"
+          >
+            Normal
+          </button>
+          <button
+            type="button"
+            className={`${styles.smallBtn} ${isReorderMode ? styles.smallBtnActive : ''}`}
+            onClick={() => setLeftMode(isReorderMode ? 'normal' : 'reorder')}
+            title="Reorder mode"
+          >
+            Reorder
+          </button>
+          <button
+            type="button"
+            className={`${styles.smallBtn} ${isDeleteMode ? styles.smallBtnActive : ''}`}
+            onClick={() => setLeftMode(isDeleteMode ? 'normal' : 'delete')}
+            title="Delete mode"
+          >
+            Delete
+          </button>
+
           {isPriorityEdit ? (
             <button
               type="button"
               className={styles.smallBtn}
-              onClick={() => {
-                if (pendingPriorityChangedRef.current.size > 0) {
-                  for (const habitId of pendingPriorityChangedRef.current) {
-                    appStore.actions.repositionHabitAfterPriorityChange(habitId)
-                  }
-                  pendingPriorityChangedRef.current.clear()
-                }
-                appStore.actions.setDailyLeftMode('normal')
-              }}
+              onClick={() => setLeftMode('normal')}
               title="Exit priority edit mode"
             >
               X
@@ -167,8 +226,9 @@ export function DailyPage() {
             <button
               type="button"
               className={styles.smallBtn}
-              onClick={() => appStore.actions.setDailyLeftMode('priorityEdit')}
+              onClick={() => setLeftMode('priorityEdit')}
               title="Enter priority edit mode"
+              disabled={isDeleteMode || isReorderMode}
             >
               Edit priority
             </button>
@@ -182,6 +242,7 @@ export function DailyPage() {
               if (!name) return
               appStore.actions.addCategory(name)
             }}
+            disabled={isDeleteMode || isReorderMode || isPriorityEdit}
           >
             + Category
           </button>
@@ -194,31 +255,150 @@ export function DailyPage() {
         {categories.map((cat) => {
           const habits = habitsByCategory.get(cat.id) ?? []
           return (
-            <div key={cat.id} className={styles.category}>
+            <div
+              key={cat.id}
+              className={`${styles.category} ${isReorderMode ? styles.dropZone : ''} ${dragOverKey === `cat:${cat.id}` ? styles.dropZoneActive : ''}`}
+              draggable={isReorderMode}
+              onDragStart={(e) => {
+                if (!isReorderMode) return
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'category', categoryId: cat.id }))
+              }}
+              onDragOver={(e) => {
+                if (!isReorderMode) return
+                e.preventDefault()
+                setDragOverKey(`cat:${cat.id}`)
+              }}
+              onDragLeave={() => {
+                if (!isReorderMode) return
+                setDragOverKey((k) => (k === `cat:${cat.id}` ? null : k))
+              }}
+              onDrop={(e) => {
+                if (!isReorderMode) return
+                e.preventDefault()
+                setDragOverKey(null)
+                const payload = parseDragPayload(e.dataTransfer.getData('text/plain'))
+                if (!payload) return
+
+                if (payload.kind === 'category') {
+                  const ordered = categories.map((c) => c.id)
+                  const fromIndex = ordered.indexOf(payload.categoryId)
+                  const toIndex = ordered.indexOf(cat.id)
+                  if (fromIndex === -1 || toIndex === -1 || payload.categoryId === cat.id) return
+
+                  // Move dragged category before the drop target.
+                  const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex
+                  const next = reorderIds(ordered, payload.categoryId, adjustedTo)
+                  appStore.actions.reorderCategories(next)
+                  return
+                }
+
+                if (payload.kind === 'habit') {
+                  // Drop habit onto category = move to end.
+                  appStore.actions.moveHabit(payload.habitId, cat.id)
+                }
+              }}
+            >
               <div className={styles.categoryHeader}>
                 <h3 className={styles.categoryName}>{cat.name}</h3>
-                <button
-                  type="button"
-                  className={styles.smallBtn}
-                  onClick={() => {
-                    const habitName = window.prompt('Habit name?', 'Ieradums')
-                    if (!habitName) return
-                    appStore.actions.addHabit(cat.id, habitName, 1)
-                  }}
-                >
-                  + Habit
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {isReorderMode ? <span className={styles.dragHandle} title="Drag to reorder">⠿</span> : null}
+
+                  {isDeleteMode ? (
+                    <button
+                      type="button"
+                      className={`${styles.smallBtn} ${styles.dangerBtn}`}
+                      onClick={() => {
+                        const ok = window.confirm(`Delete category "${cat.name}" and all its habits?`)
+                        if (!ok) return
+                        appStore.actions.deleteCategory(cat.id)
+                      }}
+                      aria-label={`Delete category: ${cat.name}`}
+                    >
+                      🗑
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.smallBtn}
+                      onClick={() => {
+                        const habitName = window.prompt('Habit name?', 'Ieradums')
+                        if (!habitName) return
+                        appStore.actions.addHabit(cat.id, habitName, 1)
+                      }}
+                      disabled={isReorderMode || isPriorityEdit || isDeleteMode}
+                    >
+                      + Habit
+                    </button>
+                  )}
+                </div>
               </div>
 
               {habits.length === 0 ? <p className={styles.muted}>No habits.</p> : null}
 
               {habits.map((h) => (
-                <div key={h.id} className={styles.habitRow}>
+                <div
+                  key={h.id}
+                  className={`${styles.habitRow} ${isReorderMode ? styles.dropZone : ''} ${dragOverKey === `habit:${h.id}` ? styles.dropZoneActive : ''}`}
+                  draggable={isReorderMode}
+                  onDragStart={(e) => {
+                    if (!isReorderMode) return
+                    e.dataTransfer.effectAllowed = 'move'
+                    e.dataTransfer.setData(
+                      'text/plain',
+                      JSON.stringify({ kind: 'habit', habitId: h.id, fromCategoryId: cat.id }),
+                    )
+                  }}
+                  onDragOver={(e) => {
+                    if (!isReorderMode) return
+                    e.preventDefault()
+                    setDragOverKey(`habit:${h.id}`)
+                  }}
+                  onDragLeave={() => {
+                    if (!isReorderMode) return
+                    setDragOverKey((k) => (k === `habit:${h.id}` ? null : k))
+                  }}
+                  onDrop={(e) => {
+                    if (!isReorderMode) return
+                    e.preventDefault()
+                    setDragOverKey(null)
+
+                    const payload = parseDragPayload(e.dataTransfer.getData('text/plain'))
+                    if (!payload || payload.kind !== 'habit') return
+
+                    const targetHabits = habitsByCategory.get(cat.id) ?? []
+                    const ordered = targetHabits.map((hh) => hh.id)
+                    const targetIndex = ordered.indexOf(h.id)
+                    if (targetIndex === -1) return
+
+                    if (payload.fromCategoryId === cat.id) {
+                      // Reorder within the same category.
+                      const next = reorderIds(ordered, payload.habitId, targetIndex)
+                      appStore.actions.reorderHabits(cat.id, next)
+                    } else {
+                      // Move across categories at target index.
+                      appStore.actions.moveHabit(payload.habitId, cat.id, targetIndex)
+                    }
+                  }}
+                >
                   <span className={styles.habitName} title={h.name}>
                     {h.name}
                   </span>
 
-                  {isPriorityEdit ? (
+                  {isDeleteMode ? (
+                    <button
+                      type="button"
+                      className={`${styles.smallBtn} ${styles.dangerBtn}`}
+                      onClick={() => {
+                        const ok = window.confirm(`Delete habit "${h.name}"? This removes all its scores.`)
+                        if (!ok) return
+                        appStore.actions.deleteHabit(h.id)
+                      }}
+                      aria-label={`Delete habit: ${h.name}`}
+                    >
+                      🗑
+                    </button>
+                  ) : isPriorityEdit ? (
                     <span className={styles.scoreGroup}>
                       <button
                         type="button"

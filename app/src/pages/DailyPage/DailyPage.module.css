@@ -119,6 +119,38 @@
   cursor: pointer;
 }
 
+.smallBtnActive {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.16);
+  font-weight: 800;
+}
+
+.dangerBtn {
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.dragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: grab;
+  user-select: none;
+}
+
+.dropZone {
+  border-radius: 10px;
+}
+
+.dropZoneActive {
+  outline: 2px dashed rgba(154, 164, 255, 0.8);
+  outline-offset: 2px;
+}
+
 .smallBtn:disabled {
   cursor: not-allowed;
   opacity: 0.5;
