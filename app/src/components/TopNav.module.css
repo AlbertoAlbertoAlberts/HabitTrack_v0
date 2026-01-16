@@ -1,0 +1,122 @@
+.header {
+  height: var(--header-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-bg);
+  backdrop-filter: blur(10px);
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 5;
+}
+
+.left {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  font-weight: 900;
+  letter-spacing: -0.2px;
+  font-size: 16px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+}
+
+.navLink {
+  padding: 8px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 700;
+  opacity: 0.82;
+}
+
+.navLink:hover {
+  opacity: 0.95;
+  background: var(--btn-bg-hover);
+}
+
+.navLinkActive {
+  opacity: 1;
+  background: var(--panel-bg-strong);
+  border: 1px solid var(--border);
+}
+
+.right {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+}
+
+.toggleBtn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  opacity: 0.78;
+}
+
+.toggleBtn:hover {
+  opacity: 0.92;
+  background: var(--btn-bg-hover);
+}
+
+.toggleBtnActive {
+  opacity: 1;
+  border-color: var(--border);
+  background: var(--accent-soft);
+}
+
+.toggleBtn:focus-visible,
+.navLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@media (max-width: 520px) {
+  .brand {
+    font-size: 14px;
+  }
+
+  .navLink {
+    padding: 8px 10px;
+  }
+
+  .toggleBtn {
+    padding: 0 10px;
+  }
+}

@@ -5,8 +5,10 @@ import type {
   LocalDateString,
   Priority,
   Score,
+  ThemeMode,
   TodoArchiveId,
   TodoId,
+  TodoMode,
   WeeklyTaskId,
 } from '../types'
 
@@ -25,7 +27,7 @@ import {
 } from '../actions/habits'
 import { getScoresForDate, setScore } from '../actions/dailyScores'
 import { commitIfNeeded, isLocked } from '../actions/dayLocks'
-import { addTodo, completeTodo, deleteTodo, restoreTodo } from '../actions/todos'
+import { addTodo, completeTodo, deleteTodo, renameTodo, reorderTodos, restoreTodo } from '../actions/todos'
 import {
   addWeeklyTask,
   adjustWeeklyCompletionForDate,
@@ -43,6 +45,8 @@ import {
   setOverviewRangeDays,
   setOverviewWindowEndDate,
   setSelectedDate,
+  setThemeMode,
+  setTodoMode,
   shiftOverviewWindow,
 } from '../actions/uiState'
 
@@ -133,6 +137,14 @@ export const appStore = {
       setState(setDailyLeftMode(state, mode))
     },
 
+    setTodoMode(mode: TodoMode) {
+      setState(setTodoMode(state, mode))
+    },
+
+    setThemeMode(themeMode: ThemeMode) {
+      setState(setThemeMode(state, themeMode))
+    },
+
     // Overview UI state
     setOverviewRangeDays(rangeDays: 7 | 30) {
       setState(setOverviewRangeDays(state, rangeDays))
@@ -165,6 +177,12 @@ export const appStore = {
     },
     restoreTodo(archiveId: TodoArchiveId) {
       setState(restoreTodo(state, archiveId))
+    },
+    renameTodo(todoId: TodoId, text: string) {
+      setState(renameTodo(state, todoId, text))
+    },
+    reorderTodos(orderedTodoIds: TodoId[]) {
+      setState(reorderTodos(state, orderedTodoIds))
     },
 
     // Weekly tasks (not locked)

@@ -5,16 +5,24 @@
   justify-content: flex-start;
   gap: 8px;
   padding: 10px 8px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+  overflow: hidden;
   border-radius: 14px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
   text-align: center;
   cursor: default;
   position: relative;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
 }
 
 .tile:hover {
-  background: rgba(255, 255, 255, 0.70);
+  background: var(--btn-bg-hover);
 }
 
 .actions {
@@ -28,7 +36,7 @@
 
 .dragHandle {
   font-size: 14px;
-  color: rgba(17, 24, 39, 0.55);
+  color: var(--muted);
   user-select: none;
 }
 
@@ -36,17 +44,30 @@
   width: 28px;
   height: 28px;
   border-radius: 10px;
-  border: 1px solid rgba(17, 24, 39, 0.10);
-  background: rgba(17, 24, 39, 0.06);
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
   color: inherit;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
 }
 
 .iconBtn:hover {
-  background: rgba(17, 24, 39, 0.10);
+  background: var(--btn-bg-hover);
+}
+
+.iconBtn:active {
+  transform: scale(0.98);
+}
+
+.iconBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .trashBtn {
@@ -62,7 +83,7 @@
 }
 
 .name {
-  font-weight: 800;
+  font-weight: 700;
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -75,5 +96,5 @@
 .meta {
   font-size: 12px;
   color: var(--muted);
-  font-weight: 700;
+  font-weight: 600;
 }

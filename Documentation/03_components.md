@@ -26,12 +26,14 @@ Purpose:
 - Category/Priority view toggle
 - Habit scoring grid/cards
 - Left “Challenges” list
+- Weekly tasks panel
 - Right TO-DO panel
 
 Contains:
 - `TopBar`
 - `ChallengesPanel` (left)
 - `DailyScoringPanel` (middle)
+- `WeeklyPanel` (weekly tasks)
 - `TodoPanel` (right)
 
 ### 1.2 `OverviewPage` (Page 2)
@@ -209,7 +211,43 @@ Responsibilities:
 
 ---
 
-### 3.4 Right column: to-do panel
+### 3.4 Weekly tasks panel
+
+#### `WeeklyPanel`
+Responsibilities:
+- Show the current week context: title `Nedēļa` and date range (Monday–Sunday)
+- Render weekly task tiles in a 2-column grid
+- Provide a compact menu (⋯) for weekly task management
+
+UI behavior:
+- Each weekly task tile shows a progress ring (completed days vs target) and the task name
+- Click: mark the currently selected date as completed for that weekly task
+- Shift+click: remove the completion mark for the selected date
+- Completion is once per day (at most one completion per calendar day)
+- Weekly target is clamped to a maximum of 7 (one per day)
+- Default weekly target when creating a task: `2`
+
+Menu actions (⋯):
+- `Pārkārtot` — reorder mode (drag tiles)
+- `Mainīt nosaukumus` — rename mode (✎ per tile)
+- `Dzēst` — delete mode (🗑 per tile)
+- `+ Ieradumu` — open add dialog
+
+State inputs:
+- `selectedDate`
+- `weeklyTasks` (ordered)
+- `weeklyProgress[weekStartDate][taskId]` (count for ring display)
+
+Actions emitted:
+- `addWeeklyTask(name, targetPerWeek)`
+- `renameWeeklyTask(id, name)`
+- `deleteWeeklyTask(id)`
+- `reorderWeeklyTasks(newOrder)`
+- `adjustWeeklyCompletionForDate(weekStartDate, date, taskId, delta)`
+
+---
+
+### 3.5 Right column: to-do panel
 
 #### `TodoPanel`
 Responsibilities:

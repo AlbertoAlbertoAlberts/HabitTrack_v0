@@ -1,4 +1,4 @@
-import type { AppStateV1, SchemaVersion } from '../domain/types'
+import type { AppStateV1, SchemaVersion, ThemeMode } from '../domain/types'
 
 const STORAGE_KEY = 'habitTracker.appState'
 const CURRENT_SCHEMA_VERSION: SchemaVersion = 1
@@ -38,6 +38,14 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     return toLocalDateString(dt)
   }
 
+  function weekStartMondayLocal(date: string): string {
+    const dt = parseLocalDateString(date)
+    const day = dt.getDay() // 0..6 (Sun..Sat)
+    const deltaToMonday = (day + 6) % 7
+    dt.setDate(dt.getDate() - deltaToMonday)
+    return toLocalDateString(dt)
+  }
+
   function isValidLocalDateString(value: unknown): value is string {
     if (typeof value !== 'string') return false
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
@@ -53,6 +61,10 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
   const habits: AppStateV1['habits'] = {}
   for (const [habitId, habit] of Object.entries(state.habits)) {
     if (categoryIds.has(habit.categoryId)) {
+      // Backfill effective start date for old states.
+      if (!habit.startDate) {
+        habit.startDate = toLocalDateString(new Date(habit.createdAt))
+      }
       habits[habitId] = habit
     }
   }
@@ -112,6 +124,13 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
   // UI state repair (Overview): clamp values and clear invalid selections.
   const overviewRangeDays = state.uiState.overviewRangeDays === 7 ? 7 : 30
 
+  const themeMode: ThemeMode =
+    state.uiState.themeMode === 'light' ||
+    state.uiState.themeMode === 'dark' ||
+    state.uiState.themeMode === 'system'
+      ? state.uiState.themeMode
+      : 'system'
+
   const validOverviewModes: AppStateV1['uiState']['overviewMode'][] = [
     'overall',
     'priority1',
@@ -150,12 +169,53 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
   // Weekly tasks: normalize and remove invalid progress
   const weeklyTasksInput = (state as Partial<AppStateV1>).weeklyTasks ?? {}
 
-  for (const task of Object.values(weeklyTasksInput)) {
-    if (!Number.isFinite(task.targetPerWeek) || task.targetPerWeek < 1) {
-      task.targetPerWeek = 1
+  const currentWeekStart = weekStartMondayLocal(today)
+
+  function clampWeeklyTarget(value: unknown): number {
+    const n = typeof value === 'number' && Number.isFinite(value) ? Math.floor(value) : 1
+    return Math.max(1, Math.min(7, n))
+  }
+
+  function normalizeTargetHistory(task: any): Array<{ weekStart: string; targetPerWeek: number }> {
+    const baseWeekStart = typeof task.startWeekStart === 'string' ? task.startWeekStart : currentWeekStart
+    const raw = Array.isArray(task.targetHistory) ? task.targetHistory : []
+
+    const byWeek = new Map<string, { weekStart: string; targetPerWeek: number }>()
+    byWeek.set(baseWeekStart, { weekStart: baseWeekStart, targetPerWeek: clampWeeklyTarget(task.targetPerWeek) })
+
+    for (const h of raw) {
+      if (!h || typeof h.weekStart !== 'string') continue
+      byWeek.set(h.weekStart, { weekStart: h.weekStart, targetPerWeek: clampWeeklyTarget(h.targetPerWeek) })
     }
-    task.targetPerWeek = Math.floor(task.targetPerWeek)
-    if (task.targetPerWeek > 7) task.targetPerWeek = 7
+
+    return Array.from(byWeek.values()).sort((a, b) => a.weekStart.localeCompare(b.weekStart))
+  }
+
+  function effectiveWeeklyTarget(task: any, weekStartDate: string): number {
+    if (weekStartDate >= currentWeekStart) return clampWeeklyTarget(task.targetPerWeek)
+    const history = Array.isArray(task.targetHistory) ? task.targetHistory : []
+
+    let best: any = null
+    for (const h of history) {
+      if (!h || typeof h.weekStart !== 'string') continue
+      if (h.weekStart <= weekStartDate) best = h
+      else break
+    }
+
+    return clampWeeklyTarget(best?.targetPerWeek ?? task.targetPerWeek)
+  }
+
+  for (const task of Object.values(weeklyTasksInput)) {
+    // Backfill effective start week for old states.
+    if (!task.startWeekStart) {
+      const createdLocalDate = toLocalDateString(new Date(task.createdAt))
+      task.startWeekStart = weekStartMondayLocal(createdLocalDate)
+    }
+  }
+
+  for (const task of Object.values(weeklyTasksInput)) {
+    task.targetPerWeek = clampWeeklyTarget(task.targetPerWeek)
+    task.targetHistory = normalizeTargetHistory(task)
   }
 
   const weeklyTasks = normalizeSortIndices(weeklyTasksInput)
@@ -184,7 +244,7 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
       }
 
       const sorted = Array.from(uniq).sort()
-      const limited = sorted.slice(0, weeklyTasks[taskId].targetPerWeek)
+      const limited = sorted.slice(0, effectiveWeeklyTarget(weeklyTasks[taskId], weekStartDate))
       if (limited.length > 0) nextForWeek[taskId] = limited
     }
 
@@ -203,7 +263,7 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
       if (Array.isArray(weekObj[taskId]) && weekObj[taskId]!.length > 0) continue
 
       const count = typeof rawCount === 'number' && Number.isFinite(rawCount) ? Math.floor(rawCount) : 0
-      const clamped = Math.max(0, Math.min(count, weeklyTasks[taskId].targetPerWeek))
+      const clamped = Math.max(0, Math.min(count, effectiveWeeklyTarget(weeklyTasks[taskId], weekStartDate)))
       if (clamped <= 0) continue
 
       const synthesized: string[] = []
@@ -244,6 +304,7 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
       ...state.uiState,
       // Never resume priority edit mode after reload.
       dailyLeftMode: state.uiState.dailyLeftMode === 'priorityEdit' ? 'normal' : state.uiState.dailyLeftMode,
+      themeMode,
       overviewRangeDays,
       overviewMode,
       overviewWindowEndDate,
@@ -290,6 +351,8 @@ export function createDefaultState(now: Date = new Date()): AppStateV1 {
 
       dailyLeftMode: 'normal',
       todoMode: 'normal',
+
+      themeMode: 'system',
     },
   }
 }

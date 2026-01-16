@@ -7,6 +7,8 @@ import type {
   Priority,
 } from '../types'
 
+import { todayLocalDateString } from '../utils/localDate'
+
 function nowIso(): IsoTimestamp {
   return new Date().toISOString()
 }
@@ -94,6 +96,7 @@ export function addHabit(
     categoryId,
     priority,
     sortIndex: nextSortIndex,
+    startDate: todayLocalDateString(),
     createdAt,
     updatedAt: createdAt,
   }

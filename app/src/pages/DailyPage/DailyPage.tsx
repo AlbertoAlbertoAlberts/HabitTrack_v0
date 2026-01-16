@@ -7,7 +7,8 @@ import { Dialog, DialogBody, DialogFooter, dialogStyles } from '../../components
 import { WeeklyTaskTile } from '../../components/weekly/WeeklyTaskTile'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
-import { addDays, isToday, weekStartMonday } from '../../domain/utils/localDate'
+import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../domain/utils/localDate'
+import { getWeeklyTaskTargetPerWeekForWeekStart } from '../../domain/utils/weeklyTaskTarget'
 import { exportBackupJson, importBackupJson } from '../../persistence/storageService'
 
 import styles from './DailyPage.module.css'
@@ -16,10 +17,13 @@ export function DailyPage() {
   const state = useAppState()
   const activeDateRef = useRef(state.uiState.selectedDate)
   const [newTodoText, setNewTodoText] = useState('')
+  const [addTodoOpen, setAddTodoOpen] = useState(false)
+  const [todoDragOverId, setTodoDragOverId] = useState<string | null>(null)
   const pendingPriorityChangedRef = useRef<Set<string>>(new Set())
 
   const importFileInputRef = useRef<HTMLInputElement | null>(null)
   const leftMenuRef = useRef<HTMLDetailsElement | null>(null)
+  const todoMenuRef = useRef<HTMLDetailsElement | null>(null)
 
   const [addCategoryOpen, setAddCategoryOpen] = useState(false)
   const [addCategoryName, setAddCategoryName] = useState('')
@@ -31,7 +35,7 @@ export function DailyPage() {
 
   const [addWeeklyTaskOpen, setAddWeeklyTaskOpen] = useState(false)
   const [addWeeklyTaskName, setAddWeeklyTaskName] = useState('')
-  const [addWeeklyTaskTarget, setAddWeeklyTaskTarget] = useState(5)
+  const [addWeeklyTaskTarget, setAddWeeklyTaskTarget] = useState(2)
 
   const [weeklyMode, setWeeklyMode] = useState<'normal' | 'reorder' | 'delete' | 'rename'>('normal')
   const [weeklyDragOverId, setWeeklyDragOverId] = useState<string | null>(null)
@@ -40,12 +44,14 @@ export function DailyPage() {
   const [renameTarget, setRenameTarget] = useState<
     | null
     | {
-        kind: 'category' | 'habit' | 'weeklyTask'
+        kind: 'category' | 'habit' | 'weeklyTask' | 'todo'
         id: string
         name: string
       }
   >(null)
   const [renameValue, setRenameValue] = useState('')
+  const [renameHabitCategoryId, setRenameHabitCategoryId] = useState('')
+  const [renameWeeklyTarget, setRenameWeeklyTarget] = useState(2)
 
   const [pendingImport, setPendingImport] = useState<{ filename: string; text: string } | null>(null)
   const [message, setMessage] = useState<
@@ -72,6 +78,11 @@ export function DailyPage() {
     weeklyMenuRef.current.open = false
   }
 
+  function closeTodoMenu() {
+    if (!todoMenuRef.current) return
+    todoMenuRef.current.open = false
+  }
+
   useEffect(() => {
     const handler = (e: PointerEvent) => {
       const menu = leftMenuRef.current
@@ -89,6 +100,20 @@ export function DailyPage() {
   useEffect(() => {
     const handler = (e: PointerEvent) => {
       const menu = weeklyMenuRef.current
+      if (!menu || !menu.open) return
+      const target = e.target as Node | null
+      if (!target) return
+      if (menu.contains(target)) return
+      menu.open = false
+    }
+
+    document.addEventListener('pointerdown', handler)
+    return () => document.removeEventListener('pointerdown', handler)
+  }, [])
+
+  useEffect(() => {
+    const handler = (e: PointerEvent) => {
+      const menu = todoMenuRef.current
       if (!menu || !menu.open) return
       const target = e.target as Node | null
       if (!target) return
@@ -132,6 +157,8 @@ export function DailyPage() {
   const isReorderMode = state.uiState.dailyLeftMode === 'reorder'
   const isDeleteMode = state.uiState.dailyLeftMode === 'delete'
   const isRenameMode = state.uiState.dailyLeftMode === 'rename'
+
+  const todoMode = state.uiState.todoMode
 
   function isPlainEnter(e: React.KeyboardEvent): boolean {
     if (e.key !== 'Enter') return false
@@ -229,6 +256,7 @@ export function DailyPage() {
   const today = isToday(state.uiState.selectedDate)
   const selectedDate = state.uiState.selectedDate
   const locked = appStore.selectors.isLocked(selectedDate)
+  const currentWeekStart = useMemo(() => weekStartMonday(todayLocalDateString()), [])
 
   function downloadTextFile(filename: string, text: string) {
     const blob = new Blob([text], { type: 'application/json;charset=utf-8' })
@@ -309,6 +337,14 @@ export function DailyPage() {
     return map
   }, [state.habits])
 
+  const categorySortIndexById = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const c of Object.values(state.categories)) {
+      map.set(c.id, c.sortIndex)
+    }
+    return map
+  }, [state.categories])
+
   const scoresForSelectedDate = state.dailyScores[selectedDate] ?? {}
 
   const allHabitsSorted = useMemo(
@@ -317,10 +353,13 @@ export function DailyPage() {
         .slice()
         .sort((a, b) => {
           if (a.priority !== b.priority) return a.priority - b.priority
+          const aCatIndex = categorySortIndexById.get(a.categoryId) ?? 0
+          const bCatIndex = categorySortIndexById.get(b.categoryId) ?? 0
+          if (aCatIndex !== bCatIndex) return aCatIndex - bCatIndex
           if (a.categoryId !== b.categoryId) return a.categoryId.localeCompare(b.categoryId)
           return a.sortIndex - b.sortIndex
         }),
-    [state.habits],
+    [state.habits, categorySortIndexById],
   )
 
   const habitsByPriority = useMemo(() => {
@@ -376,8 +415,30 @@ export function DailyPage() {
 
   return (
     <div className={styles.page}>
-      <section className={styles.panel}>
-        <div className={styles.panelHeaderRow}>
+      <section className={`${styles.panel} ${styles.leftPanel}`}>
+        <div className={styles.leftNav}>
+          <Link to="/overview" className={`${styles.navBtn} ${styles.navBtnPrimary}`} style={{ textDecoration: 'none' }}>
+            PĀRSKATS
+          </Link>
+          <button
+            type="button"
+            className={`${styles.navBtn} ${state.uiState.dailyViewMode === 'category' ? styles.navBtnActive : ''}`}
+            onClick={() => appStore.actions.setDailyViewMode('category')}
+            aria-pressed={state.uiState.dailyViewMode === 'category'}
+          >
+            KATEGORIJA
+          </button>
+          <button
+            type="button"
+            className={`${styles.navBtn} ${state.uiState.dailyViewMode === 'priority' ? styles.navBtnActive : ''}`}
+            onClick={() => appStore.actions.setDailyViewMode('priority')}
+            aria-pressed={state.uiState.dailyViewMode === 'priority'}
+          >
+            PRIORITĀTE
+          </button>
+        </div>
+
+        <div className={`${styles.panelHeaderRow} ${styles.leftHeaderRow}`}>
           <h2 className={styles.panelTitle}>Izaicinājumi</h2>
 
           <div className={styles.panelHeaderActions}>
@@ -443,7 +504,7 @@ export function DailyPage() {
                 }}
                 disabled={!isRenameMode && (isDeleteMode || isReorderMode || isPriorityEdit)}
               >
-                Rediģēt nosaukumus
+                Rediģēt paradumus
               </button>
 
               <hr className={styles.menuDivider} />
@@ -704,6 +765,7 @@ export function DailyPage() {
                         onClick={() => {
                           setRenameTarget({ kind: 'habit', id: h.id, name: h.name })
                           setRenameValue(h.name)
+                          setRenameHabitCategoryId(h.categoryId)
                         }}
                         aria-label={`Rediģēt ieraduma nosaukumu: ${h.name}`}
                       >
@@ -976,17 +1038,25 @@ export function DailyPage() {
 
         <Dialog
           open={renameTarget !== null}
-          title="Rediģēt nosaukumu"
+          title={
+            renameTarget?.kind === 'habit'
+              ? 'Rediģēt paradumu'
+              : renameTarget?.kind === 'category'
+                ? 'Rediģēt kategoriju'
+                : 'Rediģēt'
+          }
           onClose={() => {
             setRenameTarget(null)
             setRenameValue('')
+            setRenameHabitCategoryId('')
+            setRenameWeeklyTarget(2)
           }}
         >
           <div
             onKeyDown={(e) => {
               if (!isPlainEnter(e)) return
               const target = e.target
-              if (!(target instanceof HTMLInputElement)) return
+              if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return
               e.preventDefault()
               if (!renameTarget) return
               const next = renameValue.trim()
@@ -996,15 +1066,43 @@ export function DailyPage() {
                 appStore.actions.renameCategory(renameTarget.id, next)
               } else if (renameTarget.kind === 'habit') {
                 appStore.actions.renameHabit(renameTarget.id, next)
+
+                const current = state.habits[renameTarget.id]
+                if (current && renameHabitCategoryId && renameHabitCategoryId !== current.categoryId) {
+                  appStore.actions.moveHabit(renameTarget.id, renameHabitCategoryId)
+                }
+              } else if (renameTarget.kind === 'todo') {
+                appStore.actions.renameTodo(renameTarget.id, next)
               } else {
                 appStore.actions.renameWeeklyTask(renameTarget.id, next)
+                appStore.actions.setWeeklyTaskTargetPerWeek(renameTarget.id, renameWeeklyTarget)
               }
 
               setRenameTarget(null)
               setRenameValue('')
+              setRenameHabitCategoryId('')
+              setRenameWeeklyTarget(2)
             }}
           >
             <DialogBody>
+              {renameTarget?.kind === 'habit' ? (
+                <div className={dialogStyles.row}>
+                  <label className={dialogStyles.label}>
+                    Kategorija
+                    <select
+                      className={dialogStyles.input}
+                      value={renameHabitCategoryId}
+                      onChange={(e) => setRenameHabitCategoryId(e.target.value)}
+                    >
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              ) : null}
               <div className={dialogStyles.row}>
                 <label className={dialogStyles.label}>
                   Nosaukums
@@ -1016,6 +1114,35 @@ export function DailyPage() {
                   />
                 </label>
               </div>
+
+              {renameTarget?.kind === 'weeklyTask' ? (
+                <div className={dialogStyles.row}>
+                  <label className={dialogStyles.label}>
+                    Mērķis nedēļā
+                    <div className={styles.priorityStepper} style={{ marginTop: 6 }}>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
+                        onClick={() => setRenameWeeklyTarget((n) => Math.max(1, n - 1))}
+                        disabled={renameWeeklyTarget <= 1}
+                        aria-label="Samazināt mērķi"
+                      >
+                        &lt;
+                      </button>
+                      <span className={styles.muted}>{renameWeeklyTarget}</span>
+                      <button
+                        type="button"
+                        className={styles.smallBtn}
+                        onClick={() => setRenameWeeklyTarget((n) => Math.min(7, n + 1))}
+                        disabled={renameWeeklyTarget >= 7}
+                        aria-label="Palielināt mērķi"
+                      >
+                        &gt;
+                      </button>
+                    </div>
+                  </label>
+                </div>
+              ) : null}
             </DialogBody>
             <DialogFooter>
               <button
@@ -1024,6 +1151,7 @@ export function DailyPage() {
                 onClick={() => {
                   setRenameTarget(null)
                   setRenameValue('')
+                  setRenameHabitCategoryId('')
                 }}
               >
                 Atcelt
@@ -1040,15 +1168,88 @@ export function DailyPage() {
                     appStore.actions.renameCategory(renameTarget.id, next)
                   } else if (renameTarget.kind === 'habit') {
                     appStore.actions.renameHabit(renameTarget.id, next)
+
+                    const current = state.habits[renameTarget.id]
+                    if (current && renameHabitCategoryId && renameHabitCategoryId !== current.categoryId) {
+                      appStore.actions.moveHabit(renameTarget.id, renameHabitCategoryId)
+                    }
+                  } else if (renameTarget.kind === 'todo') {
+                    appStore.actions.renameTodo(renameTarget.id, next)
                   } else {
                     appStore.actions.renameWeeklyTask(renameTarget.id, next)
+                    appStore.actions.setWeeklyTaskTargetPerWeek(renameTarget.id, renameWeeklyTarget)
                   }
 
                   setRenameTarget(null)
                   setRenameValue('')
+                  setRenameHabitCategoryId('')
+                  setRenameWeeklyTarget(2)
                 }}
               >
                 Saglabāt
+              </button>
+            </DialogFooter>
+          </div>
+        </Dialog>
+
+        <Dialog
+          open={addTodoOpen}
+          title="Pievienot uzdevumu"
+          onClose={() => {
+            setAddTodoOpen(false)
+            setNewTodoText('')
+          }}
+        >
+          <div
+            onKeyDown={(e) => {
+              if (!isPlainEnter(e)) return
+              const target = e.target
+              if (!(target instanceof HTMLInputElement)) return
+              e.preventDefault()
+
+              const text = newTodoText.trim()
+              if (!text) return
+              appStore.actions.addTodo(text)
+              setAddTodoOpen(false)
+              setNewTodoText('')
+            }}
+          >
+            <DialogBody>
+              <div className={dialogStyles.row}>
+                <label className={dialogStyles.label}>
+                  Uzdevums
+                  <input
+                    className={dialogStyles.input}
+                    value={newTodoText}
+                    onChange={(e) => setNewTodoText(e.target.value)}
+                    autoFocus
+                  />
+                </label>
+              </div>
+            </DialogBody>
+            <DialogFooter>
+              <button
+                type="button"
+                className={dialogStyles.btn}
+                onClick={() => {
+                  setAddTodoOpen(false)
+                  setNewTodoText('')
+                }}
+              >
+                Atcelt
+              </button>
+              <button
+                type="button"
+                className={`${dialogStyles.btn} ${dialogStyles.btnPrimary}`}
+                onClick={() => {
+                  const text = newTodoText.trim()
+                  if (!text) return
+                  appStore.actions.addTodo(text)
+                  setAddTodoOpen(false)
+                  setNewTodoText('')
+                }}
+              >
+                Pievienot
               </button>
             </DialogFooter>
           </div>
@@ -1153,27 +1354,8 @@ export function DailyPage() {
           : null}
       </section>
 
-      <section className={styles.panel}>
-        <div className={styles.dailyTopBar}>
-          <div className={styles.dailyTabs}>
-            <button
-              type="button"
-              className={`${styles.tabBtn} ${state.uiState.dailyViewMode === 'category' ? styles.tabBtnActive : ''}`}
-              onClick={() => appStore.actions.setDailyViewMode('category')}
-              aria-pressed={state.uiState.dailyViewMode === 'category'}
-            >
-              KATEGORIJA
-            </button>
-            <button
-              type="button"
-              className={`${styles.tabBtn} ${state.uiState.dailyViewMode === 'priority' ? styles.tabBtnActive : ''}`}
-              onClick={() => appStore.actions.setDailyViewMode('priority')}
-              aria-pressed={state.uiState.dailyViewMode === 'priority'}
-            >
-              PRIORITĀTE
-            </button>
-          </div>
-
+      <section className={`${styles.panel} ${styles.dailyPanel}`}>
+        <div className={styles.dailyTopBarSingle}>
           <div className={styles.dateNav}>
             <button
               type="button"
@@ -1205,10 +1387,6 @@ export function DailyPage() {
               ›
             </button>
           </div>
-
-          <Link to="/overview" className={styles.primaryBtn} style={{ textDecoration: 'none' }}>
-            PĀRSKATS
-          </Link>
         </div>
 
           <div className={styles.dailyContentGrid}>
@@ -1227,20 +1405,31 @@ export function DailyPage() {
                           </div>
                           {habits.map((h) => {
                             const value = scoresForSelectedDate[h.id]
+                            const notStartedYet = Boolean(h.startDate && selectedDate < h.startDate)
+                            const scoreDisabled = locked || notStartedYet
                             return (
-                              <div key={h.id} className={styles.habitRow}>
+                              <div
+                                key={h.id}
+                                className={`${styles.habitRow} ${notStartedYet ? styles.habitRowNotStarted : ''}`}
+                              >
                                 <div className={`${styles.habitLeft} ${styles.habitLeftIndented}`}>
                                   <TargetIcon className={styles.habitIcon} />
                                   <span className={styles.habitName} title={h.name}>
                                     {h.name}
                                   </span>
+                                  {notStartedYet && h.startDate ? (
+                                    <span className={styles.habitStartHint} title={`Sākas: ${formatDateLabel(h.startDate)}`}>
+                                      Sākas: {formatDateLabel(h.startDate)}
+                                    </span>
+                                  ) : null}
                                 </div>
                                 <span className={styles.scoreGroup}>
                                   {[0, 1, 2].map((s) => (
                                     <button
                                       key={s}
                                       type="button"
-                                      disabled={locked}
+                                      disabled={scoreDisabled}
+                                      title={notStartedYet && h.startDate ? `Sākas: ${formatDateLabel(h.startDate)}` : undefined}
                                       className={`${styles.scoreBtn} ${styles[`scoreBtn${s}`]} ${value === s ? styles.scoreBtnActive : ''}`}
                                       onClick={() => {
                                         appStore.actions.setScore(selectedDate, h.id, s as 0 | 1 | 2)
@@ -1268,20 +1457,31 @@ export function DailyPage() {
                           </div>
                           {habits.map((h) => {
                             const value = scoresForSelectedDate[h.id]
+                            const notStartedYet = Boolean(h.startDate && selectedDate < h.startDate)
+                            const scoreDisabled = locked || notStartedYet
                             return (
-                              <div key={h.id} className={styles.habitRow}>
+                              <div
+                                key={h.id}
+                                className={`${styles.habitRow} ${notStartedYet ? styles.habitRowNotStarted : ''}`}
+                              >
                                 <div className={`${styles.habitLeft} ${styles.habitLeftIndented}`}>
                                   <TargetIcon className={styles.habitIcon} />
                                   <span className={styles.habitName} title={h.name}>
                                     {h.name}
                                   </span>
+                                  {notStartedYet && h.startDate ? (
+                                    <span className={styles.habitStartHint} title={`Sākas: ${formatDateLabel(h.startDate)}`}>
+                                      Sākas: {formatDateLabel(h.startDate)}
+                                    </span>
+                                  ) : null}
                                 </div>
                                 <span className={styles.scoreGroup}>
                                   {[0, 1, 2].map((s) => (
                                     <button
                                       key={s}
                                       type="button"
-                                      disabled={locked}
+                                      disabled={scoreDisabled}
+                                      title={notStartedYet && h.startDate ? `Sākas: ${formatDateLabel(h.startDate)}` : undefined}
                                       className={`${styles.scoreBtn} ${styles[`scoreBtn${s}`]} ${value === s ? styles.scoreBtnActive : ''}`}
                                       onClick={() => {
                                         appStore.actions.setScore(selectedDate, h.id, s as 0 | 1 | 2)
@@ -1310,7 +1510,7 @@ export function DailyPage() {
             </div>
 
             <aside className={styles.weeklySideCol} aria-label="Nedēļas uzdevumi">
-              <div className={styles.weeklyCard}>
+              <div className={`${styles.subCard} ${styles.weeklyCard}`}>
                 <div className={styles.weeklyHeaderRow}>
                   <div className={styles.weeklyHeaderLeft}>
                     <h3 className={styles.weeklyTitle}>Nedēļa</h3>
@@ -1319,102 +1519,108 @@ export function DailyPage() {
                     </div>
                   </div>
 
-                  <details className={styles.menu} ref={weeklyMenuRef}>
-                    <summary className={styles.menuButton} aria-label="Nedēļas izvēlne" title="Nedēļas izvēlne">
-                      ⋯
-                    </summary>
-                    <div className={styles.menuPanel} role="menu" aria-label="Nedēļas darbības">
-                      {weeklyMode !== 'normal' ? (
+                  <div className={styles.panelHeaderActions}>
+                    {weeklyMode !== 'normal' ? (
+                      <button
+                        type="button"
+                        className={styles.exitModeBtn}
+                        aria-label="Iziet no režīma"
+                        title="Iziet no režīma"
+                        onClick={() => {
+                          setWeeklyMode('normal')
+                          closeWeeklyMenu()
+                        }}
+                      >
+                        ✕
+                      </button>
+                    ) : null}
+
+                    <details className={styles.menu} ref={weeklyMenuRef}>
+                      <summary className={styles.menuButton} aria-label="Nedēļas izvēlne" title="Nedēļas izvēlne">
+                        ☰
+                      </summary>
+                      <div className={styles.menuPanel} role="menu" aria-label="Nedēļas darbības">
+
                         <button
                           type="button"
                           className={styles.menuItem}
                           onClick={() => {
-                            setWeeklyMode('normal')
+                            setWeeklyMode('reorder')
                             closeWeeklyMenu()
                           }}
                         >
-                          Iziet no režīma
+                          Pārkārtot
                         </button>
-                      ) : null}
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => {
+                            setWeeklyMode('rename')
+                            closeWeeklyMenu()
+                          }}
+                        >
+                          Rediģēt
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => {
+                            setWeeklyMode('delete')
+                            closeWeeklyMenu()
+                          }}
+                        >
+                          Dzēst
+                        </button>
 
-                      <button
-                        type="button"
-                        className={styles.menuItem}
-                        onClick={() => {
-                          setWeeklyMode('reorder')
-                          closeWeeklyMenu()
-                        }}
-                      >
-                        Pārkārtot
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.menuItem}
-                        onClick={() => {
-                          setWeeklyMode('rename')
-                          closeWeeklyMenu()
-                        }}
-                      >
-                        Mainīt nosaukumus
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.menuItem}
-                        onClick={() => {
-                          setWeeklyMode('delete')
-                          closeWeeklyMenu()
-                        }}
-                      >
-                        Dzēst
-                      </button>
+                        <hr className={styles.menuDivider} />
 
-                      <hr className={styles.menuDivider} />
-
-                      <button
-                        type="button"
-                        className={styles.menuItem}
-                        onClick={() => {
-                          setAddWeeklyTaskTarget(5)
-                          setAddWeeklyTaskName('')
-                          setAddWeeklyTaskOpen(true)
-                          closeWeeklyMenu()
-                        }}
-                      >
-                        + Ieradumu
-                      </button>
-                    </div>
-                  </details>
+                        <button
+                          type="button"
+                          className={styles.menuItem}
+                          onClick={() => {
+                            setAddWeeklyTaskTarget(2)
+                            setAddWeeklyTaskName('')
+                            setAddWeeklyTaskOpen(true)
+                            closeWeeklyMenu()
+                          }}
+                        >
+                          + Ieradumu
+                        </button>
+                      </div>
+                    </details>
+                  </div>
                 </div>
 
-                <div className={styles.scrollArea}>
+                <div className={styles.weeklyScrollArea}>
                   {weeklyTasks.length === 0 ? (
                     <div className={styles.weeklyEmpty}>
                       <p className={styles.muted} style={{ marginTop: 0 }}>
                         Nav nedēļas uzdevumu.
                       </p>
-                      <button
-                        type="button"
-                        className={styles.primaryBtn}
-                        onClick={() => {
-                          setAddWeeklyTaskTarget(5)
-                          setAddWeeklyTaskName('')
-                          setAddWeeklyTaskOpen(true)
-                        }}
-                      >
-                        Pievienot
-                      </button>
                     </div>
                   ) : (
                     <div className={styles.weeklyList}>
                       {weeklyTasks.map((t) => {
                         const count = state.weeklyProgress[weekStartDate]?.[t.id] ?? 0
                         const canDrag = weeklyMode === 'reorder'
+                        const notStartedYet = Boolean(t.startWeekStart && weekStartDate < t.startWeekStart)
+                        const effectiveTargetPerWeek = getWeeklyTaskTargetPerWeekForWeekStart(
+                          t,
+                          weekStartDate,
+                          currentWeekStart,
+                        )
+                        const progressTitle = notStartedYet && t.startWeekStart
+                          ? `Sākas nedēļā: ${formatDateLabel(t.startWeekStart)}`
+                          : undefined
                         return (
                           <WeeklyTaskTile
                             key={t.id}
                             task={t}
+                            max={effectiveTargetPerWeek}
                             count={count}
                             mode={weeklyMode}
+                            progressDisabled={notStartedYet}
+                            progressTitle={progressTitle}
                             className={`${styles.weeklyRow} ${weeklyMode === 'reorder' ? styles.weeklyRowReorder : ''} ${weeklyDragOverId === t.id ? styles.weeklyRowDragOver : ''}`}
                             onAdjust={(delta) => {
                               appStore.actions.adjustWeeklyCompletionForDate(
@@ -1427,6 +1633,7 @@ export function DailyPage() {
                             onRename={() => {
                               setRenameTarget({ kind: 'weeklyTask', id: t.id, name: t.name })
                               setRenameValue(t.name)
+                              setRenameWeeklyTarget(t.targetPerWeek)
                             }}
                             onDelete={() => {
                               appStore.actions.deleteWeeklyTask(t.id)
@@ -1474,42 +1681,124 @@ export function DailyPage() {
           </div>
       </section>
 
-      <section className={styles.panel}>
-        <h2 className={styles.panelTitle}>Uzdevumi</h2>
+      <section className={`${styles.panel} ${styles.todoPanel}`}>
+        <div className={styles.todoHeaderRow}>
+          <div className={styles.todoHeaderSpacer} aria-hidden="true" />
+          <h2 className={`${styles.panelTitle} ${styles.todoTitle}`}>Uzdevumi</h2>
 
-        <div className={styles.toolbar}>
-          <input
-            className={styles.input}
-            placeholder="Pievienot uzdevumu"
-            value={newTodoText}
-            onChange={(e) => setNewTodoText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter') return
-              const text = newTodoText.trim()
-              if (!text) return
-              appStore.actions.addTodo(text)
-              setNewTodoText('')
-            }}
-          />
-          <button
-            type="button"
-            className={styles.smallBtn}
-            onClick={() => {
-              const text = newTodoText.trim()
-              if (!text) return
-              appStore.actions.addTodo(text)
-              setNewTodoText('')
-            }}
-          >
-            Pievienot
-          </button>
+          <div className={styles.panelHeaderActions}>
+            {todoMode !== 'normal' ? (
+              <button
+                type="button"
+                className={styles.exitModeBtn}
+                aria-label="Iziet no režīma"
+                title="Iziet no režīma"
+                onClick={() => {
+                  appStore.actions.setTodoMode('normal')
+                  closeTodoMenu()
+                }}
+              >
+                ✕
+              </button>
+            ) : null}
+
+            <details className={styles.menu} ref={todoMenuRef}>
+              <summary className={styles.menuButton} aria-label="Uzdevumu izvēlne" title="Uzdevumu izvēlne">
+                ☰
+              </summary>
+              <div className={styles.menuPanel} role="menu" aria-label="Uzdevumu darbības">
+
+                <button
+                  type="button"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    appStore.actions.setTodoMode('reorder')
+                    closeTodoMenu()
+                  }}
+                >
+                  Pārkārtot
+                </button>
+                <button
+                  type="button"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    appStore.actions.setTodoMode('rename')
+                    closeTodoMenu()
+                  }}
+                >
+                  Pārdēvēt
+                </button>
+                <button
+                  type="button"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    appStore.actions.setTodoMode('delete')
+                    closeTodoMenu()
+                  }}
+                >
+                  Dzēst
+                </button>
+
+                <hr className={styles.menuDivider} />
+
+                <button
+                  type="button"
+                  className={styles.menuItem}
+                  onClick={() => {
+                    appStore.actions.setTodoMode('normal')
+                    setAddTodoOpen(true)
+                    closeTodoMenu()
+                  }}
+                >
+                  + Uzdevumu
+                </button>
+              </div>
+            </details>
+          </div>
         </div>
 
         <div className={styles.scrollArea}>
           {todos.length === 0 ? <p className={styles.muted}>Nav uzdevumu.</p> : null}
 
-          {todos.map((t) => (
-            <div key={t.id} className={styles.todoRow}>
+          {todos.map((t) => {
+            const canDrag = todoMode === 'reorder'
+            return (
+            <div
+              key={t.id}
+              className={`${styles.todoRow} ${canDrag ? styles.todoRowReorder : ''} ${todoDragOverId === t.id ? styles.todoRowDragOver : ''}`}
+              draggable={canDrag}
+              onDragStart={(e) => {
+                if (!canDrag) return
+                e.dataTransfer.effectAllowed = 'move'
+                e.dataTransfer.setData('text/plain', t.id)
+              }}
+              onDragOver={(e) => {
+                if (!canDrag) return
+                e.preventDefault()
+                setTodoDragOverId(t.id)
+              }}
+              onDragLeave={() => {
+                if (!canDrag) return
+                setTodoDragOverId((v) => (v === t.id ? null : v))
+              }}
+              onDrop={(e) => {
+                if (!canDrag) return
+                e.preventDefault()
+                setTodoDragOverId(null)
+
+                const draggedId = e.dataTransfer.getData('text/plain')
+                if (!draggedId) return
+                if (draggedId === t.id) return
+
+                const ordered = todos.map((x) => x.id)
+                const fromIndex = ordered.indexOf(draggedId)
+                const toIndex = ordered.indexOf(t.id)
+                if (fromIndex === -1 || toIndex === -1) return
+
+                const next = reorderIds(ordered, draggedId, toIndex)
+                appStore.actions.reorderTodos(next)
+              }}
+            >
               <input
                 type="checkbox"
                 onChange={() => {
@@ -1520,16 +1809,34 @@ export function DailyPage() {
               <span className={styles.todoText} title={t.text}>
                 {t.text}
               </span>
-              <button
-                type="button"
-                className={styles.smallBtn}
-                onClick={() => appStore.actions.deleteTodo(t.id)}
-                aria-label={`Dzēst uzdevumu: ${t.text}`}
-              >
-                Dzēst
-              </button>
+
+              {todoMode === 'rename' ? (
+                <button
+                  type="button"
+                  className={styles.smallBtn}
+                  onClick={() => {
+                    setRenameTarget({ kind: 'todo', id: t.id, name: t.text })
+                    setRenameValue(t.text)
+                  }}
+                  aria-label={`Pārdēvēt uzdevumu: ${t.text}`}
+                >
+                  Mainīt
+                </button>
+              ) : null}
+
+              {todoMode === 'delete' ? (
+                <button
+                  type="button"
+                  className={`${styles.smallBtn} ${styles.dangerBtn}`}
+                  onClick={() => appStore.actions.deleteTodo(t.id)}
+                  aria-label={`Dzēst uzdevumu: ${t.text}`}
+                >
+                  Dzēst
+                </button>
+              ) : null}
             </div>
-          ))}
+            )
+          })}
         </div>
 
         <div className={styles.todoFooter}>

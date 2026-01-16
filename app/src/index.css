@@ -1,23 +1,49 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: Manrope, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light;
 
+  --header-h: 56px;
+
   /* Natural-light theme tokens */
-  --bg: #f3f4f6;
+  --bg: #f4f5f7;
   --panel-bg: rgba(255, 255, 255, 0.72);
   --panel-bg-strong: rgba(255, 255, 255, 0.92);
   --border: rgba(17, 24, 39, 0.12);
-  --text: #111827;
-  --muted: rgba(17, 24, 39, 0.66);
-  --btn-bg: rgba(17, 24, 39, 0.06);
-  --btn-bg-hover: rgba(17, 24, 39, 0.10);
-  --btn-border: rgba(17, 24, 39, 0.14);
-  --accent: #4f46e5;
-  --accent-soft: rgba(79, 70, 229, 0.14);
+  --text: #0f172a;
+  --muted: rgba(15, 23, 42, 0.64);
+  --btn-bg: rgba(15, 23, 42, 0.06);
+  --btn-bg-hover: rgba(15, 23, 42, 0.10);
+  --btn-border: rgba(15, 23, 42, 0.14);
+
+  /* Icon menu buttons (☰ / ⋯) need extra contrast */
+  --icon-btn-bg: rgba(15, 23, 42, 0.10);
+  --icon-btn-bg-hover: rgba(15, 23, 42, 0.14);
+  --accent: #65a30d;
+  --accent-soft: rgba(101, 163, 13, 0.16);
   --danger: #dc2626;
+
+  /* Popovers / menus (should not be see-through) */
+  --popover-bg: rgba(255, 255, 255, 0.96);
+
+  /* Inputs */
+  --input-bg: rgba(255, 255, 255, 0.90);
+
+  /* Chart (Overview) */
+  --chart-label: rgba(17, 24, 39, 0.62);
+  --chart-grid: rgba(17, 24, 39, 0.12);
+  --chart-axis: rgba(17, 24, 39, 0.62);
+
+  --focus-ring: 0 0 0 3px rgba(101, 163, 13, 0.28);
+
+  /* Weekly tiles / progress ring */
+  --tile-bg: rgba(255, 255, 255, 0.65);
+  --tile-bg-hover: rgba(255, 255, 255, 0.78);
+  --ring-center-bg: rgba(255, 255, 255, 0.75);
+  --ring-inactive: rgba(17, 24, 39, 0.16);
+  --ring-active: var(--accent);
 
   /* Motion tokens (fast, smooth) */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -35,13 +61,122 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg: #0b0f14;
+    /* Opaque surfaces in dark mode (no see-through cards) */
+    --panel-bg: rgba(15, 20, 28, 0.96);
+    --panel-bg-strong: rgba(15, 20, 28, 0.98);
+    --border: rgba(255, 255, 255, 0.10);
+    --text: rgba(255, 255, 255, 0.92);
+    --muted: rgba(255, 255, 255, 0.62);
+    --btn-bg: rgba(255, 255, 255, 0.06);
+    --btn-bg-hover: rgba(255, 255, 255, 0.10);
+    --btn-border: rgba(255, 255, 255, 0.14);
+
+    --icon-btn-bg: rgba(255, 255, 255, 0.10);
+    --icon-btn-bg-hover: rgba(255, 255, 255, 0.14);
+    --accent: #84cc16;
+    --accent-soft: rgba(132, 204, 22, 0.16);
+
+    --popover-bg: rgba(15, 20, 28, 0.98);
+
+    --input-bg: rgba(255, 255, 255, 0.06);
+
+    --chart-label: rgba(255, 255, 255, 0.84);
+    --chart-grid: rgba(255, 255, 255, 0.14);
+    --chart-axis: rgba(255, 255, 255, 0.78);
+
+    --focus-ring: 0 0 0 3px rgba(132, 204, 22, 0.22);
+
+    --tile-bg: rgba(0, 0, 0, 0.38);
+    --tile-bg-hover: rgba(0, 0, 0, 0.52);
+    --ring-center-bg: rgba(0, 0, 0, 0.58);
+    --ring-inactive: rgba(255, 255, 255, 0.18);
+    --ring-active: var(--accent);
+  }
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f4f5f7;
+  --panel-bg: rgba(255, 255, 255, 0.72);
+  --panel-bg-strong: rgba(255, 255, 255, 0.92);
+  --border: rgba(17, 24, 39, 0.12);
+  --text: #0f172a;
+  --muted: rgba(15, 23, 42, 0.64);
+  --btn-bg: rgba(15, 23, 42, 0.06);
+  --btn-bg-hover: rgba(15, 23, 42, 0.10);
+  --btn-border: rgba(15, 23, 42, 0.14);
+
+  --icon-btn-bg: rgba(15, 23, 42, 0.10);
+  --icon-btn-bg-hover: rgba(15, 23, 42, 0.14);
+  --accent: #65a30d;
+  --accent-soft: rgba(101, 163, 13, 0.16);
+
+  --popover-bg: rgba(255, 255, 255, 0.96);
+
+  --input-bg: rgba(255, 255, 255, 0.90);
+
+  --chart-label: rgba(17, 24, 39, 0.62);
+  --chart-grid: rgba(17, 24, 39, 0.12);
+  --chart-axis: rgba(17, 24, 39, 0.62);
+
+  --focus-ring: 0 0 0 3px rgba(101, 163, 13, 0.28);
+
+  --tile-bg: rgba(255, 255, 255, 0.65);
+  --tile-bg-hover: rgba(255, 255, 255, 0.78);
+  --ring-center-bg: rgba(255, 255, 255, 0.75);
+  --ring-inactive: rgba(17, 24, 39, 0.16);
+  --ring-active: var(--accent);
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0b0f14;
+  /* Opaque surfaces in dark mode (no see-through cards) */
+  --panel-bg: rgba(15, 20, 28, 0.96);
+  --panel-bg-strong: rgba(15, 20, 28, 0.98);
+  --border: rgba(255, 255, 255, 0.10);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.62);
+  --btn-bg: rgba(255, 255, 255, 0.06);
+  --btn-bg-hover: rgba(255, 255, 255, 0.10);
+  --btn-border: rgba(255, 255, 255, 0.14);
+
+  --icon-btn-bg: rgba(255, 255, 255, 0.10);
+  --icon-btn-bg-hover: rgba(255, 255, 255, 0.14);
+  --accent: #84cc16;
+  --accent-soft: rgba(132, 204, 22, 0.16);
+
+  --popover-bg: rgba(15, 20, 28, 0.98);
+
+  --input-bg: rgba(255, 255, 255, 0.06);
+
+  --chart-label: rgba(255, 255, 255, 0.84);
+  --chart-grid: rgba(255, 255, 255, 0.14);
+  --chart-axis: rgba(255, 255, 255, 0.78);
+
+  --focus-ring: 0 0 0 3px rgba(132, 204, 22, 0.22);
+
+  --tile-bg: rgba(0, 0, 0, 0.38);
+  --tile-bg-hover: rgba(0, 0, 0, 0.52);
+  --ring-center-bg: rgba(0, 0, 0, 0.58);
+  --ring-inactive: rgba(255, 255, 255, 0.18);
+  --ring-active: var(--accent);
+}
+
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--accent);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  opacity: 0.9;
 }
 
 body {

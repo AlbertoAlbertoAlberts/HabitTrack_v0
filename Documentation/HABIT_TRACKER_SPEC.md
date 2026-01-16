@@ -60,6 +60,10 @@ Middle column – Daily scoring area
 	•	KATEGORIJA view
 	•	PRIORITĀTE view
 
+	•	Also contains a “Nedēļa” (Weekly) panel for weekly tasks
+		•	Shows a weekly date range (Monday–Sunday) based on the selected date
+		•	Shows weekly tasks as tiles with a progress ring
+
 Right column – TO-DO
 	•	Global to-do list (not date-specific)
 	•	Scrollable
@@ -198,7 +202,39 @@ Delete rules:
 
 ⸻
 
-10. TO-DO List (Right Column)
+10. Weekly Tasks (“Nedēļa”)
+
+10.1 Purpose
+	•	Track a small set of weekly repeating tasks alongside daily habit scoring
+	•	Provide a simple “done this day” interaction with a weekly progress ring
+
+10.2 Week definition
+	•	Weeks start on Monday and end on Sunday
+	•	The current week range is computed from the selected date on Page 1
+
+10.3 Task behavior
+	•	Each weekly task has a weekly target: `targetPerWeek`
+	•	A weekly task can be completed at most once per calendar day (once-per-day rule)
+	•	The progress ring shows: completed days in that week vs `targetPerWeek`
+	•	Allowed target range is 1–7 (clamped)
+	•	Default target when creating a weekly task: 2
+
+10.4 Interaction
+	•	Click on a weekly task tile/ring:
+		•	Marks the currently selected date as completed for that task
+	•	Shift+click:
+		•	Removes the completion mark for the selected date
+
+10.5 Management
+	•	Weekly tasks are managed via a compact menu (⋯) in the Weekly panel:
+		•	Add (`+ Ieradumu`)
+		•	Reorder (`Pārkārtot`)
+		•	Rename (`Mainīt nosaukumus`)
+		•	Delete (`Dzēst`)
+
+⸻
+
+11. TO-DO List (Right Column)
 
 10.1 Behavior
 	•	Global (same list regardless of date)
@@ -220,7 +256,7 @@ Deleted TO-DO items are permanently removed.
 
 ⸻
 
-11. Page 2 – Overview / Pārskats
+12. Page 2 – Overview / Pārskats
 
 11.1 Default state
 	•	Time range: 30 days
@@ -237,7 +273,7 @@ Deleted TO-DO items are permanently removed.
 
 ⸻
 
-12. Chart Logic
+13. Chart Logic
 
 12.1 Axes
 	•	X-axis: dates

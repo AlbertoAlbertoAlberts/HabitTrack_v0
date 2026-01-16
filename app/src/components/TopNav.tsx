@@ -1,55 +1,87 @@
 import { NavLink } from 'react-router-dom'
 
-const linkStyle: React.CSSProperties = {
-  padding: '8px 12px',
-  borderRadius: 8,
-  textDecoration: 'none',
-  color: 'inherit',
-}
+import type { ThemeMode } from '../domain/types'
+import { appStore } from '../domain/store/appStore'
+import { useAppState } from '../domain/store/useAppStore'
+
+import styles from './TopNav.module.css'
 
 export function TopNav() {
+  const themeMode = useAppState().uiState.themeMode
+
+  function setMode(next: ThemeMode) {
+    appStore.actions.setThemeMode(next)
+  }
+
   return (
-    <nav
-      style={{
-        display: 'flex',
-        gap: 8,
-        alignItems: 'center',
-        padding: 12,
-        borderBottom: '1px solid #e5e7eb',
-      }}
-    >
-      <NavLink
-        to="/"
-        end
-        style={({ isActive }) => ({
-          ...linkStyle,
-          fontWeight: isActive ? 700 : 500,
-          background: isActive ? '#f3f4f6' : 'transparent',
-        })}
-      >
-        Daily
-      </NavLink>
-      <NavLink
-        to="/overview"
-        style={({ isActive }) => ({
-          ...linkStyle,
-          fontWeight: isActive ? 700 : 500,
-          background: isActive ? '#f3f4f6' : 'transparent',
-        })}
-      >
-        Overview
-      </NavLink>
-      <NavLink
-        to="/archive"
-        style={({ isActive }) => ({
-          ...linkStyle,
-          fontWeight: isActive ? 700 : 500,
-          background: isActive ? '#f3f4f6' : 'transparent',
-        })}
-      >
-        Archive
-      </NavLink>
-    </nav>
+    <header className={styles.header}>
+      <div className={styles.left}>
+        <div className={styles.brand}>HabitTrack</div>
+
+        <nav className={styles.nav} aria-label="Primary">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              [styles.navLink, isActive ? styles.navLinkActive : ''].filter(Boolean).join(' ')
+            }
+          >
+            Daily
+          </NavLink>
+          <NavLink
+            to="/overview"
+            className={({ isActive }) =>
+              [styles.navLink, isActive ? styles.navLinkActive : ''].filter(Boolean).join(' ')
+            }
+          >
+            Overview
+          </NavLink>
+          <NavLink
+            to="/archive"
+            className={({ isActive }) =>
+              [styles.navLink, isActive ? styles.navLinkActive : ''].filter(Boolean).join(' ')
+            }
+          >
+            Archive
+          </NavLink>
+        </nav>
+      </div>
+
+      <div className={styles.right}>
+        <div className={styles.toggle} role="group" aria-label="Theme">
+          <button
+            type="button"
+            className={[styles.toggleBtn, themeMode === 'system' ? styles.toggleBtnActive : '']
+              .filter(Boolean)
+              .join(' ')}
+            aria-pressed={themeMode === 'system'}
+            onClick={() => setMode('system')}
+          >
+            Auto
+          </button>
+          <button
+            type="button"
+            className={[styles.toggleBtn, themeMode === 'light' ? styles.toggleBtnActive : '']
+              .filter(Boolean)
+              .join(' ')}
+            aria-pressed={themeMode === 'light'}
+            onClick={() => setMode('light')}
+          >
+            Light
+          </button>
+          <button
+            type="button"
+            className={[styles.toggleBtn, themeMode === 'dark' ? styles.toggleBtnActive : '']
+              .filter(Boolean)
+              .join(' ')}
+            aria-pressed={themeMode === 'dark'}
+            onClick={() => setMode('dark')}
+          >
+            Dark
+          </button>
+        </div>
+      </div>
+    </header>
   )
 }
 

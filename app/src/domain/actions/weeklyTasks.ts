@@ -4,9 +4,11 @@ import type {
   LocalDateString,
   WeeklyTask,
   WeeklyTaskId,
+  WeeklyTaskTargetChange,
 } from '../types'
 
-import { addDays } from '../utils/localDate'
+import { addDays, todayLocalDateString, weekStartMonday } from '../utils/localDate'
+import { getWeeklyTaskTargetPerWeekForWeekStart } from '../utils/weeklyTaskTarget'
 
 function nowIso(): IsoTimestamp {
   return new Date().toISOString()
@@ -35,6 +37,29 @@ function clampTargetPerWeek(value: number): number {
   return Math.max(1, Math.min(7, n))
 }
 
+function upsertTargetHistory(
+  task: WeeklyTask,
+  effectiveWeekStart: LocalDateString,
+  targetPerWeek: number,
+): WeeklyTaskTargetChange[] {
+  const nextTarget = clampTargetPerWeek(targetPerWeek)
+  const baseWeekStart = task.startWeekStart ?? effectiveWeekStart
+  const raw = Array.isArray(task.targetHistory) ? task.targetHistory : []
+
+  const byWeek = new Map<string, WeeklyTaskTargetChange>()
+  // Ensure there is always a baseline entry.
+  byWeek.set(baseWeekStart, { weekStart: baseWeekStart, targetPerWeek: clampTargetPerWeek(task.targetPerWeek) })
+
+  for (const h of raw) {
+    if (!h || typeof h.weekStart !== 'string') continue
+    byWeek.set(h.weekStart, { weekStart: h.weekStart, targetPerWeek: clampTargetPerWeek(h.targetPerWeek) })
+  }
+
+  byWeek.set(effectiveWeekStart, { weekStart: effectiveWeekStart, targetPerWeek: nextTarget })
+
+  return Array.from(byWeek.values()).sort((a, b) => a.weekStart.localeCompare(b.weekStart))
+}
+
 export function addWeeklyTask(state: AppStateV1, name: string, targetPerWeek: number = 5): AppStateV1 {
   const trimmed = name.trim()
   if (!trimmed) return state
@@ -46,7 +71,14 @@ export function addWeeklyTask(state: AppStateV1, name: string, targetPerWeek: nu
     id,
     name: trimmed,
     targetPerWeek: clampTargetPerWeek(targetPerWeek),
+    targetHistory: [
+      {
+        weekStart: weekStartMonday(todayLocalDateString()),
+        targetPerWeek: clampTargetPerWeek(targetPerWeek),
+      },
+    ],
     sortIndex: Object.keys(state.weeklyTasks).length,
+    startWeekStart: weekStartMonday(todayLocalDateString()),
     createdAt,
     updatedAt: createdAt,
   }
@@ -117,44 +149,43 @@ export function setWeeklyTaskTargetPerWeek(
   const nextTarget = clampTargetPerWeek(targetPerWeek)
   if (task.targetPerWeek === nextTarget) return state
 
+  const currentWeekStart = weekStartMonday(todayLocalDateString())
+  const nextHistory = upsertTargetHistory(task, currentWeekStart, nextTarget)
+
   const nextTasks: AppStateV1['weeklyTasks'] = {
     ...state.weeklyTasks,
     [weeklyTaskId]: {
       ...task,
       targetPerWeek: nextTarget,
+      targetHistory: nextHistory,
       updatedAt: nowIso(),
     },
   }
 
-  // Clamp existing completion days (and derived progress) for all weeks to the new target.
+  // Only clamp the CURRENT week's completion days to the new target.
   const nextWeeklyCompletionDays: AppStateV1['weeklyCompletionDays'] = { ...state.weeklyCompletionDays }
   const nextWeeklyProgress: AppStateV1['weeklyProgress'] = { ...state.weeklyProgress }
 
-  for (const [weekStartDate, byTask] of Object.entries(state.weeklyCompletionDays)) {
-    const days = byTask[weeklyTaskId]
-    if (!Array.isArray(days)) continue
-
+  const currentWeekDays = state.weeklyCompletionDays[currentWeekStart]
+  const days = currentWeekDays?.[weeklyTaskId]
+  if (Array.isArray(days)) {
     const limited = days.slice(0, nextTarget)
-    const nextWeekStart = weekStartDate as LocalDateString
-
     if (limited.length === 0) {
-      const { [weeklyTaskId]: _removed, ...restDays } = byTask
-      if (Object.keys(restDays).length > 0) nextWeeklyCompletionDays[nextWeekStart] = restDays
-      else delete nextWeeklyCompletionDays[nextWeekStart]
+      const { [weeklyTaskId]: _removed, ...restDays } = currentWeekDays
+      if (Object.keys(restDays).length > 0) nextWeeklyCompletionDays[currentWeekStart] = restDays
+      else delete nextWeeklyCompletionDays[currentWeekStart]
 
-      const currentWeekProgress = nextWeeklyProgress[nextWeekStart]
-      if (currentWeekProgress) {
-        const { [weeklyTaskId]: _removedP, ...restP } = currentWeekProgress
-        if (Object.keys(restP).length > 0) nextWeeklyProgress[nextWeekStart] = restP
-        else delete nextWeeklyProgress[nextWeekStart]
-      }
+      const currentWeekProgress = nextWeeklyProgress[currentWeekStart] ?? {}
+      const { [weeklyTaskId]: _removedP, ...restP } = currentWeekProgress
+      if (Object.keys(restP).length > 0) nextWeeklyProgress[currentWeekStart] = restP
+      else delete nextWeeklyProgress[currentWeekStart]
     } else {
-      nextWeeklyCompletionDays[nextWeekStart] = {
-        ...byTask,
+      nextWeeklyCompletionDays[currentWeekStart] = {
+        ...(currentWeekDays ?? {}),
         [weeklyTaskId]: limited,
       }
-      nextWeeklyProgress[nextWeekStart] = {
-        ...(nextWeeklyProgress[nextWeekStart] ?? {}),
+      nextWeeklyProgress[currentWeekStart] = {
+        ...(state.weeklyProgress[currentWeekStart] ?? {}),
         [weeklyTaskId]: limited.length,
       }
     }
@@ -204,6 +235,8 @@ export function adjustWeeklyCompletionForDate(
   const task = state.weeklyTasks[weeklyTaskId]
   if (!task) return state
 
+  if (task.startWeekStart && weekStartDate < task.startWeekStart) return state
+
   const weekEndDate = addDays(weekStartDate, 6)
   if (date < weekStartDate || date > weekEndDate) return state
 
@@ -211,10 +244,13 @@ export function adjustWeeklyCompletionForDate(
   const currentDays = currentWeekDays[weeklyTaskId] ?? []
   const set = new Set(currentDays)
 
+  const currentWeekStart = weekStartMonday(todayLocalDateString())
+  const effectiveTarget = getWeeklyTaskTargetPerWeekForWeekStart(task, weekStartDate, currentWeekStart)
+
   if (delta === 1) {
     // Rule: only once per day
     if (set.has(date)) return state
-    if (set.size >= task.targetPerWeek) return state
+    if (set.size >= effectiveTarget) return state
     set.add(date)
   } else {
     // Shift+click cancels only that day's completion

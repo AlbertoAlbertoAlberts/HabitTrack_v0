@@ -43,6 +43,10 @@ Use one top-level key for the entire app state.
   "dailyScores": {},
   "dayLocks": {},
 
+  "weeklyTasks": {},
+  "weeklyProgress": {},
+  "weeklyCompletionDays": {},
+
   "todos": {},
   "todoArchive": {},
 
@@ -54,6 +58,7 @@ Use one top-level key for the entire app state.
 - `savedAt` is updated whenever the app writes state.
 - All collections use ID-keyed objects (maps) for stability and speed.
 - `meta.appVersion` is the app’s release/version (not the schema). `schemaVersion` is the storage shape.
+- `weeklyTasks` / `weeklyProgress` / `weeklyCompletionDays` may be missing in older saved states; the app should repair/default them on load.
 
 ---
 
@@ -149,7 +154,66 @@ Day locks are stored at day-level.
 
 ---
 
-### 3.5 To-do (active)
+### 3.5 Weekly tasks
+
+Weekly tasks are stored per-week. Weeks are keyed by **week start date (Monday)** in local date format: `YYYY-MM-DD`.
+
+#### 3.5.1 Weekly task definitions
+
+**Type**
+- `weeklyTasks: Record<WeeklyTaskId, WeeklyTask>`
+
+```json
+"weeklyTasks": {
+  "wt_1": {
+    "id": "wt_1",
+    "name": "Treniņš",
+    "targetPerWeek": 2,
+    "sortIndex": 0,
+    "createdAt": "2026-01-12T12:00:00.000Z",
+    "updatedAt": "2026-01-12T12:00:00.000Z"
+  }
+}
+```
+
+#### 3.5.2 Completion day lists (source of truth)
+
+**Type**
+- `weeklyCompletionDays: Record<WeekStartDate, Record<WeeklyTaskId, LocalDateString[]>>`
+
+```json
+"weeklyCompletionDays": {
+  "2026-01-12": {
+    "wt_1": ["2026-01-12", "2026-01-14"]
+  }
+}
+```
+
+**Invariants**
+- Each date in the array must be within the week `[weekStart..weekStart+6]`.
+- Each date must be unique (once-per-day rule).
+
+#### 3.5.3 Weekly progress counts (derived/cache)
+
+For quick ring rendering, the app also stores a numeric count per week/task.
+
+**Type**
+- `weeklyProgress: Record<WeekStartDate, Record<WeeklyTaskId, number>>`
+
+```json
+"weeklyProgress": {
+  "2026-01-12": {
+    "wt_1": 2
+  }
+}
+```
+
+**Note**
+- `weeklyProgress` can be repaired/derived from `weeklyCompletionDays` on load.
+
+---
+
+### 3.6 To-do (active)
 
 **Type**
 - `todos: Record<TodoId, TodoV1>`
@@ -172,7 +236,7 @@ Day locks are stored at day-level.
 
 ---
 
-### 3.6 To-do archive (completed)
+### 3.7 To-do archive (completed)
 
 **Type**
 - `todoArchive: Record<TodoArchiveId, TodoArchiveV1>`
@@ -199,7 +263,7 @@ Day locks are stored at day-level.
 
 ---
 
-### 3.7 UI state (persistent preferences)
+### 3.8 UI state (persistent preferences)
 
 **Type:** `UiStateV1`
 

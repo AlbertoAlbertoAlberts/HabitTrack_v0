@@ -27,11 +27,13 @@ export function WeeklyProgressRing({
   max,
   onAdjust,
   title,
+  disabled,
 }: {
   value: number
   max: number
   onAdjust: (delta: 1 | -1) => void
   title?: string
+  disabled?: boolean
 }) {
   const safeMax = clampInt(max, 1, 7)
   const safeValue = clampInt(value, 0, safeMax)
@@ -62,7 +64,9 @@ export function WeeklyProgressRing({
       className={styles.ringBtn}
       title={title}
       aria-label={title ?? 'Atzīmēt nedēļas progresu'}
+      disabled={disabled}
       onClick={(e) => {
+        if (disabled) return
         const delta: 1 | -1 = e.shiftKey ? -1 : 1
         onAdjust(delta)
       }}

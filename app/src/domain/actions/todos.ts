@@ -116,3 +116,45 @@ export function restoreTodo(state: AppStateV1, archiveId: TodoArchiveId): AppSta
     },
   }
 }
+
+export function renameTodo(state: AppStateV1, todoId: TodoId, text: string): AppStateV1 {
+  const todo = state.todos[todoId]
+  if (!todo) return state
+  const nextText = text.trim()
+  if (!nextText) return state
+
+  const updatedAt = nowIso()
+
+  return {
+    ...state,
+    todos: {
+      ...state.todos,
+      [todoId]: {
+        ...todo,
+        text: nextText,
+        updatedAt,
+      },
+    },
+  }
+}
+
+export function reorderTodos(state: AppStateV1, orderedTodoIds: TodoId[]): AppStateV1 {
+  if (orderedTodoIds.length === 0) return state
+
+  const nextTodos: Record<TodoId, TodoItem> = { ...state.todos }
+  let changed = false
+
+  orderedTodoIds.forEach((id, idx) => {
+    const t = nextTodos[id]
+    if (!t) return
+    if ((t.sortIndex ?? 0) !== idx) changed = true
+    nextTodos[id] = { ...t, sortIndex: idx }
+  })
+
+  if (!changed) return state
+
+  return {
+    ...state,
+    todos: normalizeTodoSortIndex(nextTodos),
+  }
+}

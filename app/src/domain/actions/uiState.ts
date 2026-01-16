@@ -5,6 +5,8 @@ import type {
   OverviewMode,
   OverviewRangeDays,
   LocalDateString,
+  ThemeMode,
+  TodoMode,
   UiStateV1,
 } from '../types'
 
@@ -38,6 +40,30 @@ export function setDailyLeftMode(state: AppStateV1, mode: DailyLeftMode): AppSta
   const nextUi: UiStateV1 = {
     ...state.uiState,
     dailyLeftMode: mode,
+  }
+
+  return {
+    ...state,
+    uiState: nextUi,
+  }
+}
+
+export function setTodoMode(state: AppStateV1, mode: TodoMode): AppStateV1 {
+  const nextUi: UiStateV1 = {
+    ...state.uiState,
+    todoMode: mode,
+  }
+
+  return {
+    ...state,
+    uiState: nextUi,
+  }
+}
+
+export function setThemeMode(state: AppStateV1, themeMode: ThemeMode): AppStateV1 {
+  const nextUi: UiStateV1 = {
+    ...state.uiState,
+    themeMode,
   }
 
   return {

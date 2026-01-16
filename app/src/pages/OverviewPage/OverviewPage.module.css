@@ -3,6 +3,8 @@
   gap: 16px;
   padding: 16px;
   text-align: left;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 .topBar {
@@ -12,17 +14,34 @@
   flex-wrap: wrap;
 }
 
-.overviewTop {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 200px;
+.overviewLayout {
+  display: flex;
   gap: 16px;
-  align-items: start;
+  align-items: flex-start;
+}
+
+.mainCol {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  order: 2;
+}
+
+.leftCol {
+  width: 320px;
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  order: 1;
 }
 
 .overviewHeader {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
 }
@@ -33,28 +52,59 @@
   align-items: center;
 }
 
-.rightRail {
+.dateRangeLabel {
+  color: var(--text);
+  font-weight: 700;
+}
+
+
+.sidebarPanel {
+  padding: 16px;
+}
+
+.sidebarStack {
   display: grid;
-  gap: 10px;
+  gap: 12px;
   align-content: start;
 }
 
-.bottomRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  gap: 16px;
-  align-items: start;
+.sidebarPanel .smallBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  font-size: 14px;
+  box-sizing: border-box;
+  line-height: 1;
+  padding: 0 12px;
+  -webkit-appearance: none;
+  appearance: none;
 }
+
+.homeBtn {
+  font-weight: 800;
+}
+
+
+.sidebarDivider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2px 0;
+}
+
+
 
 .filtersGrid {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .panel {
+  box-sizing: border-box;
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 14px;
+  padding: 16px;
   background: var(--panel-bg);
   backdrop-filter: blur(10px);
 }
@@ -69,11 +119,29 @@
 .smallBtn {
   height: 30px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--btn-border);
   background: var(--btn-bg);
   color: inherit;
   cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.smallBtn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.smallBtn:active {
+  transform: scale(0.99);
+}
+
+.smallBtn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 
 .smallBtnActive {
@@ -98,12 +166,18 @@
     grid-template-columns: 1fr;
   }
 
-  .overviewTop {
-    grid-template-columns: 1fr;
+  .overviewLayout {
+    flex-direction: column;
   }
 
-  .bottomRow {
-    grid-template-columns: 1fr;
+  .mainCol {
+    order: 1;
+  }
+
+  .leftCol {
+    order: 2;
+    width: 100%;
+    flex: 0 0 auto;
   }
 }
 
@@ -123,8 +197,26 @@
   padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.6);
+  background: var(--tile-bg);
   cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.listItem:hover {
+  background: var(--tile-bg-hover);
+}
+
+.listItem:active {
+  transform: scale(0.995);
+}
+
+.listItem:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
 }
 
 .listItemActive {
@@ -139,23 +231,158 @@
 }
 
 .chartWrap {
+  position: relative;
   width: 100%;
   overflow: hidden;
+  box-sizing: border-box;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  padding: 14px;
+  box-shadow:
+    0 1px 0 rgba(17, 24, 39, 0.04),
+    0 14px 30px rgba(17, 24, 39, 0.06);
+}
+
+.chartInlineLegend {
+  position: absolute;
+  top: 10px;
+  left: 54px;
+  z-index: 2;
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--popover-bg);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.chartLegendItem {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.chartLegendSwatchPrimary,
+.chartLegendSwatchMax {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.chartLegendSwatchPrimary {
+  background: linear-gradient(90deg, #ef4444 0%, #f59e0b 18%, #22c55e 100%);
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.10);
+}
+
+.chartLegendSwatchMax {
+  background: rgba(17, 24, 39, 0.55);
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
 }
 
 .chartSvg {
   width: 100%;
-  height: 260px;
+  height: 364px;
   display: block;
 }
 
 .legend {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .kpi {
   font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+}
+
+.weeklyHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.weeklyPanel {
+  padding: 0;
+}
+
+.weeklyRange {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+
+.weeklySummaryRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+}
+
+.progressBar {
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.pointsText {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.weeklyTaskBreakdown {
+  margin-top: 6px;
+  display: grid;
+  gap: 4px;
+  overflow: visible;
+  max-height: none;
+  padding-right: 0;
+}
+
+.weeklyTaskRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+}
+
+.weeklyTaskName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

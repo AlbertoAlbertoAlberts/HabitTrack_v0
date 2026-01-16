@@ -3,6 +3,10 @@
 This document specifies **exactly when daily habit scores are editable vs locked** and how the UI must behave.  
 The goal is to implement the “commit-on-leave” rule reliably and predictably.
 
+Scope note:
+- These locking rules apply to **daily habit scores** (`dailyScores` + `dayLocks`).
+- Weekly tasks (“Nedēļa”) track per-day completion inside a week and are not governed by `dayLocks`.
+
 ---
 
 ## 0) Key concept: “Day session”

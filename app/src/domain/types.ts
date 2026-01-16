@@ -26,6 +26,8 @@ export interface Habit {
   categoryId: CategoryId
   priority: Priority
   sortIndex: number
+  // Effective start date (YYYY-MM-DD, local). If absent, it is derived from createdAt.
+  startDate?: LocalDateString
   createdAt: IsoTimestamp
   updatedAt: IsoTimestamp
 }
@@ -49,9 +51,19 @@ export interface WeeklyTask {
   id: WeeklyTaskId
   name: string
   targetPerWeek: number
+  // Target history as of week starts (Monday, YYYY-MM-DD, local).
+  // Used to preserve historical weekly requirements in Overview.
+  targetHistory?: WeeklyTaskTargetChange[]
   sortIndex: number
+  // Effective start week (Monday, YYYY-MM-DD, local). If absent, it is derived from createdAt.
+  startWeekStart?: LocalDateString
   createdAt: IsoTimestamp
   updatedAt: IsoTimestamp
+}
+
+export interface WeeklyTaskTargetChange {
+  weekStart: LocalDateString
+  targetPerWeek: number
 }
 
 export type DailyViewMode = 'category' | 'priority'
@@ -67,11 +79,15 @@ export type OverviewMode =
   | 'habit'
 
 export type DailyLeftMode = 'normal' | 'reorder' | 'delete' | 'priorityEdit' | 'rename'
-export type TodoMode = 'normal' | 'delete'
+export type TodoMode = 'normal' | 'delete' | 'rename' | 'reorder'
+
+export type ThemeMode = 'system' | 'light' | 'dark'
 
 export interface UiStateV1 {
   dailyViewMode: DailyViewMode
   selectedDate: LocalDateString
+
+  themeMode: ThemeMode
 
   overviewRangeDays: OverviewRangeDays
   overviewMode: OverviewMode

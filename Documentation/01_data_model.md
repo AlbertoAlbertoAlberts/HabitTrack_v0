@@ -29,9 +29,11 @@ Storage target: local-only (browser storage). No backend, no login.
 3. `DailyScore` (score per habit per date)
 4. `TodoItem` (active to-do)
 5. `TodoArchiveItem` (completed to-do items)
+6. `WeeklyTask` (weekly repeating task)
 
 ### Derived (not stored as primary truth)
 - Overview metrics and chart series are derived from `DailyScore` + current filters.
+ - Weekly ring counts can be derived from the weekly completion-day lists (see Section 7).
 
 ---
 
@@ -169,7 +171,44 @@ Stores completed to-dos with completion date/time and supports restore.
 
 ---
 
-## 7) Optional supporting state (persistent UI state)
+## 7) Weekly tasks
+
+Weekly tasks are global (not tied to a specific category/habit) and tracked per week.
+They enforce an explicit **once-per-day** rule: a task can be completed at most one time per calendar day.
+
+### Type: `WeeklyTask`
+| Field | Type | Required | Notes |
+|---|---|---:|---|
+| `id` | string | ✅ | Stable unique ID |
+| `name` | string | ✅ | Display name |
+| `targetPerWeek` | number | ✅ | Target completions per week; clamped to `1..7` |
+| `sortIndex` | number | ✅ | Manual ordering (0..N-1) |
+| `createdAt` | string (ISO) | ✅ | Timestamp |
+| `updatedAt` | string (ISO) | ✅ | Timestamp |
+
+### Weekly completion tracking
+Weeks are keyed by **week start date (Monday)** using local date format: `YYYY-MM-DD`.
+
+#### Stored: completion day lists
+- `weeklyCompletionDays: Record<WeekStartDate, Record<WeeklyTaskId, LocalDateString[]>>`
+
+Meaning:
+- For a week start `W` and task `T`, `weeklyCompletionDays[W][T]` contains the local dates within that week
+  where the task was marked complete.
+
+Invariants:
+- Each date in `weeklyCompletionDays[W][T]` must be within `[W..W+6]` (Monday..Sunday)
+- Dates are unique within the array (no duplicates)
+- Array length is at most `7`
+
+#### Stored (derived/cache): weekly progress counts
+- `weeklyProgress: Record<WeekStartDate, Record<WeeklyTaskId, number>>`
+
+`weeklyProgress[W][T]` is derived as the number of unique completion days for that task in that week.
+
+---
+
+## 8) Optional supporting state (persistent UI state)
 
 These values are not “business data”, but should persist between sessions.
 
@@ -198,7 +237,7 @@ This can be stored as:
 
 ---
 
-## 8) Referential integrity rules
+## 9) Referential integrity rules
 
 The app must maintain integrity on changes:
 
@@ -225,7 +264,7 @@ The app must maintain integrity on changes:
 
 ---
 
-## 9) Derived computations (for overview)
+## 10) Derived computations (for overview)
 
 These are computed at runtime, not stored:
 
@@ -240,7 +279,7 @@ For each date D:
 
 ---
 
-## 10) Suggested file references
+## 11) Suggested file references
 
 - `01_data_model.md` (this file)
 - `02_locking_rules.md` (state machine and commit rules)
