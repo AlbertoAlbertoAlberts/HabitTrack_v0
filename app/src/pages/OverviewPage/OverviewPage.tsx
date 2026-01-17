@@ -724,7 +724,7 @@ export function OverviewPage() {
 
         <aside className={styles.leftCol}>
           <section className={`${sharedStyles.panel} ${styles.sidebarPanel}`} aria-label="Pārskata sānu sadaļa">
-            <div className={styles.sidebarStack}>
+            <div className={navButtonStyles.leftNav}>
               <Link
                 to="/"
                 className={navButtonStyles.navBtn}
@@ -749,6 +749,9 @@ export function OverviewPage() {
               >
                 30 dienas
               </button>
+            </div>
+
+            <div className={styles.sidebarStack}>
 
               <div className={styles.weeklyPanel} aria-label="Nedēļas punkti">
                 <div className={styles.weeklyHeader}>
@@ -804,7 +807,8 @@ export function OverviewPage() {
 
               <div>
                 <h3 className={styles.panelTitle}>Filtrs</h3>
-                <div className={styles.filtersGrid}>
+                <div className={styles.buttonInset}>
+                  <div className={styles.filtersGrid}>
                   <button
                     type="button"
                     className={`${navButtonStyles.navBtn} ${mode === 'overall' ? navButtonStyles.navBtnActive : ''}`}
@@ -847,6 +851,7 @@ export function OverviewPage() {
                   >
                     Atsevišķa sadaļa
                   </button>
+                  </div>
                 </div>
               </div>
             </div>

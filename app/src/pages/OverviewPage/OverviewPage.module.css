@@ -61,6 +61,10 @@
   align-content: start;
 }
 
+.buttonInset {
+  padding: 8px 8px 12px;
+}
+
 .sidebarDivider {
   border: 0;
   border-top: 1px solid var(--border);
