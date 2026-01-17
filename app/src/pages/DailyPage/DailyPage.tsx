@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import DebugPanel from '../../components/debug/DebugPanel'
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from '../../components/ui/Dialog'
 import { WeeklyTaskTile } from '../../components/weekly/WeeklyTaskTile'
-import { ScoreRow } from './components/ScoreRow'
+import { HabitRow } from './components/HabitRow'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../domain/utils/localDate'
@@ -1408,41 +1408,15 @@ export function DailyPage() {
                           </div>
                           {habits.map((h) => {
                             const value = scoresForSelectedDate[h.id]
-                            const notStartedYet = Boolean(h.startDate && selectedDate < h.startDate)
-                            const scoreDisabled = locked || notStartedYet
                             return (
-                              <div
+                              <HabitRow
                                 key={h.id}
-                                className={`${styles.habitRow} ${notStartedYet ? styles.habitRowNotStarted : ''}`}
-                              >
-                                <div className={`${styles.habitLeft} ${styles.habitLeftIndented}`}>
-                                  <TargetIcon className={styles.habitIcon} />
-                                  <span className={styles.habitName} title={h.name}>
-                                    {h.name}
-                                  </span>
-                                  {notStartedYet && h.startDate ? (
-                                    <span className={styles.habitStartHint} title={`Sākas: ${formatDateLabel(h.startDate)}`}>
-                                      Sākas: {formatDateLabel(h.startDate)}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <span className={styles.scoreGroup}>
-                                  {[0, 1, 2].map((s) => (
-                                    <button
-                                      key={s}
-                                      type="button"
-                                      disabled={scoreDisabled}
-                                      title={notStartedYet && h.startDate ? `Sākas: ${formatDateLabel(h.startDate)}` : undefined}
-                                      className={`${styles.scoreBtn} ${styles[`scoreBtn${s}`]} ${value === s ? styles.scoreBtnActive : ''}`}
-                                      onClick={() => {
-                                        appStore.actions.setScore(selectedDate, h.id, s as 0 | 1 | 2)
-                                      }}
-                                    >
-                                      {s}
-                                    </button>
-                                  ))}
-                                </span>
-                              </div>
+                                habit={h}
+                                selectedDate={selectedDate}
+                                value={value}
+                                locked={locked}
+                                onChange={(score) => appStore.actions.setScore(selectedDate, h.id, score)}
+                              />
                             )
                           })}
                         </div>
@@ -1460,31 +1434,15 @@ export function DailyPage() {
                           </div>
                           {habits.map((h) => {
                             const value = scoresForSelectedDate[h.id]
-                            const notStartedYet = Boolean(h.startDate && selectedDate < h.startDate)
-                            const scoreDisabled = locked || notStartedYet
                             return (
-                              <div
+                              <HabitRow
                                 key={h.id}
-                                className={`${styles.habitRow} ${notStartedYet ? styles.habitRowNotStarted : ''}`}
-                              >
-                                <div className={`${styles.habitLeft} ${styles.habitLeftIndented}`}>
-                                  <TargetIcon className={styles.habitIcon} />
-                                  <span className={styles.habitName} title={h.name}>
-                                    {h.name}
-                                  </span>
-                                  {notStartedYet && h.startDate ? (
-                                    <span className={styles.habitStartHint} title={`Sākas: ${formatDateLabel(h.startDate)}`}>
-                                      Sākas: {formatDateLabel(h.startDate)}
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <ScoreRow
-                                  value={value}
-                                  disabled={scoreDisabled}
-                                  disabledTitle={notStartedYet && h.startDate ? `Sākas: ${formatDateLabel(h.startDate)}` : undefined}
-                                  onChange={(score) => appStore.actions.setScore(selectedDate, h.id, score)}
-                                />
-                              </div>
+                                habit={h}
+                                selectedDate={selectedDate}
+                                value={value}
+                                locked={locked}
+                                onChange={(score) => appStore.actions.setScore(selectedDate, h.id, score)}
+                              />
                             )
                           })}
                         </div>

@@ -1,0 +1,67 @@
+.habitRow {
+  display: grid;
+  align-items: center;
+  /* name | score buttons - responsive flex */
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, auto);
+  column-gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+@media (max-width: 1300px) {
+  .habitRow {
+    grid-template-columns: minmax(100px, 0.6fr) minmax(150px, auto);
+    column-gap: 10px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .habitRow {
+    grid-template-columns: minmax(80px, 0.4fr) minmax(140px, auto);
+    column-gap: 8px;
+  }
+}
+
+@media (max-width: 1020px) {
+  .habitRow {
+    grid-template-columns: 1fr;
+    row-gap: 6px;
+  }
+}
+
+.habitRowNotStarted {
+  opacity: 0.82;
+}
+
+.habitLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.habitLeftIndented {
+  margin-left: 18px;
+}
+
+.habitIcon {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.habitName {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+}
+
+.habitStartHint {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--muted);
+  opacity: 0.95;
+  white-space: nowrap;
+}
