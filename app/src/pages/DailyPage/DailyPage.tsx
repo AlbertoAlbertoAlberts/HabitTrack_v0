@@ -6,6 +6,7 @@ import DebugPanel from '../../components/debug/DebugPanel'
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from '../../components/ui/Dialog'
 import { WeeklyTaskTile } from '../../components/weekly/WeeklyTaskTile'
 import { HabitGroupCard } from './components/HabitGroupCard'
+import { LeftNavButtons } from './components/LeftNavButtons'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../domain/utils/localDate'
@@ -419,27 +420,10 @@ export function DailyPage() {
   return (
     <div className={sharedStyles.page}>
       <section className={`${styles.panel} ${styles.leftPanel}`}>
-        <div className={styles.leftNav}>
-          <Link to="/overview" className={`${styles.navBtn} ${styles.navBtnPrimary}`} style={{ textDecoration: 'none' }}>
-            PĀRSKATS
-          </Link>
-          <button
-            type="button"
-            className={`${styles.navBtn} ${state.uiState.dailyViewMode === 'category' ? styles.navBtnActive : ''}`}
-            onClick={() => appStore.actions.setDailyViewMode('category')}
-            aria-pressed={state.uiState.dailyViewMode === 'category'}
-          >
-            KATEGORIJA
-          </button>
-          <button
-            type="button"
-            className={`${styles.navBtn} ${state.uiState.dailyViewMode === 'priority' ? styles.navBtnActive : ''}`}
-            onClick={() => appStore.actions.setDailyViewMode('priority')}
-            aria-pressed={state.uiState.dailyViewMode === 'priority'}
-          >
-            PRIORITĀTE
-          </button>
-        </div>
+        <LeftNavButtons
+          activeMode={state.uiState.dailyViewMode}
+          onModeChange={(mode) => appStore.actions.setDailyViewMode(mode)}
+        />
 
         <div className={`${styles.panelHeaderRow} ${styles.leftHeaderRow}`}>
           <h2 className={styles.panelTitle}>Izaicinājumi</h2>
