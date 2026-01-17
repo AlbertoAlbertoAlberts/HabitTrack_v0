@@ -652,40 +652,6 @@
   gap: 8px;
 }
 
-.scoreCard {
-  margin-top: 12px;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px solid var(--btn-border);
-  background: var(--btn-bg);
-}
-
-.scoreCard:hover {
-  background: var(--btn-bg-hover);
-}
-
-.scoreCardHeader {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border);
-}
-
-.scoreCard .habitRow:last-child {
-  border-bottom: 0;
-}
-
-.priorityBadge {
-  width: 18px;
-  height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-}
-
 .todoRow {
   display: flex;
   align-items: center;

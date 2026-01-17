@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import DebugPanel from '../../components/debug/DebugPanel'
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from '../../components/ui/Dialog'
 import { WeeklyTaskTile } from '../../components/weekly/WeeklyTaskTile'
-import { HabitRow } from './components/HabitRow'
+import { HabitGroupCard } from './components/HabitGroupCard'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../domain/utils/localDate'
@@ -1401,25 +1401,16 @@ export function DailyPage() {
                       if (habits.length === 0) return null
 
                       return (
-                        <div key={cat.id} className={styles.scoreCard}>
-                          <div className={styles.scoreCardHeader}>
-                            <FolderIcon className={styles.catIcon} />
-                            <h3 className={styles.categoryName}>{cat.name}</h3>
-                          </div>
-                          {habits.map((h) => {
-                            const value = scoresForSelectedDate[h.id]
-                            return (
-                              <HabitRow
-                                key={h.id}
-                                habit={h}
-                                selectedDate={selectedDate}
-                                value={value}
-                                locked={locked}
-                                onChange={(score) => appStore.actions.setScore(selectedDate, h.id, score)}
-                              />
-                            )
-                          })}
-                        </div>
+                        <HabitGroupCard
+                          key={cat.id}
+                          type="category"
+                          title={cat.name}
+                          habits={habits}
+                          selectedDate={selectedDate}
+                          scoresForSelectedDate={scoresForSelectedDate}
+                          locked={locked}
+                          onScoreChange={(habitId, score) => appStore.actions.setScore(selectedDate, habitId, score)}
+                        />
                       )
                     })
                   : ([1, 2, 3] as const).map((p) => {
@@ -1427,25 +1418,16 @@ export function DailyPage() {
                       if (habits.length === 0) return null
 
                       return (
-                        <div key={p} className={styles.scoreCard}>
-                          <div className={styles.scoreCardHeader}>
-                            <span className={styles.priorityBadge}>🎯</span>
-                            <h3 className={styles.categoryName}>Prioritāte {p}</h3>
-                          </div>
-                          {habits.map((h) => {
-                            const value = scoresForSelectedDate[h.id]
-                            return (
-                              <HabitRow
-                                key={h.id}
-                                habit={h}
-                                selectedDate={selectedDate}
-                                value={value}
-                                locked={locked}
-                                onChange={(score) => appStore.actions.setScore(selectedDate, h.id, score)}
-                              />
-                            )
-                          })}
-                        </div>
+                        <HabitGroupCard
+                          key={p}
+                          type="priority"
+                          title={`Prioritāte ${p}`}
+                          habits={habits}
+                          selectedDate={selectedDate}
+                          scoresForSelectedDate={scoresForSelectedDate}
+                          locked={locked}
+                          onScoreChange={(habitId, score) => appStore.actions.setScore(selectedDate, habitId, score)}
+                        />
                       )
                     })}
 
