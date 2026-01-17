@@ -1,6 +1,6 @@
 import { forwardRef, useRef } from 'react'
 
-import styles from './LeftPanelMenu.module.css'
+import uiStyles from '../DailyShared.module.css'
 
 interface LeftPanelMenuProps {
   isReorderMode: boolean
@@ -40,14 +40,14 @@ export const LeftPanelMenu = forwardRef<HTMLDetailsElement, LeftPanelMenuProps>(
     const importFileInputRef = useRef<HTMLInputElement>(null)
 
     return (
-      <details className={styles.menu} ref={ref}>
-        <summary className={styles.menuButton} aria-label="Atvērt darbību izvēlni" title="Izvēlne">
+      <details className={uiStyles.menu} ref={ref}>
+        <summary className={uiStyles.menuButton} aria-label="Atvērt darbību izvēlni" title="Izvēlne">
           ☰
         </summary>
-        <div className={styles.menuPanel}>
+        <div className={uiStyles.menuPanel}>
           <button
             type="button"
-            className={styles.menuItem}
+            className={uiStyles.menuItem}
             onClick={() => {
               onClose()
               onToggleReorder()
@@ -57,7 +57,7 @@ export const LeftPanelMenu = forwardRef<HTMLDetailsElement, LeftPanelMenuProps>(
           </button>
           <button
             type="button"
-            className={styles.menuItem}
+            className={uiStyles.menuItem}
             onClick={() => {
               onClose()
               onToggleDelete()
@@ -68,7 +68,7 @@ export const LeftPanelMenu = forwardRef<HTMLDetailsElement, LeftPanelMenuProps>(
 
           <button
             type="button"
-            className={styles.menuItem}
+            className={uiStyles.menuItem}
             onClick={() => {
               onClose()
               onTogglePriorityEdit()
@@ -80,7 +80,7 @@ export const LeftPanelMenu = forwardRef<HTMLDetailsElement, LeftPanelMenuProps>(
 
           <button
             type="button"
-            className={styles.menuItem}
+            className={uiStyles.menuItem}
             onClick={() => {
               onClose()
               onToggleRename()
@@ -90,11 +90,11 @@ export const LeftPanelMenu = forwardRef<HTMLDetailsElement, LeftPanelMenuProps>(
             Rediģēt paradumus
           </button>
 
-          <hr className={styles.menuDivider} />
+          <hr className={uiStyles.menuDivider} />
 
           <button
             type="button"
-            className={styles.menuItem}
+            className={uiStyles.menuItem}
             onClick={() => {
               onClose()
               onAddHabit()
@@ -105,7 +105,7 @@ export const LeftPanelMenu = forwardRef<HTMLDetailsElement, LeftPanelMenuProps>(
 
           <button
             type="button"
-            className={styles.menuItem}
+            className={uiStyles.menuItem}
             onClick={() => {
               onClose()
               onAddCategory()
@@ -114,11 +114,11 @@ export const LeftPanelMenu = forwardRef<HTMLDetailsElement, LeftPanelMenuProps>(
             + Kategorija
           </button>
 
-          <hr className={styles.menuDivider} />
+          <hr className={uiStyles.menuDivider} />
 
           <button
             type="button"
-            className={styles.menuItem}
+            className={uiStyles.menuItem}
             onClick={() => {
               onClose()
               onExport()
@@ -129,7 +129,7 @@ export const LeftPanelMenu = forwardRef<HTMLDetailsElement, LeftPanelMenuProps>(
 
           <button
             type="button"
-            className={styles.menuItem}
+            className={uiStyles.menuItem}
             onClick={() => {
               onClose()
               importFileInputRef.current?.click()

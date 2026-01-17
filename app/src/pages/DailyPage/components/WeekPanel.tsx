@@ -85,14 +85,14 @@ export function WeekPanel({
               </button>
             ) : null}
 
-            <details className={styles.menu} ref={weeklyMenuRef}>
-              <summary className={styles.menuButton} aria-label="Nedēļas izvēlne" title="Nedēļas izvēlne">
+            <details className={uiStyles.menu} ref={weeklyMenuRef}>
+              <summary className={uiStyles.menuButton} aria-label="Nedēļas izvēlne" title="Nedēļas izvēlne">
                 ☰
               </summary>
-              <div className={styles.menuPanel} role="menu" aria-label="Nedēļas darbības">
+              <div className={uiStyles.menuPanel} role="menu" aria-label="Nedēļas darbības">
                 <button
                   type="button"
-                  className={styles.menuItem}
+                  className={uiStyles.menuItem}
                   onClick={() => {
                     onSetWeeklyMode('reorder')
                     onCloseWeeklyMenu()
@@ -102,7 +102,7 @@ export function WeekPanel({
                 </button>
                 <button
                   type="button"
-                  className={styles.menuItem}
+                  className={uiStyles.menuItem}
                   onClick={() => {
                     onSetWeeklyMode('rename')
                     onCloseWeeklyMenu()
@@ -112,7 +112,7 @@ export function WeekPanel({
                 </button>
                 <button
                   type="button"
-                  className={styles.menuItem}
+                  className={uiStyles.menuItem}
                   onClick={() => {
                     onSetWeeklyMode('delete')
                     onCloseWeeklyMenu()
@@ -121,11 +121,11 @@ export function WeekPanel({
                   Dzēst
                 </button>
 
-                <hr className={styles.menuDivider} />
+                <hr className={uiStyles.menuDivider} />
 
                 <button
                   type="button"
-                  className={styles.menuItem}
+                  className={uiStyles.menuItem}
                   onClick={() => {
                     onAddWeeklyTask()
                     onCloseWeeklyMenu()
