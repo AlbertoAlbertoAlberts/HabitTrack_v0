@@ -723,7 +723,7 @@ export function OverviewPage() {
         </main>
 
         <aside className={styles.leftCol}>
-          <section className={`${styles.panel} ${styles.sidebarPanel}`} aria-label="Pārskata sānu sadaļa">
+          <section className={`${sharedStyles.panel} ${styles.sidebarPanel}`} aria-label="Pārskata sānu sadaļa">
             <div className={styles.sidebarStack}>
               <Link
                 to="/"
