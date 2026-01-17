@@ -79,29 +79,6 @@
     box-shadow var(--t-med) var(--ease-out);
 }
 
-.todoTitle {
-  text-align: center;
-  margin: 0;
-}
-
-.todoHeaderRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.todoHeaderSpacer {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
-}
-
-.panelTitle.todoTitle {
-  margin: 0;
-}
-
 .todoToolbar {
   margin-top: 6px;
 }
@@ -407,43 +384,6 @@
 
 .muted {
   color: var(--muted);
-}
-
-.todoRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 10px;
-  transition:
-    background-color var(--t-fast) var(--ease-out),
-    transform var(--t-fast) var(--ease-out);
-}
-
-.todoRow:hover {
-  background: var(--btn-bg-hover);
-}
-
-.todoRowReorder {
-  cursor: grab;
-}
-
-.todoRowDragOver {
-  outline: 2px solid rgba(79, 70, 229, 0.28);
-  outline-offset: -2px;
-}
-
-.todoText {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.todoFooter {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 10px;
 }
 
 .smallBtnActive {

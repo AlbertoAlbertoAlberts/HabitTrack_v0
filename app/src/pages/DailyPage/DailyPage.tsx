@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link } from 'react-router-dom'
 
 import DebugPanel from '../../components/debug/DebugPanel'
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from '../../components/ui/Dialog'
@@ -9,6 +8,7 @@ import { LeftNavButtons } from './components/LeftNavButtons'
 import { LeftPanelMenu } from './components/LeftPanelMenu'
 import { LeftPanelCategoriesList } from './components/LeftPanelCategoriesList'
 import { WeekPanel } from './components/WeekPanel'
+import { RightTodosPanel } from './components/RightTodosPanel'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../domain/utils/localDate'
@@ -1149,170 +1149,23 @@ export function DailyPage() {
           </div>
       </section>
 
-      <section className={`${styles.panel} ${styles.todoPanel}`}>
-        <div className={styles.todoHeaderRow}>
-          <div className={styles.todoHeaderSpacer} aria-hidden="true" />
-          <h2 className={`${styles.panelTitle} ${styles.todoTitle}`}>Uzdevumi</h2>
-
-          <div className={styles.panelHeaderActions}>
-            {todoMode !== 'normal' ? (
-              <button
-                type="button"
-                className={styles.exitModeBtn}
-                aria-label="Iziet no režīma"
-                title="Iziet no režīma"
-                onClick={() => {
-                  appStore.actions.setTodoMode('normal')
-                  closeTodoMenu()
-                }}
-              >
-                ✕
-              </button>
-            ) : null}
-
-            <details className={styles.menu} ref={todoMenuRef}>
-              <summary className={styles.menuButton} aria-label="Uzdevumu izvēlne" title="Uzdevumu izvēlne">
-                ☰
-              </summary>
-              <div className={styles.menuPanel} role="menu" aria-label="Uzdevumu darbības">
-
-                <button
-                  type="button"
-                  className={styles.menuItem}
-                  onClick={() => {
-                    appStore.actions.setTodoMode('reorder')
-                    closeTodoMenu()
-                  }}
-                >
-                  Pārkārtot
-                </button>
-                <button
-                  type="button"
-                  className={styles.menuItem}
-                  onClick={() => {
-                    appStore.actions.setTodoMode('rename')
-                    closeTodoMenu()
-                  }}
-                >
-                  Pārdēvēt
-                </button>
-                <button
-                  type="button"
-                  className={styles.menuItem}
-                  onClick={() => {
-                    appStore.actions.setTodoMode('delete')
-                    closeTodoMenu()
-                  }}
-                >
-                  Dzēst
-                </button>
-
-                <hr className={styles.menuDivider} />
-
-                <button
-                  type="button"
-                  className={styles.menuItem}
-                  onClick={() => {
-                    appStore.actions.setTodoMode('normal')
-                    setAddTodoOpen(true)
-                    closeTodoMenu()
-                  }}
-                >
-                  + Uzdevumu
-                </button>
-              </div>
-            </details>
-          </div>
-        </div>
-
-        <div className={styles.scrollArea}>
-          {todos.length === 0 ? <p className={styles.muted}>Nav uzdevumu.</p> : null}
-
-          {todos.map((t) => {
-            const canDrag = todoMode === 'reorder'
-            return (
-            <div
-              key={t.id}
-              className={`${styles.todoRow} ${canDrag ? styles.todoRowReorder : ''} ${todoDragOverId === t.id ? styles.todoRowDragOver : ''}`}
-              draggable={canDrag}
-              onDragStart={(e) => {
-                if (!canDrag) return
-                e.dataTransfer.effectAllowed = 'move'
-                e.dataTransfer.setData('text/plain', t.id)
-              }}
-              onDragOver={(e) => {
-                if (!canDrag) return
-                e.preventDefault()
-                setTodoDragOverId(t.id)
-              }}
-              onDragLeave={() => {
-                if (!canDrag) return
-                setTodoDragOverId((v) => (v === t.id ? null : v))
-              }}
-              onDrop={(e) => {
-                if (!canDrag) return
-                e.preventDefault()
-                setTodoDragOverId(null)
-
-                const draggedId = e.dataTransfer.getData('text/plain')
-                if (!draggedId) return
-                if (draggedId === t.id) return
-
-                const ordered = todos.map((x) => x.id)
-                const fromIndex = ordered.indexOf(draggedId)
-                const toIndex = ordered.indexOf(t.id)
-                if (fromIndex === -1 || toIndex === -1) return
-
-                const next = reorderIds(ordered, draggedId, toIndex)
-                appStore.actions.reorderTodos(next)
-              }}
-            >
-              <input
-                type="checkbox"
-                onChange={() => {
-                  appStore.actions.completeTodo(t.id)
-                }}
-                aria-label={`Pabeigt uzdevumu: ${t.text}`}
-              />
-              <span className={styles.todoText} title={t.text}>
-                {t.text}
-              </span>
-
-              {todoMode === 'rename' ? (
-                <button
-                  type="button"
-                  className={sharedStyles.smallBtn}
-                  onClick={() => {
-                    setRenameTarget({ kind: 'todo', id: t.id, name: t.text })
-                    setRenameValue(t.text)
-                  }}
-                  aria-label={`Pārdēvēt uzdevumu: ${t.text}`}
-                >
-                  Mainīt
-                </button>
-              ) : null}
-
-              {todoMode === 'delete' ? (
-                <button
-                  type="button"
-                  className={`${styles.smallBtn} ${styles.dangerBtn}`}
-                  onClick={() => appStore.actions.deleteTodo(t.id)}
-                  aria-label={`Dzēst uzdevumu: ${t.text}`}
-                >
-                  Dzēst
-                </button>
-              ) : null}
-            </div>
-            )
-          })}
-        </div>
-
-        <div className={styles.todoFooter}>
-          <Link to="/archive" className={styles.primaryBtn} style={{ textDecoration: 'none' }}>
-            Arhīvs
-          </Link>
-        </div>
-      </section>
+      <RightTodosPanel
+        todos={todos}
+        todoMode={todoMode}
+        todoDragOverId={todoDragOverId}
+        todoMenuRef={todoMenuRef}
+        onSetTodoDragOverId={setTodoDragOverId}
+        onSetTodoMode={appStore.actions.setTodoMode}
+        onOpenAddTodo={() => setAddTodoOpen(true)}
+        onCloseTodoMenu={closeTodoMenu}
+        onCompleteTodo={appStore.actions.completeTodo}
+        onDeleteTodo={appStore.actions.deleteTodo}
+        onReorderTodos={appStore.actions.reorderTodos}
+        onBeginRenameTodo={(todoId, currentText) => {
+          setRenameTarget({ kind: 'todo', id: todoId, name: currentText })
+          setRenameValue(currentText)
+        }}
+      />
     </div>
   )
 }
