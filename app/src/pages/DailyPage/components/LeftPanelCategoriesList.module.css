@@ -1,0 +1,185 @@
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: 10px 8px 12px;
+  scroll-padding-bottom: 28px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.categoryCard {
+  margin-top: 0;
+  padding: 10px 6px 6px;
+  border-radius: 10px;
+  border: 0;
+  background: transparent;
+}
+
+.categoryCard + .categoryCard {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.categoryCard:hover {
+  background: var(--btn-bg-hover);
+}
+
+.categoryCard {
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 6px;
+}
+
+.categoryTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.catIcon {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.categoryName {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.habitRowCompact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.priorityStepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  cursor: grab;
+  user-select: none;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.dragHandle:hover {
+  background: var(--btn-bg-hover);
+}
+
+.dragHandle:active {
+  transform: scale(0.98);
+}
+
+.dragHandle:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+}
+
+.dropZone {
+  border-radius: 10px;
+}
+
+.dropZoneActive {
+  outline: 2px dashed rgba(79, 70, 229, 0.55);
+  outline-offset: 2px;
+}
+
+.smallBtn {
+  border: 0;
+  background: transparent;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.trashBtn {
+  border: 0;
+  background: transparent;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.trashBtn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.trashBtn:active {
+  transform: scale(0.98);
+}
+
+.trashBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+}
+
+.editBtn {
+  border: 0;
+  background: transparent;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.editBtn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.editBtn:active {
+  transform: scale(0.98);
+}
+
+.editBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

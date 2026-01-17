@@ -8,6 +8,7 @@ import { WeeklyTaskTile } from '../../components/weekly/WeeklyTaskTile'
 import { HabitGroupCard } from './components/HabitGroupCard'
 import { LeftNavButtons } from './components/LeftNavButtons'
 import { LeftPanelMenu } from './components/LeftPanelMenu'
+import { LeftPanelCategoriesList } from './components/LeftPanelCategoriesList'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../domain/utils/localDate'
@@ -197,30 +198,6 @@ export function DailyPage() {
     return next
   }
 
-  function parseDragPayload(payload: string):
-    | { kind: 'category'; categoryId: string }
-    | { kind: 'habit'; habitId: string; fromCategoryId: string }
-    | null {
-    try {
-      const parsed = JSON.parse(payload) as unknown
-      if (!parsed || typeof parsed !== 'object') return null
-      const obj = parsed as Record<string, unknown>
-      if (obj.kind === 'category' && typeof obj.categoryId === 'string') {
-        return { kind: 'category', categoryId: obj.categoryId }
-      }
-      if (
-        obj.kind === 'habit' &&
-        typeof obj.habitId === 'string' &&
-        typeof obj.fromCategoryId === 'string'
-      ) {
-        return { kind: 'habit', habitId: obj.habitId, fromCategoryId: obj.fromCategoryId }
-      }
-      return null
-    } catch {
-      return null
-    }
-  }
-
   // Phase 3: commit-on-leave day session controller.
   // - Commit previous date when selectedDate changes
   // - Commit current date when leaving the page (unmount)
@@ -278,47 +255,6 @@ export function DailyPage() {
     const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(date)
     if (!m) return date
     return `${m[3]}.${m[2]}.${m[1]}`
-  }
-
-  function FolderIcon({ className }: { className?: string }) {
-    return (
-      <svg
-        className={className}
-        width="18"
-        height="14"
-        viewBox="0 0 18 14"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <path
-          d="M1.25 3.25C1.25 2.42157 1.92157 1.75 2.75 1.75H6.55C6.92 1.75 7.275 1.903 7.53 2.172L8.61 3.3H15.25C16.0784 3.3 16.75 3.97157 16.75 4.8V11.25C16.75 12.0784 16.0784 12.75 15.25 12.75H2.75C1.92157 12.75 1.25 12.0784 1.25 11.25V3.25Z"
-          fill="currentColor"
-          opacity="0.85"
-        />
-      </svg>
-    )
-  }
-
-  function TargetIcon({ className }: { className?: string }) {
-    return (
-      <svg
-        className={className}
-        width="16"
-        height="16"
-        viewBox="0 0 16 16"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        <circle cx="8" cy="8" r="6.25" stroke="currentColor" strokeWidth="1.5" opacity="0.85" />
-        <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5" opacity="0.85" />
-        <path d="M8 1V3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
-        <path d="M8 13V15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
-        <path d="M1 8H3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
-        <path d="M13 8H15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
-      </svg>
-    )
   }
 
   const categories = useMemo(
@@ -491,230 +427,84 @@ export function DailyPage() {
           </div>
         </div>
 
-        <div className={styles.scrollArea}>
-          {categories.length === 0 ? (
-            <div>
-              <p className={styles.muted}>Nav kategoriju.</p>
-              <button
-                type="button"
-                className={sharedStyles.smallBtn}
-                onClick={() => {
-                  setAddCategoryName('')
-                  setAddCategoryOpen(true)
-                }}
-              >
-                Izveidot pirmo kategoriju
-              </button>
-            </div>
-          ) : null}
+        <LeftPanelCategoriesList
+          categories={categories}
+          habitsByCategory={habitsByCategory}
+          isReorderMode={isReorderMode}
+          isDeleteMode={isDeleteMode}
+          isPriorityEdit={isPriorityEdit}
+          isRenameMode={isRenameMode}
+          dragOverKey={dragOverKey}
+          onAddCategoryClick={() => {
+            setAddCategoryName('')
+            setAddCategoryOpen(true)
+          }}
+          onSetDragOverKey={(key) => {
+            setDragOverKey((k) => (key === null && k !== null ? null : key))
+          }}
+          onCategoryDragStart={() => {
+            // No-op for now
+          }}
+          onCategoryDrop={(categoryId, payload) => {
+            if (payload.kind === 'category' && payload.categoryId) {
+              const ordered = categories.map((c) => c.id)
+              const fromIndex = ordered.indexOf(payload.categoryId)
+              const toIndex = ordered.indexOf(categoryId)
+              if (fromIndex === -1 || toIndex === -1 || payload.categoryId === categoryId) return
 
-          {categories.map((cat) => {
-            const habits = habitsByCategory.get(cat.id) ?? []
-            return (
-              <div
-                key={cat.id}
-                className={`${styles.categoryCard} ${isReorderMode ? styles.dropZone : ''} ${dragOverKey === `cat:${cat.id}` ? styles.dropZoneActive : ''}`}
-                draggable={isReorderMode}
-                onDragStart={(e) => {
-                  if (!isReorderMode) return
-                  e.dataTransfer.effectAllowed = 'move'
-                  e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'category', categoryId: cat.id }))
-                }}
-                onDragOver={(e) => {
-                  if (!isReorderMode) return
-                  e.preventDefault()
-                  setDragOverKey(`cat:${cat.id}`)
-                }}
-                onDragLeave={() => {
-                  if (!isReorderMode) return
-                  setDragOverKey((k) => (k === `cat:${cat.id}` ? null : k))
-                }}
-                onDrop={(e) => {
-                  if (!isReorderMode) return
-                  e.preventDefault()
-                  setDragOverKey(null)
-                  const payload = parseDragPayload(e.dataTransfer.getData('text/plain'))
-                  if (!payload) return
+              // Move dragged category before the drop target.
+              const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex
+              const next = reorderIds(ordered, payload.categoryId, adjustedTo)
+              appStore.actions.reorderCategories(next)
+              return
+            }
 
-                  if (payload.kind === 'category') {
-                    const ordered = categories.map((c) => c.id)
-                    const fromIndex = ordered.indexOf(payload.categoryId)
-                    const toIndex = ordered.indexOf(cat.id)
-                    if (fromIndex === -1 || toIndex === -1 || payload.categoryId === cat.id) return
+            if (payload.kind === 'habit' && payload.habitId) {
+              // Drop habit onto category = move to end.
+              appStore.actions.moveHabit(payload.habitId, categoryId)
+            }
+          }}
+          onHabitDragStart={() => {
+            // No-op for now
+          }}
+          onHabitDrop={(habitId, categoryId, payload) => {
+            if (payload.kind !== 'habit' || !payload.habitId || !payload.fromCategoryId) return
 
-                    // Move dragged category before the drop target.
-                    const adjustedTo = fromIndex < toIndex ? toIndex - 1 : toIndex
-                    const next = reorderIds(ordered, payload.categoryId, adjustedTo)
-                    appStore.actions.reorderCategories(next)
-                    return
-                  }
+            const targetHabits = habitsByCategory.get(categoryId) ?? []
+            const ordered = targetHabits.map((hh) => hh.id)
+            const targetIndex = ordered.indexOf(habitId)
+            if (targetIndex === -1) return
 
-                  if (payload.kind === 'habit') {
-                    // Drop habit onto category = move to end.
-                    appStore.actions.moveHabit(payload.habitId, cat.id)
-                  }
-                }}
-              >
-                <div className={styles.categoryHeader}>
-                  <div className={styles.categoryTitleRow}>
-                    <FolderIcon className={styles.catIcon} />
-                    <h3 className={styles.categoryName}>{cat.name}</h3>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    {isReorderMode ? <span className={styles.dragHandle} title="Velc, lai pārkārtotu">⠿</span> : null}
-
-                    {isRenameMode ? (
-                      <button
-                        type="button"
-                        className={`${styles.smallBtn} ${styles.editBtn}`}
-                        onClick={() => {
-                          setRenameTarget({ kind: 'category', id: cat.id, name: cat.name })
-                          setRenameValue(cat.name)
-                        }}
-                        aria-label={`Rediģēt kategorijas nosaukumu: ${cat.name}`}
-                      >
-                        ✎
-                      </button>
-                    ) : null}
-
-                    {isDeleteMode ? (
-                      <button
-                        type="button"
-                        className={`${styles.smallBtn} ${styles.trashBtn}`}
-                        onClick={(e) => {
-                          const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                          setPendingCategoryDelete({
-                            id: cat.id,
-                            name: cat.name,
-                            anchor: { left: r.left, top: r.top, right: r.right, bottom: r.bottom },
-                          })
-                        }}
-                        aria-label={`Dzēst kategoriju: ${cat.name}`}
-                      >
-                        🗑
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-
-                {habits.length === 0 ? <p className={styles.muted}>Nav ieradumu.</p> : null}
-
-                {habits.map((h) => (
-                  <div
-                    key={h.id}
-                    className={`${styles.habitRowCompact} ${isReorderMode ? styles.dropZone : ''} ${dragOverKey === `habit:${h.id}` ? styles.dropZoneActive : ''}`}
-                    draggable={isReorderMode}
-                    onDragStart={(e) => {
-                      if (!isReorderMode) return
-                      e.dataTransfer.effectAllowed = 'move'
-                      e.dataTransfer.setData(
-                        'text/plain',
-                        JSON.stringify({ kind: 'habit', habitId: h.id, fromCategoryId: cat.id }),
-                      )
-                    }}
-                    onDragOver={(e) => {
-                      if (!isReorderMode) return
-                      e.preventDefault()
-                      setDragOverKey(`habit:${h.id}`)
-                    }}
-                    onDragLeave={() => {
-                      if (!isReorderMode) return
-                      setDragOverKey((k) => (k === `habit:${h.id}` ? null : k))
-                    }}
-                    onDrop={(e) => {
-                      if (!isReorderMode) return
-                      e.preventDefault()
-                      setDragOverKey(null)
-
-                      const payload = parseDragPayload(e.dataTransfer.getData('text/plain'))
-                      if (!payload || payload.kind !== 'habit') return
-
-                      const targetHabits = habitsByCategory.get(cat.id) ?? []
-                      const ordered = targetHabits.map((hh) => hh.id)
-                      const targetIndex = ordered.indexOf(h.id)
-                      if (targetIndex === -1) return
-
-                      if (payload.fromCategoryId === cat.id) {
-                        // Reorder within the same category.
-                        const next = reorderIds(ordered, payload.habitId, targetIndex)
-                        appStore.actions.reorderHabits(cat.id, next)
-                      } else {
-                        // Move across categories at target index.
-                        appStore.actions.moveHabit(payload.habitId, cat.id, targetIndex)
-                      }
-                    }}
-                  >
-                    <div className={`${styles.habitLeft} ${styles.habitLeftIndented}`}>
-                      <TargetIcon className={styles.habitIcon} />
-                      <span className={styles.habitName} title={h.name}>
-                        {h.name}
-                      </span>
-                    </div>
-
-                    {isDeleteMode ? (
-                      <button
-                        type="button"
-                        className={`${styles.smallBtn} ${styles.trashBtn}`}
-                        onClick={() => {
-                          appStore.actions.deleteHabit(h.id)
-                        }}
-                        aria-label={`Dzēst ieradumu: ${h.name}`}
-                      >
-                        🗑
-                      </button>
-                    ) : isRenameMode ? (
-                      <button
-                        type="button"
-                        className={`${styles.smallBtn} ${styles.editBtn}`}
-                        onClick={() => {
-                          setRenameTarget({ kind: 'habit', id: h.id, name: h.name })
-                          setRenameValue(h.name)
-                          setRenameHabitCategoryId(h.categoryId)
-                        }}
-                        aria-label={`Rediģēt ieraduma nosaukumu: ${h.name}`}
-                      >
-                        ✎
-                      </button>
-                    ) : isPriorityEdit ? (
-                      <span className={styles.priorityStepper}>
-                        <button
-                          type="button"
-                          className={sharedStyles.smallBtn}
-                          onClick={() => {
-                            const next = (Math.max(1, h.priority - 1) as 1 | 2 | 3)
-                            appStore.actions.setHabitPriorityValue(h.id, next)
-                            pendingPriorityChangedRef.current.add(h.id)
-                          }}
-                          disabled={h.priority === 1}
-                          aria-label={`Samazināt prioritāti: ${h.name}`}
-                        >
-                          &lt;
-                        </button>
-                        <span className={styles.muted}>{h.priority}</span>
-                        <button
-                          type="button"
-                          className={sharedStyles.smallBtn}
-                          onClick={() => {
-                            const next = (Math.min(3, h.priority + 1) as 1 | 2 | 3)
-                            appStore.actions.setHabitPriorityValue(h.id, next)
-                            pendingPriorityChangedRef.current.add(h.id)
-                          }}
-                          disabled={h.priority === 3}
-                          aria-label={`Palielināt prioritāti: ${h.name}`}
-                        >
-                          &gt;
-                        </button>
-                      </span>
-                    ) : (
-                      <span className={styles.muted}>P{h.priority}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )
-          })}
-        </div>
+            if (payload.fromCategoryId === categoryId) {
+              // Reorder within the same category.
+              const next = reorderIds(ordered, payload.habitId, targetIndex)
+              appStore.actions.reorderHabits(categoryId, next)
+            } else {
+              // Move across categories at target index.
+              appStore.actions.moveHabit(payload.habitId, categoryId, targetIndex)
+            }
+          }}
+          onCategoryEditClick={(id, name) => {
+            setRenameTarget({ kind: 'category', id, name })
+            setRenameValue(name)
+          }}
+          onCategoryDeleteClick={(id, name, anchor) => {
+            setPendingCategoryDelete({ id, name, anchor })
+          }}
+          onHabitEditClick={(id, name, categoryId) => {
+            setRenameTarget({ kind: 'habit', id, name })
+            setRenameValue(name)
+            setRenameHabitCategoryId(categoryId)
+          }}
+          onHabitDeleteClick={(id) => {
+            appStore.actions.deleteHabit(id)
+          }}
+          onHabitPriorityChange={(id, delta, currentPriority) => {
+            const next = Math.max(1, Math.min(3, currentPriority + delta)) as 1 | 2 | 3
+            appStore.actions.setHabitPriorityValue(id, next)
+            pendingPriorityChangedRef.current.add(id)
+          }}
+        />
 
         <Dialog open={addCategoryOpen} title="Jauna kategorija" onClose={() => setAddCategoryOpen(false)}>
           <div
