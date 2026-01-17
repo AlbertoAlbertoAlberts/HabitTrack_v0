@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import type { WeeklyTask } from '../../../domain/types'
 import { WeeklyTaskTile } from '../../../components/weekly/WeeklyTaskTile'
+import uiStyles from '../DailyShared.module.css'
 import styles from './WeekPanel.module.css'
 
 interface WeekPanelProps {
@@ -59,7 +60,7 @@ export function WeekPanel({
 
   return (
     <aside className={styles.weeklySideCol} aria-label="Nedēļas uzdevumi">
-      <div className={`${styles.subCard} ${styles.weeklyCard}`}>
+      <div className={`${uiStyles.subCard} ${styles.weeklyCard}`}>
         <div className={styles.weeklyHeaderRow}>
           <div className={styles.weeklyHeaderLeft}>
             <h3 className={styles.weeklyTitle}>Nedēļa</h3>
@@ -68,11 +69,11 @@ export function WeekPanel({
             </div>
           </div>
 
-          <div className={styles.panelHeaderActions}>
+          <div className={uiStyles.panelHeaderActions}>
             {weeklyMode !== 'normal' ? (
               <button
                 type="button"
-                className={styles.exitModeBtn}
+                className={uiStyles.exitModeBtn}
                 aria-label="Iziet no režīma"
                 title="Iziet no režīma"
                 onClick={() => {
@@ -140,7 +141,7 @@ export function WeekPanel({
         <div className={styles.weeklyScrollArea}>
           {weeklyTasks.length === 0 ? (
             <div className={styles.weeklyEmpty}>
-              <p className={styles.muted} style={{ marginTop: 0 }}>
+              <p className={uiStyles.muted} style={{ marginTop: 0 }}>
                 Nav nedēļas uzdevumu.
               </p>
             </div>

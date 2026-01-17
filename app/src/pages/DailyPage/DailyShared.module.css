@@ -16,6 +16,19 @@
     box-shadow var(--t-med) var(--ease-out);
 }
 
+.subCard {
+  border: 1px solid var(--btn-border);
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--btn-bg);
+  display: flex;
+  flex-direction: column;
+  transition:
+    background-color var(--t-med) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-med) var(--ease-out);
+}
+
 .panelTitle {
   margin: 0 0 8px;
   font-size: 14px;
