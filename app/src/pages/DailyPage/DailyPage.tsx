@@ -17,7 +17,8 @@ import { getWeeklyTaskTargetPerWeekForWeekStart } from '../../domain/utils/weekl
 import { exportBackupJson, importBackupJson } from '../../persistence/storageService'
 
 import sharedStyles from '../../components/ui/shared.module.css'
-import styles from './DailyPage.module.css'
+import layoutStyles from './DailyPage.module.css'
+import styles from './DailyShared.module.css'
 
 export function DailyPage() {
   const state = useAppState()
@@ -272,7 +273,7 @@ export function DailyPage() {
 
   return (
     <div className={sharedStyles.page}>
-      <section className={`${styles.panel} ${styles.leftPanel}`}>
+      <section className={`${styles.panel} ${layoutStyles.leftPanel}`}>
         <LeftNavButtons
           activeMode={state.uiState.dailyViewMode}
           onModeChange={(mode) => appStore.actions.setDailyViewMode(mode)}
@@ -966,7 +967,7 @@ export function DailyPage() {
           : null}
       </section>
 
-      <section className={`${styles.panel} ${styles.dailyPanel}`}>
+      <section className={`${styles.panel} ${layoutStyles.dailyPanel}`}>
         <div className={styles.dailyTopBarSingle}>
           <div className={styles.dateNav}>
             <button
@@ -1001,8 +1002,8 @@ export function DailyPage() {
           </div>
         </div>
 
-          <div className={styles.dailyContentGrid}>
-            <div className={styles.dailyMainCol}>
+          <div className={layoutStyles.dailyContentGrid}>
+            <div className={layoutStyles.dailyMainCol}>
               <div className={styles.scrollArea}>
                 {state.uiState.dailyViewMode === 'category'
                   ? categories.map((cat) => {

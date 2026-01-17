@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 import type { TodoItem, TodoMode } from '../../../domain/types'
 
 import sharedStyles from '../../../components/ui/shared.module.css'
-import pageStyles from '../DailyPage.module.css'
+import layoutStyles from '../DailyPage.module.css'
+import uiStyles from '../DailyShared.module.css'
 import styles from './RightTodosPanel.module.css'
 
 interface RightTodosPanelProps {
@@ -50,16 +51,16 @@ export function RightTodosPanel({
   onBeginRenameTodo,
 }: RightTodosPanelProps) {
   return (
-    <section className={`${pageStyles.panel} ${pageStyles.todoPanel}`}>
+    <section className={`${uiStyles.panel} ${layoutStyles.todoPanel}`}>
       <div className={styles.todoHeaderRow}>
         <div className={styles.todoHeaderSpacer} aria-hidden="true" />
         <h2 className={styles.todoTitle}>Uzdevumi</h2>
 
-        <div className={pageStyles.panelHeaderActions}>
+        <div className={uiStyles.panelHeaderActions}>
           {todoMode !== 'normal' ? (
             <button
               type="button"
-              className={pageStyles.exitModeBtn}
+              className={uiStyles.exitModeBtn}
               aria-label="Iziet no režīma"
               title="Iziet no režīma"
               onClick={() => {
@@ -121,8 +122,8 @@ export function RightTodosPanel({
         </div>
       </div>
 
-      <div className={pageStyles.scrollArea}>
-        {todos.length === 0 ? <p className={pageStyles.muted}>Nav uzdevumu.</p> : null}
+      <div className={uiStyles.scrollArea}>
+        {todos.length === 0 ? <p className={uiStyles.muted}>Nav uzdevumu.</p> : null}
 
         {todos.map((t) => {
           const canDrag = todoMode === 'reorder'
@@ -190,7 +191,7 @@ export function RightTodosPanel({
               {todoMode === 'delete' ? (
                 <button
                   type="button"
-                  className={`${pageStyles.smallBtn} ${pageStyles.dangerBtn}`}
+                  className={`${uiStyles.smallBtn} ${uiStyles.dangerBtn}`}
                   onClick={() => onDeleteTodo(t.id)}
                   aria-label={`Dzēst uzdevumu: ${t.text}`}
                 >
@@ -203,7 +204,7 @@ export function RightTodosPanel({
       </div>
 
       <div className={styles.todoFooter}>
-        <Link to="/archive" className={pageStyles.primaryBtn} style={{ textDecoration: 'none' }}>
+        <Link to="/archive" className={uiStyles.primaryBtn} style={{ textDecoration: 'none' }}>
           Arhīvs
         </Link>
       </div>
