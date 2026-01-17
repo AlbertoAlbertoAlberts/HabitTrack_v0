@@ -60,18 +60,6 @@
   margin: 0 auto;
 }
 
-@media (max-width: 1180px) {
-  .weeklyList {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 520px) {
-  .weeklyList {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 .weeklyRow {
   /* Base class for WeeklyTaskTile - no specific styles needed */
 }
