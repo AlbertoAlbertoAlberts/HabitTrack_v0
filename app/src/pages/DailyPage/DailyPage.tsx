@@ -16,6 +16,7 @@ import { useAppState } from '../../domain/store/useAppStore'
 import { addDays } from '../../domain/utils/localDate'
 import { getWeeklyTaskTargetPerWeekForWeekStart } from '../../domain/utils/weeklyTaskTarget'
 import { exportBackupJson, importBackupJson } from '../../persistence/storageService'
+import { applyRename, type RenameTarget } from './utils/applyRename'
 
 import sharedStyles from '../../components/ui/shared.module.css'
 import layoutStyles from './DailyPage.module.css'
@@ -47,14 +48,7 @@ export function DailyPage() {
   const [weeklyMode, setWeeklyMode] = useState<'normal' | 'reorder' | 'delete' | 'rename'>('normal')
   const [weeklyDragOverId, setWeeklyDragOverId] = useState<string | null>(null)
 
-  const [renameTarget, setRenameTarget] = useState<
-    | null
-    | {
-        kind: 'category' | 'habit' | 'weeklyTask' | 'todo'
-        id: string
-        name: string
-      }
-  >(null)
+  const [renameTarget, setRenameTarget] = useState<RenameTarget>(null)
   const [renameValue, setRenameValue] = useState('')
   const [renameHabitCategoryId, setRenameHabitCategoryId] = useState('')
   const [renameWeeklyTarget, setRenameWeeklyTarget] = useState(2)
@@ -639,25 +633,15 @@ export function DailyPage() {
               const target = e.target
               if (!(target instanceof HTMLInputElement || target instanceof HTMLSelectElement)) return
               e.preventDefault()
-              if (!renameTarget) return
-              const next = renameValue.trim()
-              if (!next) return
 
-              if (renameTarget.kind === 'category') {
-                appStore.actions.renameCategory(renameTarget.id, next)
-              } else if (renameTarget.kind === 'habit') {
-                appStore.actions.renameHabit(renameTarget.id, next)
-
-                const current = state.habits[renameTarget.id]
-                if (current && renameHabitCategoryId && renameHabitCategoryId !== current.categoryId) {
-                  appStore.actions.moveHabit(renameTarget.id, renameHabitCategoryId)
-                }
-              } else if (renameTarget.kind === 'todo') {
-                appStore.actions.renameTodo(renameTarget.id, next)
-              } else {
-                appStore.actions.renameWeeklyTask(renameTarget.id, next)
-                appStore.actions.setWeeklyTaskTargetPerWeek(renameTarget.id, renameWeeklyTarget)
-              }
+              const didApply = applyRename({
+                renameTarget,
+                renameValue,
+                renameHabitCategoryId,
+                renameWeeklyTarget,
+                habitsById: state.habits,
+              })
+              if (!didApply) return
 
               setRenameTarget(null)
               setRenameValue('')
@@ -741,25 +725,14 @@ export function DailyPage() {
                 type="button"
                 className={`${dialogStyles.btn} ${dialogStyles.btnPrimary}`}
                 onClick={() => {
-                  if (!renameTarget) return
-                  const next = renameValue.trim()
-                  if (!next) return
-
-                  if (renameTarget.kind === 'category') {
-                    appStore.actions.renameCategory(renameTarget.id, next)
-                  } else if (renameTarget.kind === 'habit') {
-                    appStore.actions.renameHabit(renameTarget.id, next)
-
-                    const current = state.habits[renameTarget.id]
-                    if (current && renameHabitCategoryId && renameHabitCategoryId !== current.categoryId) {
-                      appStore.actions.moveHabit(renameTarget.id, renameHabitCategoryId)
-                    }
-                  } else if (renameTarget.kind === 'todo') {
-                    appStore.actions.renameTodo(renameTarget.id, next)
-                  } else {
-                    appStore.actions.renameWeeklyTask(renameTarget.id, next)
-                    appStore.actions.setWeeklyTaskTargetPerWeek(renameTarget.id, renameWeeklyTarget)
-                  }
+                  const didApply = applyRename({
+                    renameTarget,
+                    renameValue,
+                    renameHabitCategoryId,
+                    renameWeeklyTarget,
+                    habitsById: state.habits,
+                  })
+                  if (!didApply) return
 
                   setRenameTarget(null)
                   setRenameValue('')
