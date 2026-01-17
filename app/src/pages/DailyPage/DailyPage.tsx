@@ -7,6 +7,7 @@ import { Dialog, DialogBody, DialogFooter, dialogStyles } from '../../components
 import { WeeklyTaskTile } from '../../components/weekly/WeeklyTaskTile'
 import { HabitGroupCard } from './components/HabitGroupCard'
 import { LeftNavButtons } from './components/LeftNavButtons'
+import { LeftPanelMenu } from './components/LeftPanelMenu'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../domain/utils/localDate'
@@ -24,7 +25,6 @@ export function DailyPage() {
   const [todoDragOverId, setTodoDragOverId] = useState<string | null>(null)
   const pendingPriorityChangedRef = useRef<Set<string>>(new Set())
 
-  const importFileInputRef = useRef<HTMLInputElement | null>(null)
   const leftMenuRef = useRef<HTMLDetailsElement | null>(null)
   const todoMenuRef = useRef<HTMLDetailsElement | null>(null)
 
@@ -444,132 +444,50 @@ export function DailyPage() {
               </button>
             ) : null}
 
-            <details className={styles.menu} ref={leftMenuRef}>
-              <summary className={styles.menuButton} aria-label="Atvērt darbību izvēlni" title="Izvēlne">
-                ☰
-              </summary>
-              <div className={styles.menuPanel}>
-              <button
-                type="button"
-                className={styles.menuItem}
-                onClick={() => {
-                  closeLeftMenu()
-                  setLeftMode(isReorderMode ? 'normal' : 'reorder')
-                }}
-              >
-                Pārkārtot
-              </button>
-              <button
-                type="button"
-                className={styles.menuItem}
-                onClick={() => {
-                  closeLeftMenu()
-                  setLeftMode(isDeleteMode ? 'normal' : 'delete')
-                }}
-              >
-                Dzēst
-              </button>
+            <LeftPanelMenu
+              ref={leftMenuRef}
+              isReorderMode={isReorderMode}
+              isDeleteMode={isDeleteMode}
+              isPriorityEdit={isPriorityEdit}
+              isRenameMode={isRenameMode}
+              onToggleReorder={() => {
+                setLeftMode(isReorderMode ? 'normal' : 'reorder')
+              }}
+              onToggleDelete={() => {
+                setLeftMode(isDeleteMode ? 'normal' : 'delete')
+              }}
+              onTogglePriorityEdit={() => {
+                setLeftMode(isPriorityEdit ? 'normal' : 'priorityEdit')
+              }}
+              onToggleRename={() => {
+                setLeftMode(isRenameMode ? 'normal' : 'rename')
+              }}
+              onAddHabit={() => {
+                if (categories.length === 0) {
+                  setMessage({ title: 'Nav kategoriju', body: 'Vispirms izveido kategoriju.' })
+                  return
+                }
 
-              <button
-                type="button"
-                className={styles.menuItem}
-                onClick={() => {
-                  closeLeftMenu()
-                  setLeftMode(isPriorityEdit ? 'normal' : 'priorityEdit')
-                }}
-                disabled={!isPriorityEdit && (isDeleteMode || isReorderMode)}
-              >
-                Rediģēt prioritātes
-              </button>
-
-              <button
-                type="button"
-                className={styles.menuItem}
-                onClick={() => {
-                  closeLeftMenu()
-                  setLeftMode(isRenameMode ? 'normal' : 'rename')
-                }}
-                disabled={!isRenameMode && (isDeleteMode || isReorderMode || isPriorityEdit)}
-              >
-                Rediģēt paradumus
-              </button>
-
-              <hr className={styles.menuDivider} />
-
-              <button
-                type="button"
-                className={styles.menuItem}
-                onClick={() => {
-                  closeLeftMenu()
-                  if (categories.length === 0) {
-                    setMessage({ title: 'Nav kategoriju', body: 'Vispirms izveido kategoriju.' })
-                    return
-                  }
-
-                  setAddHabitName('')
-                  setAddHabitCategoryId(categories[0]?.id ?? '')
-                  setAddHabitPriority(1)
-                  setAddHabitOpen(true)
-                }}
-              >
-                + Ieradumu
-              </button>
-
-              <button
-                type="button"
-                className={styles.menuItem}
-                onClick={() => {
-                  closeLeftMenu()
-                  setAddCategoryName('')
-                  setAddCategoryOpen(true)
-                }}
-              >
-                + Kategorija
-              </button>
-
-              <hr className={styles.menuDivider} />
-
-              <button
-                type="button"
-                className={styles.menuItem}
-                onClick={() => {
-                  closeLeftMenu()
-                  const json = exportBackupJson(appStore.getState())
-                  const date = new Date().toISOString().slice(0, 10)
-                  downloadTextFile(`habittrack-backup-${date}.json`, json)
-                }}
-              >
-                Eksportēt datus
-              </button>
-
-              <button
-                type="button"
-                className={styles.menuItem}
-                onClick={() => {
-                  closeLeftMenu()
-                  if (!importFileInputRef.current) return
-                  importFileInputRef.current.value = ''
-                  importFileInputRef.current.click()
-                }}
-              >
-                Importēt datus
-              </button>
-
-              <input
-                ref={importFileInputRef}
-                type="file"
-                accept="application/json"
-                style={{ display: 'none' }}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0]
-                  if (!file) return
-
-                  const text = await file.text()
-                  setPendingImport({ filename: file.name, text })
-                }}
-              />
-              </div>
-            </details>
+                setAddHabitName('')
+                setAddHabitCategoryId(categories[0]?.id ?? '')
+                setAddHabitPriority(1)
+                setAddHabitOpen(true)
+              }}
+              onAddCategory={() => {
+                setAddCategoryName('')
+                setAddCategoryOpen(true)
+              }}
+              onExport={() => {
+                const json = exportBackupJson(appStore.getState())
+                const date = new Date().toISOString().slice(0, 10)
+                downloadTextFile(`habittrack-backup-${date}.json`, json)
+              }}
+              onImportFile={async (file: File) => {
+                const text = await file.text()
+                setPendingImport({ filename: file.name, text })
+              }}
+              onClose={closeLeftMenu}
+            />
           </div>
         </div>
 
