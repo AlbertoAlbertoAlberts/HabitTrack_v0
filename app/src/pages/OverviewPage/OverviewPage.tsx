@@ -518,13 +518,14 @@ export function OverviewPage() {
         {/* x labels */}
         {points.map((p, i) => {
           if (i % xLabelEvery !== 0 && i !== points.length - 1) return null
-          const label = formatWeekdayShort(p.date)
+          const label = formatWeekdayShort(p.date).toUpperCase()
           return (
             <text
               key={p.date}
               x={p.x}
               y={height - 8}
               fontSize={axisFontSize}
+              fontWeight={700}
               textAnchor="middle"
               fill={axisTextFill}
             >
