@@ -1,19 +1,4 @@
-.page {
-  display: grid;
-  gap: 16px;
-  padding: 16px;
-  text-align: left;
-  min-height: 100%;
-  box-sizing: border-box;
-}
-
-.panel {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
-  background: var(--panel-bg);
-  backdrop-filter: blur(10px);
-}
+/* ArchivePage-specific styles */
 
 .header {
   display: flex;
@@ -28,39 +13,6 @@
   font-size: 16px;
   font-weight: 800;
   letter-spacing: 0.2px;
-}
-
-.smallBtn {
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--btn-border);
-  background: var(--btn-bg);
-  color: inherit;
-  cursor: pointer;
-  transition:
-    background-color var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out),
-    transform var(--t-fast) var(--ease-out);
-}
-
-.smallBtn:hover {
-  background: var(--btn-bg-hover);
-}
-
-.smallBtn:active {
-  transform: scale(0.99);
-}
-
-.smallBtn:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
-}
-
-.smallBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .list {

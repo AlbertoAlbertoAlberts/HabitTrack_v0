@@ -1,5 +1,3 @@
-import { NavLink } from 'react-router-dom'
-
 import type { ThemeMode } from '../domain/types'
 import { appStore } from '../domain/store/appStore'
 import { useAppState } from '../domain/store/useAppStore'

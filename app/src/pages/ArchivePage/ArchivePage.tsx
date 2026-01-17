@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
 
+import sharedStyles from '../../components/ui/shared.module.css'
 import styles from './ArchivePage.module.css'
 
 function formatCompletedAt(iso: string): string {
@@ -23,11 +24,11 @@ export function ArchivePage() {
     .sort((a, b) => b.completedAt.localeCompare(a.completedAt))
 
   return (
-    <div className={styles.page}>
-      <section className={styles.panel}>
+    <div className={sharedStyles.page}>
+      <section className={sharedStyles.panel}>
         <div className={styles.header}>
           <h1 className={styles.title}>Arhīvs</h1>
-          <Link to="/" className={styles.smallBtn} style={{ textDecoration: 'none' }}>
+          <Link to="/" className={sharedStyles.smallBtn} style={{ textDecoration: 'none' }}>
             Atpakaļ
           </Link>
         </div>
@@ -49,7 +50,7 @@ export function ArchivePage() {
 
               <button
                 type="button"
-                className={styles.smallBtn}
+                className={sharedStyles.smallBtn}
                 disabled={Boolean(it.restoredAt)}
                 onClick={() => appStore.actions.restoreTodo(it.id)}
               >

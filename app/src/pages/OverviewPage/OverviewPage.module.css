@@ -1,11 +1,4 @@
-.page {
-  display: grid;
-  gap: 16px;
-  padding: 16px;
-  text-align: left;
-  min-height: 100%;
-  box-sizing: border-box;
-}
+/* OverviewPage-specific styles */
 
 .topBar {
   display: flex;
@@ -100,54 +93,11 @@
   gap: 8px;
 }
 
-.panel {
-  box-sizing: border-box;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
-  background: var(--panel-bg);
-  backdrop-filter: blur(10px);
-}
-
 .panelTitle {
   margin: 0 0 8px;
   font-size: 14px;
   font-weight: 700;
   opacity: 0.9;
-}
-
-.smallBtn {
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 10px;
-  border: 1px solid var(--btn-border);
-  background: var(--btn-bg);
-  color: inherit;
-  cursor: pointer;
-  transition:
-    background-color var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out),
-    transform var(--t-fast) var(--ease-out);
-}
-
-.smallBtn:hover {
-  background: var(--btn-bg-hover);
-}
-
-.smallBtn:active {
-  transform: scale(0.99);
-}
-
-.smallBtn:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: var(--focus-ring);
-}
-
-.smallBtnActive {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  font-weight: 800;
 }
 
 .muted {

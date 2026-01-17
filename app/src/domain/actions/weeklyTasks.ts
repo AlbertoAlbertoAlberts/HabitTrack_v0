@@ -95,16 +95,19 @@ export function addWeeklyTask(state: AppStateV1, name: string, targetPerWeek: nu
 export function deleteWeeklyTask(state: AppStateV1, weeklyTaskId: WeeklyTaskId): AppStateV1 {
   if (!state.weeklyTasks[weeklyTaskId]) return state
 
-  const { [weeklyTaskId]: _deleted, ...remaining } = state.weeklyTasks
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { [weeklyTaskId]: _, ...remaining } = state.weeklyTasks
 
   const nextWeeklyProgress: AppStateV1['weeklyProgress'] = {}
   for (const [weekStartDate, progressByTaskId] of Object.entries(state.weeklyProgress)) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { [weeklyTaskId]: _removed, ...rest } = progressByTaskId
     if (Object.keys(rest).length > 0) nextWeeklyProgress[weekStartDate as LocalDateString] = rest
   }
 
   const nextWeeklyCompletionDays: AppStateV1['weeklyCompletionDays'] = {}
   for (const [weekStartDate, byTask] of Object.entries(state.weeklyCompletionDays)) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { [weeklyTaskId]: _removed, ...rest } = byTask
     if (Object.keys(rest).length > 0) nextWeeklyCompletionDays[weekStartDate as LocalDateString] = rest
   }
@@ -171,12 +174,14 @@ export function setWeeklyTaskTargetPerWeek(
   if (Array.isArray(days)) {
     const limited = days.slice(0, nextTarget)
     if (limited.length === 0) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [weeklyTaskId]: _removed, ...restDays } = currentWeekDays
       if (Object.keys(restDays).length > 0) nextWeeklyCompletionDays[currentWeekStart] = restDays
       else delete nextWeeklyCompletionDays[currentWeekStart]
 
       const currentWeekProgress = nextWeeklyProgress[currentWeekStart] ?? {}
-      const { [weeklyTaskId]: _removedP, ...restP } = currentWeekProgress
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { [weeklyTaskId]: _removedProgress, ...restP } = currentWeekProgress
       if (Object.keys(restP).length > 0) nextWeeklyProgress[currentWeekStart] = restP
       else delete nextWeeklyProgress[currentWeekStart]
     } else {
@@ -264,12 +269,14 @@ export function adjustWeeklyCompletionForDate(
   const nextWeeklyProgress: AppStateV1['weeklyProgress'] = { ...state.weeklyProgress }
 
   if (nextDays.length === 0) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { [weeklyTaskId]: _removed, ...rest } = currentWeekDays
     if (Object.keys(rest).length > 0) nextWeeklyCompletionDays[weekStartDate] = rest
     else delete nextWeeklyCompletionDays[weekStartDate]
 
     const currentWeekProgress = state.weeklyProgress[weekStartDate] ?? {}
-    const { [weeklyTaskId]: _removedP, ...restP } = currentWeekProgress
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { [weeklyTaskId]: _removedProgress, ...restP } = currentWeekProgress
     if (Object.keys(restP).length > 0) nextWeeklyProgress[weekStartDate] = restP
     else delete nextWeeklyProgress[weekStartDate]
   } else {

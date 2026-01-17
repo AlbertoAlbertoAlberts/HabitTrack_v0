@@ -73,4 +73,5 @@ export function DialogFooter({ children }: { children: React.ReactNode }) {
   return <div className={styles.footer}>{children}</div>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const dialogStyles = styles

@@ -50,7 +50,8 @@ export function addTodo(state: AppStateV1, text: string): AppStateV1 {
 
 export function deleteTodo(state: AppStateV1, todoId: TodoId): AppStateV1 {
   if (!state.todos[todoId]) return state
-  const { [todoId]: _deleted, ...rest } = state.todos
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { [todoId]: _, ...rest } = state.todos
 
   return {
     ...state,
@@ -72,7 +73,8 @@ export function completeTodo(state: AppStateV1, todoId: TodoId): AppStateV1 {
     restoredAt: null,
   }
 
-  const { [todoId]: _deleted, ...remainingTodos } = state.todos
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { [todoId]: _, ...remainingTodos } = state.todos
 
   return {
     ...state,

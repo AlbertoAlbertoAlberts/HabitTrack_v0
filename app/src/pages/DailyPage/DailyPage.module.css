@@ -1,10 +1,7 @@
+/* DailyPage-specific layout (extends shared .page) */
 .page {
-  display: grid;
   grid-template-columns: 320px minmax(0, 1fr) 340px;
   grid-template-areas: 'left main todo';
-  gap: 16px;
-  padding: 16px;
-  min-height: 100%;
   align-content: start;
 }
 
@@ -919,34 +916,6 @@
   display: flex;
   justify-content: flex-end;
   padding-top: 10px;
-}
-
-.smallBtn {
-  height: 30px;
-  padding: 0 10px;
-  border-radius: 10px;
-  border: 1px solid var(--btn-border);
-  background: var(--btn-bg);
-  color: inherit;
-  cursor: pointer;
-  transition:
-    background-color var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out),
-    transform var(--t-fast) var(--ease-out);
-}
-
-.smallBtn:hover {
-  background: var(--btn-bg-hover);
-}
-
-.smallBtn:active {
-  transform: scale(0.99);
-}
-
-.smallBtn:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
 }
 
 .smallBtnActive {

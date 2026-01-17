@@ -7,6 +7,7 @@ import { addDays, parseLocalDateString, todayLocalDateString, weekStartMonday } 
 import { getWeeklyTaskTargetPerWeekForWeekStart } from '../../domain/utils/weeklyTaskTarget'
 import type { Habit, LocalDateString, OverviewMode, Score, WeeklyTask } from '../../domain/types'
 
+import sharedStyles from '../../components/ui/shared.module.css'
 import styles from './OverviewPage.module.css'
 
 type ChartPoint = { date: LocalDateString; value: number; earned: number; maxPossible: number }
@@ -605,23 +606,23 @@ export function OverviewPage() {
   }, [series, yMax])
 
   return (
-    <div className={styles.page}>
+    <div className={sharedStyles.page}>
       <div className={styles.overviewLayout}>
         <main className={styles.mainCol}>
-          <section className={styles.panel}>
+          <section className={sharedStyles.panel}>
           <div className={styles.overviewHeader}>
             <h2 className={styles.panelTitle} style={{ margin: 0 }}>
               PĀRSKATS
             </h2>
 
             <div className={styles.windowNav}>
-              <button type="button" className={styles.smallBtn} onClick={() => appStore.actions.shiftOverviewWindow(-1)}>
+              <button type="button" className={sharedStyles.smallBtn} onClick={() => appStore.actions.shiftOverviewWindow(-1)}>
                 ←
               </button>
               <span className={styles.dateRangeLabel}>
                 {formatDateLabel(startDate)} → {formatDateLabel(endDate)}
               </span>
-              <button type="button" className={styles.smallBtn} onClick={() => appStore.actions.shiftOverviewWindow(1)}>
+              <button type="button" className={sharedStyles.smallBtn} onClick={() => appStore.actions.shiftOverviewWindow(1)}>
                 →
               </button>
             </div>
@@ -659,7 +660,7 @@ export function OverviewPage() {
           </div>
           </section>
 
-          <section className={styles.panel}>
+          <section className={sharedStyles.panel}>
             <h3 className={styles.panelTitle}>Atlase</h3>
 
             {showCategoryList ? (

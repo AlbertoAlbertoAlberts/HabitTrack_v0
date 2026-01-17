@@ -11,6 +11,7 @@ import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../d
 import { getWeeklyTaskTargetPerWeekForWeekStart } from '../../domain/utils/weeklyTaskTarget'
 import { exportBackupJson, importBackupJson } from '../../persistence/storageService'
 
+import sharedStyles from '../../components/ui/shared.module.css'
 import styles from './DailyPage.module.css'
 
 export function DailyPage() {
@@ -201,7 +202,7 @@ export function DailyPage() {
     try {
       const parsed = JSON.parse(payload) as unknown
       if (!parsed || typeof parsed !== 'object') return null
-      const obj = parsed as any
+      const obj = parsed as Record<string, unknown>
       if (obj.kind === 'category' && typeof obj.categoryId === 'string') {
         return { kind: 'category', categoryId: obj.categoryId }
       }
@@ -335,6 +336,7 @@ export function DailyPage() {
       map.set(key, list)
     }
     return map
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.habits])
 
   const categorySortIndexById = useMemo(() => {
@@ -414,7 +416,7 @@ export function DailyPage() {
   }, [pendingCategoryDelete])
 
   return (
-    <div className={styles.page}>
+    <div className={sharedStyles.page}>
       <section className={`${styles.panel} ${styles.leftPanel}`}>
         <div className={styles.leftNav}>
           <Link to="/overview" className={`${styles.navBtn} ${styles.navBtnPrimary}`} style={{ textDecoration: 'none' }}>
@@ -592,7 +594,7 @@ export function DailyPage() {
               <p className={styles.muted}>Nav kategoriju.</p>
               <button
                 type="button"
-                className={styles.smallBtn}
+                className={sharedStyles.smallBtn}
                 onClick={() => {
                   setAddCategoryName('')
                   setAddCategoryOpen(true)
@@ -775,7 +777,7 @@ export function DailyPage() {
                       <span className={styles.priorityStepper}>
                         <button
                           type="button"
-                          className={styles.smallBtn}
+                          className={sharedStyles.smallBtn}
                           onClick={() => {
                             const next = (Math.max(1, h.priority - 1) as 1 | 2 | 3)
                             appStore.actions.setHabitPriorityValue(h.id, next)
@@ -789,7 +791,7 @@ export function DailyPage() {
                         <span className={styles.muted}>{h.priority}</span>
                         <button
                           type="button"
-                          className={styles.smallBtn}
+                          className={sharedStyles.smallBtn}
                           onClick={() => {
                             const next = (Math.min(3, h.priority + 1) as 1 | 2 | 3)
                             appStore.actions.setHabitPriorityValue(h.id, next)
@@ -908,7 +910,7 @@ export function DailyPage() {
                   <div className={styles.priorityStepper} style={{ marginTop: 6 }}>
                     <button
                       type="button"
-                      className={styles.smallBtn}
+                      className={sharedStyles.smallBtn}
                       onClick={() => setAddHabitPriority((p) => (Math.max(1, p - 1) as 1 | 2 | 3))}
                       disabled={addHabitPriority === 1}
                       aria-label="Samazināt prioritāti"
@@ -918,7 +920,7 @@ export function DailyPage() {
                     <span className={styles.muted}>{addHabitPriority}</span>
                     <button
                       type="button"
-                      className={styles.smallBtn}
+                      className={sharedStyles.smallBtn}
                       onClick={() => setAddHabitPriority((p) => (Math.min(3, p + 1) as 1 | 2 | 3))}
                       disabled={addHabitPriority === 3}
                       aria-label="Palielināt prioritāti"
@@ -987,7 +989,7 @@ export function DailyPage() {
                   <div className={styles.priorityStepper} style={{ marginTop: 6 }}>
                     <button
                       type="button"
-                      className={styles.smallBtn}
+                      className={sharedStyles.smallBtn}
                       onClick={() => setAddWeeklyTaskTarget((n) => Math.max(1, n - 1))}
                       disabled={addWeeklyTaskTarget <= 1}
                       aria-label="Samazināt mērķi"
@@ -997,7 +999,7 @@ export function DailyPage() {
                     <span className={styles.muted}>{addWeeklyTaskTarget}</span>
                     <button
                       type="button"
-                      className={styles.smallBtn}
+                      className={sharedStyles.smallBtn}
                       onClick={() => setAddWeeklyTaskTarget((n) => Math.min(16, n + 1))}
                       disabled={addWeeklyTaskTarget >= 16}
                       aria-label="Palielināt mērķi"
@@ -1122,7 +1124,7 @@ export function DailyPage() {
                     <div className={styles.priorityStepper} style={{ marginTop: 6 }}>
                       <button
                         type="button"
-                        className={styles.smallBtn}
+                        className={sharedStyles.smallBtn}
                         onClick={() => setRenameWeeklyTarget((n) => Math.max(1, n - 1))}
                         disabled={renameWeeklyTarget <= 1}
                         aria-label="Samazināt mērķi"
@@ -1132,7 +1134,7 @@ export function DailyPage() {
                       <span className={styles.muted}>{renameWeeklyTarget}</span>
                       <button
                         type="button"
-                        className={styles.smallBtn}
+                        className={sharedStyles.smallBtn}
                         onClick={() => setRenameWeeklyTarget((n) => Math.min(7, n + 1))}
                         disabled={renameWeeklyTarget >= 7}
                         aria-label="Palielināt mērķi"
@@ -1813,7 +1815,7 @@ export function DailyPage() {
               {todoMode === 'rename' ? (
                 <button
                   type="button"
-                  className={styles.smallBtn}
+                  className={sharedStyles.smallBtn}
                   onClick={() => {
                     setRenameTarget({ kind: 'todo', id: t.id, name: t.text })
                     setRenameValue(t.text)

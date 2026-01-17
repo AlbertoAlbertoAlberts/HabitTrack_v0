@@ -43,7 +43,8 @@ export function addCategory(state: AppStateV1, name: string): AppStateV1 {
 export function deleteCategory(state: AppStateV1, categoryId: CategoryId): AppStateV1 {
   if (!state.categories[categoryId]) return state
 
-  const { [categoryId]: _deleted, ...remainingCategories } = state.categories
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { [categoryId]: _, ...remainingCategories } = state.categories
 
   const deletedHabitIds = new Set(
     Object.values(state.habits)

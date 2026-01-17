@@ -116,10 +116,12 @@ export function deleteHabit(state: AppStateV1, habitId: HabitId): AppStateV1 {
   const habit = state.habits[habitId]
   if (!habit) return state
 
-  const { [habitId]: _deleted, ...remainingHabits } = state.habits
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { [habitId]: _, ...remainingHabits } = state.habits
 
   const remainingDailyScores: AppStateV1['dailyScores'] = {}
   for (const [date, scoresByHabitId] of Object.entries(state.dailyScores)) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { [habitId]: _removed, ...rest } = scoresByHabitId
     if (Object.keys(rest).length > 0) remainingDailyScores[date] = rest
   }

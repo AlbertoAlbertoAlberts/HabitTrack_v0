@@ -176,6 +176,7 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     return Math.max(1, Math.min(7, n))
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function normalizeTargetHistory(task: any): Array<{ weekStart: string; targetPerWeek: number }> {
     const baseWeekStart = typeof task.startWeekStart === 'string' ? task.startWeekStart : currentWeekStart
     const raw = Array.isArray(task.targetHistory) ? task.targetHistory : []
@@ -191,10 +192,12 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     return Array.from(byWeek.values()).sort((a, b) => a.weekStart.localeCompare(b.weekStart))
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function effectiveWeeklyTarget(task: any, weekStartDate: string): number {
     if (weekStartDate >= currentWeekStart) return clampWeeklyTarget(task.targetPerWeek)
     const history = Array.isArray(task.targetHistory) ? task.targetHistory : []
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let best: any = null
     for (const h of history) {
       if (!h || typeof h.weekStart !== 'string') continue
