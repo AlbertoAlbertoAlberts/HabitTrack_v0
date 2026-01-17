@@ -366,6 +366,12 @@
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
 }
 
+.priorityStepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .dropZone {
   border-radius: 10px;
 }
@@ -466,11 +472,6 @@
   border: 0;
   border-top: 1px solid var(--border);
   margin: 8px 6px;
-}
-
-.smallBtn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 .input {

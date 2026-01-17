@@ -71,7 +71,7 @@ export function RightTodosPanel({
               ✕
             </button>
           ) : null}
-
+                  className={`${sharedStyles.smallBtn} ${uiStyles.dangerBtn}`}
           <details ref={todoMenuRef}>
             <summary aria-label="Uzdevumu izvēlne" title="Uzdevumu izvēlne">
               ☰
