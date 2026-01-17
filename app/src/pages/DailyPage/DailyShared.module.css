@@ -86,70 +86,14 @@
   box-shadow: var(--focus-ring);
 }
 
-.toolbar {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
 .leftHeaderRow {
   margin-bottom: 10px;
-}
-
-.dailyTopBar {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
 }
 
 .dailyTopBarSingle {
   display: flex;
   justify-content: center;
   margin-bottom: 16px;
-}
-
-.dailyTabs {
-  display: inline-flex;
-  gap: 10px;
-}
-
-.tabBtn {
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--btn-border);
-  background: var(--btn-bg);
-  color: inherit;
-  cursor: pointer;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  transition:
-    background-color var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out),
-    transform var(--t-fast) var(--ease-out);
-}
-
-.tabBtn:hover {
-  background: var(--btn-bg-hover);
-}
-
-.tabBtn:active {
-  transform: scale(0.99);
-}
-
-.tabBtn:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
-}
-
-.tabBtnActive {
-  border-color: var(--accent);
-  background: var(--accent-soft);
 }
 
 .dateNav {
@@ -200,19 +144,6 @@
   text-align: center;
   font-weight: 800;
   font-size: 18px;
-  letter-spacing: 0.2px;
-}
-
-.dateStatus {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: rgba(17, 24, 39, 0.04);
-  font-size: 12px;
-  font-weight: 700;
   letter-spacing: 0.2px;
 }
 
@@ -472,29 +403,4 @@
   border: 0;
   border-top: 1px solid var(--border);
   margin: 8px 6px;
-}
-
-.input {
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--btn-border);
-  background: var(--input-bg);
-  color: inherit;
-  padding: 0 10px;
-}
-
-.input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
-  outline: none;
-}
-
-.pre {
-  margin-top: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  background: #f3f4f6;
-  color: #111827;
-  overflow: auto;
-  max-height: 240px;
 }
