@@ -1,5 +1,6 @@
 import type { Category, Habit } from '../../../domain/types'
 import sharedStyles from '../../../components/ui/shared.module.css'
+import uiStyles from '../DailyShared.module.css'
 import styles from './LeftPanelCategoriesList.module.css'
 import habitStyles from './HabitRow.module.css'
 
@@ -89,7 +90,7 @@ export function LeftPanelCategoriesList({
     return (
       <div className={styles.scrollArea}>
         <div>
-          <p className={styles.muted}>Nav kategoriju.</p>
+          <p className={uiStyles.muted}>Nav kategoriju.</p>
           <button type="button" className={sharedStyles.smallBtn} onClick={onAddCategoryClick}>
             Izveidot pirmo kategoriju
           </button>
@@ -105,7 +106,7 @@ export function LeftPanelCategoriesList({
         return (
           <div
             key={cat.id}
-            className={`${styles.categoryCard} ${isReorderMode ? styles.dropZone : ''} ${dragOverKey === `cat:${cat.id}` ? styles.dropZoneActive : ''}`}
+            className={`${styles.categoryCard} ${isReorderMode ? uiStyles.dropZone : ''} ${dragOverKey === `cat:${cat.id}` ? uiStyles.dropZoneActive : ''}`}
             draggable={isReorderMode}
             onDragStart={(e) => {
               if (!isReorderMode) return
@@ -138,7 +139,7 @@ export function LeftPanelCategoriesList({
               </div>
 
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {isReorderMode ? <span className={styles.dragHandle} title="Velc, lai pārkārtotu">⠿</span> : null}
+                {isReorderMode ? <span className={uiStyles.dragHandle} title="Velc, lai pārkārtotu">⠿</span> : null}
 
                 {isRenameMode ? (
                   <button
@@ -174,12 +175,12 @@ export function LeftPanelCategoriesList({
               </div>
             </div>
 
-            {habits.length === 0 ? <p className={styles.muted}>Nav ieradumu.</p> : null}
+            {habits.length === 0 ? <p className={uiStyles.muted}>Nav ieradumu.</p> : null}
 
             {habits.map((h) => (
               <div
                 key={h.id}
-                className={`${styles.habitRowCompact} ${isReorderMode ? styles.dropZone : ''} ${dragOverKey === `habit:${h.id}` ? styles.dropZoneActive : ''}`}
+                className={`${styles.habitRowCompact} ${isReorderMode ? uiStyles.dropZone : ''} ${dragOverKey === `habit:${h.id}` ? uiStyles.dropZoneActive : ''}`}
                 draggable={isReorderMode}
                 onDragStart={(e) => {
                   if (!isReorderMode) return
@@ -252,7 +253,7 @@ export function LeftPanelCategoriesList({
                     >
                       &lt;
                     </button>
-                    <span className={styles.muted}>{h.priority}</span>
+                      <span className={uiStyles.muted}>{h.priority}</span>
                     <button
                       type="button"
                       className={sharedStyles.smallBtn}
@@ -266,7 +267,7 @@ export function LeftPanelCategoriesList({
                     </button>
                   </span>
                 ) : (
-                  <span className={styles.muted}>P{h.priority}</span>
+                  <span className={uiStyles.muted}>P{h.priority}</span>
                 )}
               </div>
             ))}
