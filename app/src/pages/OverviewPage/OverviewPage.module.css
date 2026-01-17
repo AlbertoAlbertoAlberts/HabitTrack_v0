@@ -61,25 +61,6 @@
   align-content: start;
 }
 
-.sidebarPanel .smallBtn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 38px;
-  font-size: 14px;
-  box-sizing: border-box;
-  line-height: 1;
-  padding: 0 12px;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.homeBtn {
-  font-weight: 800;
-}
-
-
 .sidebarDivider {
   border: 0;
   border-top: 1px solid var(--border);

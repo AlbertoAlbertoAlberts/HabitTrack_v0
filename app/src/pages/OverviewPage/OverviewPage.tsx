@@ -9,6 +9,7 @@ import type { Habit, LocalDateString, OverviewMode, Score, WeeklyTask } from '..
 
 import sharedStyles from '../../components/ui/shared.module.css'
 import styles from './OverviewPage.module.css'
+import navButtonStyles from '../DailyPage/components/LeftNavButtons.module.css'
 
 type ChartPoint = { date: LocalDateString; value: number; earned: number; maxPossible: number }
 type SvgPoint = { x: number; y: number; date: LocalDateString; value: number }
@@ -726,8 +727,7 @@ export function OverviewPage() {
             <div className={styles.sidebarStack}>
               <Link
                 to="/"
-                className={`${styles.smallBtn} ${styles.homeBtn}`}
-                style={{ textDecoration: 'none' }}
+                className={navButtonStyles.navBtn}
                 onClick={() => {
                   appStore.actions.setSelectedDate(todayLocalDateString())
                 }}
@@ -737,14 +737,14 @@ export function OverviewPage() {
 
               <button
                 type="button"
-                className={`${styles.smallBtn} ${rangeDays === 7 ? styles.smallBtnActive : ''}`}
+                className={`${navButtonStyles.navBtn} ${rangeDays === 7 ? navButtonStyles.navBtnActive : ''}`}
                 onClick={() => appStore.actions.setOverviewRangeDays(7)}
               >
                 7 dienas
               </button>
               <button
                 type="button"
-                className={`${styles.smallBtn} ${rangeDays === 30 ? styles.smallBtnActive : ''}`}
+                className={`${navButtonStyles.navBtn} ${rangeDays === 30 ? navButtonStyles.navBtnActive : ''}`}
                 onClick={() => appStore.actions.setOverviewRangeDays(30)}
               >
                 30 dienas
@@ -807,42 +807,42 @@ export function OverviewPage() {
                 <div className={styles.filtersGrid}>
                   <button
                     type="button"
-                    className={`${styles.smallBtn} ${mode === 'overall' ? styles.smallBtnActive : ''}`}
+                    className={`${navButtonStyles.navBtn} ${mode === 'overall' ? navButtonStyles.navBtnActive : ''}`}
                     onClick={() => appStore.actions.setOverviewMode('overall')}
                   >
                     Kopējais rezultāts
                   </button>
                   <button
                     type="button"
-                    className={`${styles.smallBtn} ${mode === 'priority1' ? styles.smallBtnActive : ''}`}
+                    className={`${navButtonStyles.navBtn} ${mode === 'priority1' ? navButtonStyles.navBtnActive : ''}`}
                     onClick={() => appStore.actions.setOverviewMode('priority1')}
                   >
                     Prioritāte 1
                   </button>
                   <button
                     type="button"
-                    className={`${styles.smallBtn} ${mode === 'priority2' ? styles.smallBtnActive : ''}`}
+                    className={`${navButtonStyles.navBtn} ${mode === 'priority2' ? navButtonStyles.navBtnActive : ''}`}
                     onClick={() => appStore.actions.setOverviewMode('priority2')}
                   >
                     Prioritāte 2
                   </button>
                   <button
                     type="button"
-                    className={`${styles.smallBtn} ${mode === 'priority3' ? styles.smallBtnActive : ''}`}
+                    className={`${navButtonStyles.navBtn} ${mode === 'priority3' ? navButtonStyles.navBtnActive : ''}`}
                     onClick={() => appStore.actions.setOverviewMode('priority3')}
                   >
                     Prioritāte 3
                   </button>
                   <button
                     type="button"
-                    className={`${styles.smallBtn} ${mode === 'category' ? styles.smallBtnActive : ''}`}
+                    className={`${navButtonStyles.navBtn} ${mode === 'category' ? navButtonStyles.navBtnActive : ''}`}
                     onClick={() => appStore.actions.setOverviewMode('category')}
                   >
                     Kategorija
                   </button>
                   <button
                     type="button"
-                    className={`${styles.smallBtn} ${mode === 'habit' ? styles.smallBtnActive : ''}`}
+                    className={`${navButtonStyles.navBtn} ${mode === 'habit' ? navButtonStyles.navBtnActive : ''}`}
                     onClick={() => appStore.actions.setOverviewMode('habit')}
                   >
                     Atsevišķa sadaļa
