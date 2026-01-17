@@ -272,7 +272,7 @@ export function DailyPage() {
   }, [pendingCategoryDelete])
 
   return (
-    <div className={sharedStyles.page}>
+    <div className={`${sharedStyles.page} ${layoutStyles.page}`}>
       <section className={`${styles.panel} ${layoutStyles.leftPanel}`}>
         <LeftNavButtons
           activeMode={state.uiState.dailyViewMode}
