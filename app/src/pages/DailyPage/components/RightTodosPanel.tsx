@@ -71,7 +71,6 @@ export function RightTodosPanel({
               ✕
             </button>
           ) : null}
-                  className={`${sharedStyles.smallBtn} ${uiStyles.dangerBtn}`}
           <details ref={todoMenuRef}>
             <summary aria-label="Uzdevumu izvēlne" title="Uzdevumu izvēlne">
               ☰
@@ -191,7 +190,7 @@ export function RightTodosPanel({
               {todoMode === 'delete' ? (
                 <button
                   type="button"
-                  className={`${uiStyles.smallBtn} ${uiStyles.dangerBtn}`}
+                  className={`${sharedStyles.smallBtn} ${uiStyles.dangerBtn}`}
                   onClick={() => onDeleteTodo(t.id)}
                   aria-label={`Dzēst uzdevumu: ${t.text}`}
                 >
