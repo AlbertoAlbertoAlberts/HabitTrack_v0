@@ -17,34 +17,6 @@ export function TopNav() {
     <header className={styles.header}>
       <div className={styles.left}>
         <div className={styles.brand}>HabitTrack</div>
-
-        <nav className={styles.nav} aria-label="Primary">
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              [styles.navLink, isActive ? styles.navLinkActive : ''].filter(Boolean).join(' ')
-            }
-          >
-            Daily
-          </NavLink>
-          <NavLink
-            to="/overview"
-            className={({ isActive }) =>
-              [styles.navLink, isActive ? styles.navLinkActive : ''].filter(Boolean).join(' ')
-            }
-          >
-            Overview
-          </NavLink>
-          <NavLink
-            to="/archive"
-            className={({ isActive }) =>
-              [styles.navLink, isActive ? styles.navLinkActive : ''].filter(Boolean).join(' ')
-            }
-          >
-            Archive
-          </NavLink>
-        </nav>
       </div>
 
       <div className={styles.right}>
