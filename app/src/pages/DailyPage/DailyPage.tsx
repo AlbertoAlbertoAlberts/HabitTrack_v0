@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import DebugPanel from '../../components/debug/DebugPanel'
@@ -10,6 +10,7 @@ import { LeftPanelCategoriesList } from './components/LeftPanelCategoriesList'
 import { WeekPanel } from './components/WeekPanel'
 import { RightTodosPanel } from './components/RightTodosPanel'
 import { useDailyData } from './hooks/useDailyData'
+import { useScoreHandlers } from './hooks/useScoreHandlers'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
 import { addDays } from '../../domain/utils/localDate'
@@ -158,13 +159,13 @@ export function DailyPage() {
     return true
   }
 
-  function flushPendingPriorityChanges() {
+  const flushPendingPriorityChanges = useCallback(() => {
     if (pendingPriorityChangedRef.current.size === 0) return
     for (const habitId of pendingPriorityChangedRef.current) {
       appStore.actions.repositionHabitAfterPriorityChange(habitId)
     }
     pendingPriorityChangedRef.current.clear()
-  }
+  }, [])
 
   function setLeftMode(next: 'normal' | 'reorder' | 'delete' | 'priorityEdit' | 'rename') {
     if (isPriorityEdit && next !== 'priorityEdit') {
@@ -184,40 +185,7 @@ export function DailyPage() {
     return next
   }
 
-  // Phase 3: commit-on-leave day session controller.
-  // - Commit previous date when selectedDate changes
-  // - Commit current date when leaving the page (unmount)
-  // - Best-effort commit on reload/close
-  useEffect(() => {
-    const previous = activeDateRef.current
-    const next = state.uiState.selectedDate
-    if (previous !== next) {
-      appStore.actions.commitIfNeeded(previous)
-
-      // Leaving the day/page should also finalize any pending priority changes.
-      flushPendingPriorityChanges()
-      if (appStore.getState().uiState.dailyLeftMode === 'priorityEdit') {
-        appStore.actions.setDailyLeftMode('normal')
-      }
-
-      activeDateRef.current = next
-    }
-  }, [state.uiState.selectedDate])
-
-  useEffect(() => {
-    const handler = () => {
-      appStore.actions.commitIfNeeded(activeDateRef.current)
-
-      flushPendingPriorityChanges()
-    }
-    window.addEventListener('beforeunload', handler)
-    return () => {
-      window.removeEventListener('beforeunload', handler)
-      appStore.actions.commitIfNeeded(activeDateRef.current)
-
-      flushPendingPriorityChanges()
-    }
-  }, [])
+  const { setScore } = useScoreHandlers(state.uiState.selectedDate, activeDateRef, flushPendingPriorityChanges)
 
   const {
     today,
@@ -1019,7 +987,7 @@ export function DailyPage() {
                           selectedDate={selectedDate}
                           scoresForSelectedDate={scoresForSelectedDate}
                           locked={locked}
-                          onScoreChange={(habitId, score) => appStore.actions.setScore(selectedDate, habitId, score)}
+                          onScoreChange={setScore}
                         />
                       )
                     })
@@ -1036,7 +1004,7 @@ export function DailyPage() {
                           selectedDate={selectedDate}
                           scoresForSelectedDate={scoresForSelectedDate}
                           locked={locked}
-                          onScoreChange={(habitId, score) => appStore.actions.setScore(selectedDate, habitId, score)}
+                          onScoreChange={setScore}
                         />
                       )
                     })}
