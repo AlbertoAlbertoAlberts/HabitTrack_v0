@@ -40,10 +40,6 @@
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
 }
 
-.navBtnPrimary {
-  border-color: var(--accent);
-}
-
 .navBtnActive {
   background: var(--accent-soft);
   border-color: var(--accent);

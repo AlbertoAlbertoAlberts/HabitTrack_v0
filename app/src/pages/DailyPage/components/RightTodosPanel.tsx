@@ -71,13 +71,14 @@ export function RightTodosPanel({
               ✕
             </button>
           ) : null}
-          <details ref={todoMenuRef}>
-            <summary aria-label="Uzdevumu izvēlne" title="Uzdevumu izvēlne">
+          <details className={uiStyles.menu} ref={todoMenuRef}>
+            <summary className={uiStyles.menuButton} aria-label="Uzdevumu izvēlne" title="Uzdevumu izvēlne">
               ☰
             </summary>
-            <div role="menu" aria-label="Uzdevumu darbības">
+            <div className={uiStyles.menuPanel} role="menu" aria-label="Uzdevumu darbības">
               <button
                 type="button"
+                className={uiStyles.menuItem}
                 onClick={() => {
                   onSetTodoMode('reorder')
                   onCloseTodoMenu()
@@ -87,6 +88,7 @@ export function RightTodosPanel({
               </button>
               <button
                 type="button"
+                className={uiStyles.menuItem}
                 onClick={() => {
                   onSetTodoMode('rename')
                   onCloseTodoMenu()
@@ -96,6 +98,7 @@ export function RightTodosPanel({
               </button>
               <button
                 type="button"
+                className={uiStyles.menuItem}
                 onClick={() => {
                   onSetTodoMode('delete')
                   onCloseTodoMenu()
@@ -104,10 +107,11 @@ export function RightTodosPanel({
                 Dzēst
               </button>
 
-              <hr />
+              <hr className={uiStyles.menuDivider} />
 
               <button
                 type="button"
+                className={uiStyles.menuItem}
                 onClick={() => {
                   onSetTodoMode('normal')
                   onOpenAddTodo()

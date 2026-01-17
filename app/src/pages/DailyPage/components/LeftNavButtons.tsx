@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 
 import type { DailyViewMode } from '../../../domain/types'
 
@@ -12,9 +12,12 @@ interface LeftNavButtonsProps {
 export function LeftNavButtons({ activeMode, onModeChange }: LeftNavButtonsProps) {
   return (
     <div className={styles.leftNav}>
-      <Link to="/overview" className={`${styles.navBtn} ${styles.navBtnPrimary}`} style={{ textDecoration: 'none' }}>
+      <NavLink
+        to="/overview"
+        className={({ isActive }) => `${styles.navBtn} ${isActive ? styles.navBtnActive : ''}`}
+      >
         PĀRSKATS
-      </Link>
+      </NavLink>
       <button
         type="button"
         className={`${styles.navBtn} ${activeMode === 'category' ? styles.navBtnActive : ''}`}
