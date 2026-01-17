@@ -4,11 +4,11 @@ import { Link } from 'react-router-dom'
 
 import DebugPanel from '../../components/debug/DebugPanel'
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from '../../components/ui/Dialog'
-import { WeeklyTaskTile } from '../../components/weekly/WeeklyTaskTile'
 import { HabitGroupCard } from './components/HabitGroupCard'
 import { LeftNavButtons } from './components/LeftNavButtons'
 import { LeftPanelMenu } from './components/LeftPanelMenu'
 import { LeftPanelCategoriesList } from './components/LeftPanelCategoriesList'
+import { WeekPanel } from './components/WeekPanel'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../domain/utils/localDate'
@@ -43,7 +43,6 @@ export function DailyPage() {
 
   const [weeklyMode, setWeeklyMode] = useState<'normal' | 'reorder' | 'delete' | 'rename'>('normal')
   const [weeklyDragOverId, setWeeklyDragOverId] = useState<string | null>(null)
-  const weeklyMenuRef = useRef<HTMLDetailsElement | null>(null)
 
   const [renameTarget, setRenameTarget] = useState<
     | null
@@ -78,8 +77,7 @@ export function DailyPage() {
   }
 
   function closeWeeklyMenu() {
-    if (!weeklyMenuRef.current) return
-    weeklyMenuRef.current.open = false
+    // No-op: WeekPanel manages its own menu ref
   }
 
   function closeTodoMenu() {
@@ -90,20 +88,6 @@ export function DailyPage() {
   useEffect(() => {
     const handler = (e: PointerEvent) => {
       const menu = leftMenuRef.current
-      if (!menu || !menu.open) return
-      const target = e.target as Node | null
-      if (!target) return
-      if (menu.contains(target)) return
-      menu.open = false
-    }
-
-    document.addEventListener('pointerdown', handler)
-    return () => document.removeEventListener('pointerdown', handler)
-  }, [])
-
-  useEffect(() => {
-    const handler = (e: PointerEvent) => {
-      const menu = weeklyMenuRef.current
       if (!menu || !menu.open) return
       const target = e.target as Node | null
       if (!target) return
@@ -1134,175 +1118,34 @@ export function DailyPage() {
               </div>
             </div>
 
-            <aside className={styles.weeklySideCol} aria-label="Nedēļas uzdevumi">
-              <div className={`${styles.subCard} ${styles.weeklyCard}`}>
-                <div className={styles.weeklyHeaderRow}>
-                  <div className={styles.weeklyHeaderLeft}>
-                    <h3 className={styles.weeklyTitle}>Nedēļa</h3>
-                    <div className={styles.weeklySubLabel}>
-                      {formatDateLabel(weekStartDate)}–{formatDateLabel(weekEndDate)}
-                    </div>
-                  </div>
-
-                  <div className={styles.panelHeaderActions}>
-                    {weeklyMode !== 'normal' ? (
-                      <button
-                        type="button"
-                        className={styles.exitModeBtn}
-                        aria-label="Iziet no režīma"
-                        title="Iziet no režīma"
-                        onClick={() => {
-                          setWeeklyMode('normal')
-                          closeWeeklyMenu()
-                        }}
-                      >
-                        ✕
-                      </button>
-                    ) : null}
-
-                    <details className={styles.menu} ref={weeklyMenuRef}>
-                      <summary className={styles.menuButton} aria-label="Nedēļas izvēlne" title="Nedēļas izvēlne">
-                        ☰
-                      </summary>
-                      <div className={styles.menuPanel} role="menu" aria-label="Nedēļas darbības">
-
-                        <button
-                          type="button"
-                          className={styles.menuItem}
-                          onClick={() => {
-                            setWeeklyMode('reorder')
-                            closeWeeklyMenu()
-                          }}
-                        >
-                          Pārkārtot
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.menuItem}
-                          onClick={() => {
-                            setWeeklyMode('rename')
-                            closeWeeklyMenu()
-                          }}
-                        >
-                          Rediģēt
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.menuItem}
-                          onClick={() => {
-                            setWeeklyMode('delete')
-                            closeWeeklyMenu()
-                          }}
-                        >
-                          Dzēst
-                        </button>
-
-                        <hr className={styles.menuDivider} />
-
-                        <button
-                          type="button"
-                          className={styles.menuItem}
-                          onClick={() => {
-                            setAddWeeklyTaskTarget(2)
-                            setAddWeeklyTaskName('')
-                            setAddWeeklyTaskOpen(true)
-                            closeWeeklyMenu()
-                          }}
-                        >
-                          + Ieradumu
-                        </button>
-                      </div>
-                    </details>
-                  </div>
-                </div>
-
-                <div className={styles.weeklyScrollArea}>
-                  {weeklyTasks.length === 0 ? (
-                    <div className={styles.weeklyEmpty}>
-                      <p className={styles.muted} style={{ marginTop: 0 }}>
-                        Nav nedēļas uzdevumu.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className={styles.weeklyList}>
-                      {weeklyTasks.map((t) => {
-                        const count = state.weeklyProgress[weekStartDate]?.[t.id] ?? 0
-                        const canDrag = weeklyMode === 'reorder'
-                        const notStartedYet = Boolean(t.startWeekStart && weekStartDate < t.startWeekStart)
-                        const effectiveTargetPerWeek = getWeeklyTaskTargetPerWeekForWeekStart(
-                          t,
-                          weekStartDate,
-                          currentWeekStart,
-                        )
-                        const progressTitle = notStartedYet && t.startWeekStart
-                          ? `Sākas nedēļā: ${formatDateLabel(t.startWeekStart)}`
-                          : undefined
-                        return (
-                          <WeeklyTaskTile
-                            key={t.id}
-                            task={t}
-                            max={effectiveTargetPerWeek}
-                            count={count}
-                            mode={weeklyMode}
-                            progressDisabled={notStartedYet}
-                            progressTitle={progressTitle}
-                            className={`${styles.weeklyRow} ${weeklyMode === 'reorder' ? styles.weeklyRowReorder : ''} ${weeklyDragOverId === t.id ? styles.weeklyRowDragOver : ''}`}
-                            onAdjust={(delta) => {
-                              appStore.actions.adjustWeeklyCompletionForDate(
-                                weekStartDate,
-                                selectedDate,
-                                t.id,
-                                delta,
-                              )
-                            }}
-                            onRename={() => {
-                              setRenameTarget({ kind: 'weeklyTask', id: t.id, name: t.name })
-                              setRenameValue(t.name)
-                              setRenameWeeklyTarget(t.targetPerWeek)
-                            }}
-                            onDelete={() => {
-                              appStore.actions.deleteWeeklyTask(t.id)
-                            }}
-                            draggable={canDrag}
-                            onDragStart={(e) => {
-                              if (!canDrag) return
-                              e.dataTransfer.effectAllowed = 'move'
-                              e.dataTransfer.setData('text/plain', t.id)
-                            }}
-                            onDragOver={(e) => {
-                              if (!canDrag) return
-                              e.preventDefault()
-                              setWeeklyDragOverId(t.id)
-                            }}
-                            onDragLeave={() => {
-                              if (!canDrag) return
-                              setWeeklyDragOverId((v) => (v === t.id ? null : v))
-                            }}
-                            onDrop={(e) => {
-                              if (!canDrag) return
-                              e.preventDefault()
-                              setWeeklyDragOverId(null)
-
-                              const draggedId = e.dataTransfer.getData('text/plain')
-                              if (!draggedId) return
-                              if (draggedId === t.id) return
-
-                              const ordered = weeklyTasks.map((x) => x.id)
-                              const fromIndex = ordered.indexOf(draggedId)
-                              const toIndex = ordered.indexOf(t.id)
-                              if (fromIndex === -1 || toIndex === -1) return
-
-                              const next = reorderIds(ordered, draggedId, toIndex)
-                              appStore.actions.reorderWeeklyTasks(next)
-                            }}
-                          />
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </aside>
+            <WeekPanel
+              weekStartDate={weekStartDate}
+              weekEndDate={weekEndDate}
+              selectedDate={selectedDate}
+              currentWeekStart={currentWeekStart}
+              weeklyTasks={weeklyTasks}
+              weeklyProgress={state.weeklyProgress}
+              weeklyMode={weeklyMode}
+              weeklyDragOverId={weeklyDragOverId}
+              formatDateLabel={formatDateLabel}
+              getWeeklyTaskTargetPerWeekForWeekStart={getWeeklyTaskTargetPerWeekForWeekStart}
+              onSetWeeklyMode={setWeeklyMode}
+              onSetWeeklyDragOverId={setWeeklyDragOverId}
+              onAddWeeklyTask={() => {
+                setAddWeeklyTaskTarget(2)
+                setAddWeeklyTaskName('')
+                setAddWeeklyTaskOpen(true)
+              }}
+              onAdjustWeeklyCompletion={appStore.actions.adjustWeeklyCompletionForDate}
+              onRenameWeeklyTask={(taskId, name, targetPerWeek) => {
+                setRenameTarget({ kind: 'weeklyTask', id: taskId, name })
+                setRenameValue(name)
+                setRenameWeeklyTarget(targetPerWeek)
+              }}
+              onDeleteWeeklyTask={appStore.actions.deleteWeeklyTask}
+              onReorderWeeklyTasks={appStore.actions.reorderWeeklyTasks}
+              onCloseWeeklyMenu={closeWeeklyMenu}
+            />
           </div>
       </section>
 
