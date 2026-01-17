@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import DebugPanel from '../../components/debug/DebugPanel'
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from '../../components/ui/Dialog'
 import { WeeklyTaskTile } from '../../components/weekly/WeeklyTaskTile'
+import { ScoreRow } from './components/ScoreRow'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../domain/utils/localDate'
@@ -1477,22 +1478,12 @@ export function DailyPage() {
                                     </span>
                                   ) : null}
                                 </div>
-                                <span className={styles.scoreGroup}>
-                                  {[0, 1, 2].map((s) => (
-                                    <button
-                                      key={s}
-                                      type="button"
-                                      disabled={scoreDisabled}
-                                      title={notStartedYet && h.startDate ? `Sākas: ${formatDateLabel(h.startDate)}` : undefined}
-                                      className={`${styles.scoreBtn} ${styles[`scoreBtn${s}`]} ${value === s ? styles.scoreBtnActive : ''}`}
-                                      onClick={() => {
-                                        appStore.actions.setScore(selectedDate, h.id, s as 0 | 1 | 2)
-                                      }}
-                                    >
-                                      {s}
-                                    </button>
-                                  ))}
-                                </span>
+                                <ScoreRow
+                                  value={value}
+                                  disabled={scoreDisabled}
+                                  disabledTitle={notStartedYet && h.startDate ? `Sākas: ${formatDateLabel(h.startDate)}` : undefined}
+                                  onChange={(score) => appStore.actions.setScore(selectedDate, h.id, score)}
+                                />
                               </div>
                             )
                           })}
