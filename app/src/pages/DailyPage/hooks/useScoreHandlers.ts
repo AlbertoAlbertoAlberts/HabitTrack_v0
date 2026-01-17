@@ -1,12 +1,16 @@
 import {useCallback, useEffect} from 'react'
 import type {HabitId, LocalDateString, Score} from '../../../domain/types'
 import {appStore} from '../../../domain/store/appStore'
+import {addDays} from '../../../domain/utils/localDate'
 
 export function useScoreHandlers(
   selectedDate: LocalDateString,
   activeDateRef: React.MutableRefObject<LocalDateString>,
   flushPendingPriorityChanges: () => void,
 ) {
+  const isLocked = appStore.selectors.isLocked(selectedDate)
+  const canEdit = !isLocked
+
   // Commit previous date when selectedDate changes.
   useEffect(() => {
     const previous = activeDateRef.current
@@ -45,7 +49,21 @@ export function useScoreHandlers(
     [selectedDate],
   )
 
+  const goToPreviousDay = useCallback(() => {
+    appStore.actions.commitIfNeeded(selectedDate)
+    appStore.actions.setSelectedDate(addDays(selectedDate, -1))
+  }, [selectedDate])
+
+  const goToNextDay = useCallback(() => {
+    appStore.actions.commitIfNeeded(selectedDate)
+    appStore.actions.setSelectedDate(addDays(selectedDate, +1))
+  }, [selectedDate])
+
   return {
+    isLocked,
+    canEdit,
     setScore,
+    goToPreviousDay,
+    goToNextDay,
   }
 }

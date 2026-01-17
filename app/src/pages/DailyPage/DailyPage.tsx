@@ -13,7 +13,6 @@ import { useDailyData } from './hooks/useDailyData'
 import { useScoreHandlers } from './hooks/useScoreHandlers'
 import { appStore } from '../../domain/store/appStore'
 import { useAppState } from '../../domain/store/useAppStore'
-import { addDays } from '../../domain/utils/localDate'
 import { getWeeklyTaskTargetPerWeekForWeekStart } from '../../domain/utils/weeklyTaskTarget'
 import { exportBackupJson, importBackupJson } from '../../persistence/storageService'
 import { applyRename, type RenameTarget } from './utils/applyRename'
@@ -179,12 +178,15 @@ export function DailyPage() {
     return next
   }
 
-  const { setScore } = useScoreHandlers(state.uiState.selectedDate, activeDateRef, flushPendingPriorityChanges)
+  const { setScore, isLocked, goToPreviousDay, goToNextDay } = useScoreHandlers(
+    state.uiState.selectedDate,
+    activeDateRef,
+    flushPendingPriorityChanges,
+  )
 
   const {
     today,
     selectedDate,
-    locked,
     currentWeekStart,
     formatDateLabel,
     categories,
@@ -916,8 +918,7 @@ export function DailyPage() {
               className={styles.iconBtn}
               aria-label="Iepriekšējā diena"
               onClick={() => {
-                appStore.actions.commitIfNeeded(selectedDate)
-                appStore.actions.setSelectedDate(addDays(selectedDate, -1))
+                goToPreviousDay()
               }}
             >
               ‹
@@ -934,8 +935,7 @@ export function DailyPage() {
               disabled={today}
               title={today ? 'Nav pieejams, skatoties šodienu' : undefined}
               onClick={() => {
-                appStore.actions.commitIfNeeded(selectedDate)
-                appStore.actions.setSelectedDate(addDays(selectedDate, +1))
+                goToNextDay()
               }}
             >
               ›
@@ -959,7 +959,7 @@ export function DailyPage() {
                           habits={habits}
                           selectedDate={selectedDate}
                           scoresForSelectedDate={scoresForSelectedDate}
-                          locked={locked}
+                          locked={isLocked}
                           onScoreChange={setScore}
                         />
                       )
@@ -976,7 +976,7 @@ export function DailyPage() {
                           habits={habits}
                           selectedDate={selectedDate}
                           scoresForSelectedDate={scoresForSelectedDate}
-                          locked={locked}
+                          locked={isLocked}
                           onScoreChange={setScore}
                         />
                       )
