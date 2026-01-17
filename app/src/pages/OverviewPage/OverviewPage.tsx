@@ -213,8 +213,10 @@ function formatDateLabel(date: LocalDateString): string {
 
 function formatWeekdayShort(date: LocalDateString): string {
   const d = parseLocalDateString(date)
-  const names = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
-  return names[d.getDay()] ?? ''
+  // JS getDay(): 0..6 (Sun..Sat). Convert to Monday-first index: 0..6 (Mon..Sun).
+  const names = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+  const idx = (d.getDay() + 6) % 7
+  return names[idx] ?? ''
 }
 
 function getHabitIdsForMode(
@@ -281,17 +283,22 @@ export function OverviewPage() {
 
   const currentWeekStart = useMemo(() => weekStartMonday(todayLocalDateString()), [])
 
-  const endDate = state.uiState.overviewWindowEndDate
-  const rangeDays = state.uiState.overviewRangeDays
-  const startDate = addDays(endDate, -(rangeDays - 1))
+  // Overview is always shown as a Monday–Sunday week window.
+  // `overviewWindowEndDate` acts as an anchor date (clamped to today in state);
+  // we snap the visible window to the week containing that date.
+  const anchorDate = state.uiState.overviewWindowEndDate
+  const rangeDays = 7
+
+  const startDate = useMemo(() => weekStartMonday(anchorDate), [anchorDate])
+  const endDate = useMemo(() => addDays(startDate, 6), [startDate])
 
   const weeklyTasks = useMemo(
     () => Object.values(state.weeklyTasks).slice().sort((a, b) => a.sortIndex - b.sortIndex),
     [state.weeklyTasks],
   )
 
-  // Overview weekly summary is always Monday–Sunday for the week that contains `endDate`.
-  const overviewWeekStart = useMemo(() => weekStartMonday(endDate), [endDate])
+  // Overview weekly summary is always Monday–Sunday for the week that contains the anchor date.
+  const overviewWeekStart = useMemo(() => weekStartMonday(anchorDate), [anchorDate])
   const overviewWeekEnd = useMemo(() => addDays(overviewWeekStart, 6), [overviewWeekStart])
 
   const weeklyPoints = useMemo(() => {
@@ -734,21 +741,6 @@ export function OverviewPage() {
               >
                 SĀKUMA LAPA
               </Link>
-
-              <button
-                type="button"
-                className={`${navButtonStyles.navBtn} ${rangeDays === 7 ? navButtonStyles.navBtnActive : ''}`}
-                onClick={() => appStore.actions.setOverviewRangeDays(7)}
-              >
-                7 dienas
-              </button>
-              <button
-                type="button"
-                className={`${navButtonStyles.navBtn} ${rangeDays === 30 ? navButtonStyles.navBtnActive : ''}`}
-                onClick={() => appStore.actions.setOverviewRangeDays(30)}
-              >
-                30 dienas
-              </button>
             </div>
 
             <div className={styles.sidebarStack}>

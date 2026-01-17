@@ -121,8 +121,8 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     if (!dayLocks[date]) dayLocks[date] = repairNow
   }
 
-  // UI state repair (Overview): clamp values and clear invalid selections.
-  const overviewRangeDays = state.uiState.overviewRangeDays === 7 ? 7 : 30
+  // UI state repair (Overview): week-based only (Monday–Sunday).
+  const overviewRangeDays = 7
 
   const themeMode: ThemeMode =
     state.uiState.themeMode === 'light' ||
@@ -346,7 +346,7 @@ export function createDefaultState(now: Date = new Date()): AppStateV1 {
       dailyViewMode: 'category',
       selectedDate: today,
 
-      overviewRangeDays: 30,
+      overviewRangeDays: 7,
       overviewWindowEndDate: today,
       overviewMode: 'overall',
       overviewSelectedCategoryId: null,
