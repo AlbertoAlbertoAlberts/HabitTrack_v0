@@ -183,9 +183,18 @@ Only refactor repeated patterns if it reduces code in multiple places.
 - LeftNavButtons.module.css now empty (can be deleted)
 - Build passing
 
-### 6.2 Icon button consolidation (TODO)
-- Consolidate `.iconBtn` from DailyShared.module.css and WeeklyTaskTile.module.css
-- Create size variants if needed
+### 6.2 Icon button consolidation ✅
+- Moved `.iconBtn` base styles to `shared.module.css`
+- Created size variants: `.iconBtnSmall` (28x28px), `.iconBtnMedium` (40x36px circular)
+- Updated DailyPage.tsx date navigation buttons
+- Updated WeeklyTaskTile.tsx rename/delete buttons
+- DailyShared.module.css and WeeklyTaskTile.module.css iconBtn styles removed
+- Build passing, all functionality preserved
+
+**Status: COMPLETE ✅**
+
+All obvious duplication has been consolidated into shared.module.css.
+Files reduced: CSS duplication eliminated across 3 component files.
 
 ---
 

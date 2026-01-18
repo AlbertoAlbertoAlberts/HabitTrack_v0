@@ -3,6 +3,7 @@ import type { DragEventHandler } from 'react'
 import type { WeeklyTask } from '../../domain/types'
 
 import { WeeklyProgressRing } from './WeeklyProgressRing'
+import sharedStyles from '../ui/shared.module.css'
 import styles from './WeeklyTaskTile.module.css'
 
 export function WeeklyTaskTile({
@@ -55,7 +56,7 @@ export function WeeklyTaskTile({
         {mode === 'rename' ? (
           <button
             type="button"
-            className={styles.iconBtn}
+            className={`${sharedStyles.iconBtn} ${sharedStyles.iconBtnSmall}`}
             onClick={onRename}
             aria-label={`Mainīt nosaukumu: ${task.name}`}
             title="Mainīt nosaukumu"
@@ -66,7 +67,7 @@ export function WeeklyTaskTile({
         {mode === 'delete' ? (
           <button
             type="button"
-            className={`${styles.iconBtn} ${styles.trashBtn}`}
+            className={`${sharedStyles.iconBtn} ${sharedStyles.iconBtnSmall} ${styles.trashBtn}`}
             onClick={onDelete}
             aria-label={`Dzēst: ${task.name}`}
             title="Dzēst"

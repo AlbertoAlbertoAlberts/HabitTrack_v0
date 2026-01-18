@@ -107,39 +107,8 @@
   width: min(420px, 100%);
 }
 
-.iconBtn {
-  width: 40px;
-  height: 36px;
-  border-radius: 999px;
-  border: 1px solid var(--btn-border);
-  background: var(--btn-bg);
-  color: inherit;
-  cursor: pointer;
-  font-size: 18px;
-  transition:
-    background-color var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out),
-    transform var(--t-fast) var(--ease-out);
-}
-
-.iconBtn:hover {
-  background: var(--btn-bg-hover);
-}
-
-.iconBtn:active {
-  transform: scale(0.99);
-}
-
-.iconBtn:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
-}
-
-.iconBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* Icon button styles moved to shared.module.css */
+/* Using .iconBtn and .iconBtnMedium from shared styles */
 
 .dateLabel {
   text-align: center;

@@ -104,3 +104,51 @@
   background: var(--accent-soft);
   border-color: var(--accent);
 }
+
+/* Icon buttons - shared base styles */
+.iconBtn {
+  border-radius: 10px;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.iconBtn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.iconBtn:active {
+  transform: scale(0.98);
+}
+
+.iconBtn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+}
+
+.iconBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Icon button size variants */
+.iconBtnSmall {
+  width: 28px;
+  height: 28px;
+}
+
+.iconBtnMedium {
+  width: 40px;
+  height: 36px;
+  border-radius: 999px;
+  font-size: 18px;
+}

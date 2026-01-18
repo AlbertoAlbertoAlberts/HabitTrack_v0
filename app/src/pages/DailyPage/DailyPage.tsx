@@ -916,7 +916,7 @@ export function DailyPage() {
           <div className={styles.dateNav}>
             <button
               type="button"
-              className={styles.iconBtn}
+              className={`${sharedStyles.iconBtn} ${sharedStyles.iconBtnMedium}`}
               aria-label="Iepriekšējā diena"
               onClick={() => {
                 goToPreviousDay()
@@ -931,7 +931,7 @@ export function DailyPage() {
 
             <button
               type="button"
-              className={styles.iconBtn}
+              className={`${sharedStyles.iconBtn} ${sharedStyles.iconBtnMedium}`}
               aria-label="Nākamā diena"
               disabled={today}
               title={today ? 'Nav pieejams, skatoties šodienu' : undefined}
