@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
-
-import type { AppStateV1 } from '../../../domain/types'
+import { useAppState } from '../../../domain/store/useAppStore'
+import type { LocalDateString } from '../../../domain/types'
 import { appStore } from '../../../domain/store/appStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../../domain/utils/localDate'
 
-export function useDailyData(state: AppStateV1) {
-  const today = isToday(state.uiState.selectedDate)
-  const selectedDate = state.uiState.selectedDate
-  const locked = appStore.selectors.isLocked(selectedDate)
+export function useDailyData(selectedDate: LocalDateString) {
+  const state = useAppState()
+  const today = isToday(selectedDate)
+  const isLocked = appStore.selectors.isLocked(selectedDate)
+  const canEdit = !isLocked
   const currentWeekStart = useMemo(() => weekStartMonday(todayLocalDateString()), [])
 
   function formatDateLabel(date: string): string {
@@ -93,7 +94,8 @@ export function useDailyData(state: AppStateV1) {
   return {
     today,
     selectedDate,
-    locked,
+    isLocked,
+    canEdit,
     currentWeekStart,
     formatDateLabel,
     categories,

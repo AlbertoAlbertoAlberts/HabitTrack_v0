@@ -81,7 +81,7 @@ If props get excessive, introduce a small `DailyPageContext` ONLY if needed (pre
 ## Step 2 — Extract logic into hooks (reduce complexity, keep behavior)
 Create `app/src/pages/DailyPage/hooks/`:
 
-### 2.1 `useDailyData(selectedDate)`
+### 2.1 `useDailyData(selectedDate)` ✅ COMPLETE
 Purpose: centralize data selection + derived lists.  
 Return:
 - categories, habits, grouping by category/priority
@@ -89,21 +89,23 @@ Return:
 - lock status for day
 - any computed values used by UI
 
-### 2.2 `useScoreHandlers(selectedDate)`
+### 2.2 `useScoreHandlers(selectedDate)` ✅ COMPLETE
 Purpose: centralize mutations (set score, commit/lock rules).  
 Return:
 - `setScore(habitId, score)`
-- any “commit day” / “lock day” functions already in app
-- `canEdit` / `isLocked`
+- `goToPreviousDay`, `goToNextDay` (navigation with auto-commit)
+- Commit-on-leave logic via useEffect
 
-### 2.3 `useResponsiveLayout()` (if you currently have resize fixes)
-Purpose: isolate any resize listeners and header/layout CSS var updates.  
-Rule: avoid duplicating viewport math across components.
+Note: `canEdit`/`isLocked` kept in `useDailyData` (read concern separation from write concern).
+
+### 2.3 `useResponsiveLayout()` ⏭️ SKIPPED (not applicable)
+No resize listeners or reactive layout logic exists in codebase.  
+Viewport calculations (lines 220-221) are static for popover positioning only.
 
 ---
 
 ## Step 3 — Tackle OverviewPage.tsx (secondary priority)
-### 3.1 Extract components
+### 3.1 Extract components ✅ COMPLETE
 Create:
 - `app/src/pages/Overview/components/`
 Extract:
@@ -111,30 +113,25 @@ Extract:
 - `OverviewChart.tsx`
 - `OverviewHabitList.tsx` (or equivalent list panel)
 
-### 3.2 Extract hook
-- `useOverviewData(rangeDays, mode, selection)`  
+### 3.2 Extract hook ✅ COMPLETE
+- `useOverviewData()`  
 Return data ready for chart + list.
+- Centralized all data selection and derived computations
+- OverviewPage.tsx reduced from 341 lines to 196 lines (43% reduction)
 
 ---
 
-## Step 4 — Normalize state/storage access (stop scattered persistence)
+## Step 4 — Normalize state/storage access (stop scattered persistence) ✅ ALREADY COMPLETE
 Goal: one clear API for persistence.
 
-### 4.1 Identify all storage touchpoints
-Search for:
-- `localStorage`
-- `JSON.parse`
-- `JSON.stringify`
-- `save`, `load`, `persist`, `hydrate`
+### Assessment:
+✅ Storage already centralized in `app/src/persistence/storageService.ts`  
+✅ All localStorage calls contained within storageService  
+✅ appStore.ts is the single consumer of loadState/saveState  
+✅ Components use exportBackupJson/importBackupJson for backup features only  
+✅ JSON.parse in components is for drag-and-drop data, not persistence  
 
-### 4.2 Centralize
-Create or confirm one module (example):
-- `app/src/services/storage/StorageService.ts`
-All reads/writes must go through it.  
-Components/pages must never call localStorage directly.
-
-### 4.3 Cleanup duplicates
-Remove any duplicated persistence logic from components once centralized (commit separately).
+**No action needed** - codebase already follows best practices for storage isolation.
 
 ---
 
@@ -151,7 +148,19 @@ Delete only if:
 - not referenced by routes
 - build stays green
 
-Produce a short “Removed items” report in commit message or `Documentation/optimization_notes.md`.
+**Status: COMPLETE ✅**
+
+**Removed items:**
+- ~136 lines of duplicate CSS from OverviewPage.module.css (lines that were moved to OverviewChart.module.css and OverviewSelectionList.module.css during component extraction)
+  - Old chart styles (.chartWrap, .chartInlineLegend, .chartLegendItem, etc.)
+  - Old list styles (.list, .listItem, .listItemActive, .itemTitle, etc.)
+  - Old layout system (.layout, .buttonInset, .filtersGrid)
+- Result: OverviewPage.module.css reduced from 324 → 188 lines (42% reduction)
+
+**Items kept (actively used):**
+- DebugPanel: Used in DailyPage for development/testing
+- LabPage: Active route, provides sandbox for future features
+- All other components actively referenced
 
 ---
 

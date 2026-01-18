@@ -1,0 +1,48 @@
+.selectionPanel {
+  /* No additional styles needed, uses parent panel styles */
+}
+
+.panelTitle {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.list {
+  display: grid;
+  gap: 6px;
+}
+
+.listItem {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition:
+    background 150ms,
+    border-color 150ms;
+  user-select: none;
+}
+
+.listItem:hover {
+  background: var(--hover-bg);
+  border-color: var(--border-hover);
+}
+
+.listItemActive {
+  background: var(--active-bg);
+  border-color: var(--active-border);
+  font-weight: 600;
+}
+
+.itemTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

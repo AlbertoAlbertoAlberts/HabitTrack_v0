@@ -1,0 +1,62 @@
+.chartWrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  padding: 14px;
+  box-shadow:
+    0 1px 0 rgba(17, 24, 39, 0.04),
+    0 14px 30px rgba(17, 24, 39, 0.06);
+}
+
+.chartInlineLegend {
+  position: absolute;
+  top: 10px;
+  left: 54px;
+  z-index: 2;
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--popover-bg);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.chartLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chartLegendSwatchPrimary,
+.chartLegendSwatchMax {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.chartLegendSwatchPrimary {
+  background: linear-gradient(to top, #ef4444 0%, #f59e0b 18%, #22c55e 100%);
+  box-shadow: 0 0 0 1px var(--panel-bg);
+}
+
+.chartLegendSwatchMax {
+  background: var(--chart-axis);
+}
+
+.chartSvg {
+  display: block;
+  max-width: 60%;
+  height: auto;
+  margin: 0 auto;
+}

@@ -1,0 +1,15 @@
+.buttonInset {
+  padding: 8px 8px 12px;
+}
+
+.filtersGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.panelTitle {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0.9;
+}

@@ -1,0 +1,431 @@
+import { useMemo } from 'react'
+import type { LocalDateString } from '../../../domain/types'
+import { parseLocalDateString } from '../../../domain/utils/localDate'
+import styles from './OverviewChart.module.css'
+
+type ChartPoint = { date: LocalDateString; value: number; earned: number; maxPossible: number }
+type SvgPoint = { x: number; y: number; date: LocalDateString; value: number }
+
+const CHART_VIEWBOX_WIDTH = 760
+const CHART_VIEWBOX_HEIGHT = 364
+
+const RAMP_RED = '#ef4444'
+const RAMP_AMBER = '#f59e0b'
+const RAMP_GREEN = '#22c55e'
+
+// Move amber earlier so above ~50% score is already greenish.
+const RAMP_AMBER_STOP = 0.18
+
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return 0
+  return Math.max(0, Math.min(1, n))
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex.trim())
+  if (!m) return { r: 0, g: 0, b: 0 }
+  return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) }
+}
+
+function rgbToHex(rgb: { r: number; g: number; b: number }): string {
+  const to2 = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0')
+  return `#${to2(rgb.r)}${to2(rgb.g)}${to2(rgb.b)}`
+}
+
+function lerpColor(aHex: string, bHex: string, t: number): string {
+  const a = hexToRgb(aHex)
+  const b = hexToRgb(bHex)
+  return rgbToHex({ r: lerp(a.r, b.r, t), g: lerp(a.g, b.g, t), b: lerp(a.b, b.b, t) })
+}
+
+function scoreToColor(value: number, max: number): string {
+  const t = clamp01(max > 0 ? value / max : 0)
+
+  const mid = clamp01(RAMP_AMBER_STOP)
+  if (t <= mid) return lerpColor(RAMP_RED, RAMP_AMBER, mid > 0 ? t / mid : 1)
+  return lerpColor(RAMP_AMBER, RAMP_GREEN, (t - mid) / Math.max(1e-6, 1 - mid))
+}
+
+function buildLinearPathD(points: Array<Pick<SvgPoint, 'x' | 'y'>>): string {
+  return points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+    .join(' ')
+}
+
+function buildSmoothPathD(points: Array<Pick<SvgPoint, 'x' | 'y'>>): string {
+  if (points.length <= 2) return buildLinearPathD(points)
+
+  const alpha = 1
+  const clampPoint = (idx: number) => points[Math.max(0, Math.min(points.length - 1, idx))]
+
+  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = clampPoint(i - 1)
+    const p1 = clampPoint(i)
+    const p2 = clampPoint(i + 1)
+    const p3 = clampPoint(i + 2)
+
+    const cp1x = p1.x + ((p2.x - p0.x) / 6) * alpha
+    const cp1y = p1.y + ((p2.y - p0.y) / 6) * alpha
+    const cp2x = p2.x - ((p3.x - p1.x) / 6) * alpha
+    const cp2y = p2.y - ((p3.y - p1.y) / 6) * alpha
+
+    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)} ${cp2x.toFixed(1)} ${cp2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
+  }
+
+  return d
+}
+
+type BezierSeg = {
+  p1: SvgPoint
+  cp1: { x: number; y: number }
+  cp2: { x: number; y: number }
+  p2: SvgPoint
+}
+
+type ColoredSegment = {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  color: string
+}
+
+function buildGradientSegments(
+  points: SvgPoint[],
+  samplesPerBezier: number,
+  yMax: number,
+): ColoredSegment[] {
+  if (points.length < 2) return []
+
+  const alpha = 1
+  const clampPoint = (idx: number) => points[Math.max(0, Math.min(points.length - 1, idx))]
+
+  const beziers: BezierSeg[] = []
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = clampPoint(i - 1)
+    const p1 = clampPoint(i)
+    const p2 = clampPoint(i + 1)
+    const p3 = clampPoint(i + 2)
+
+    const cp1x = p1.x + ((p2.x - p0.x) / 6) * alpha
+    const cp1y = p1.y + ((p2.y - p0.y) / 6) * alpha
+    const cp2x = p2.x - ((p3.x - p1.x) / 6) * alpha
+    const cp2y = p2.y - ((p3.y - p1.y) / 6) * alpha
+
+    beziers.push({
+      p1,
+      cp1: { x: cp1x, y: cp1y },
+      cp2: { x: cp2x, y: cp2y },
+      p2,
+    })
+  }
+
+  function bezierPoint(
+    seg: BezierSeg,
+    t: number,
+  ): { x: number; y: number; value: number } {
+    const mt = 1 - t
+    const x =
+      mt * mt * mt * seg.p1.x +
+      3 * mt * mt * t * seg.cp1.x +
+      3 * mt * t * t * seg.cp2.x +
+      t * t * t * seg.p2.x
+    const y =
+      mt * mt * mt * seg.p1.y +
+      3 * mt * mt * t * seg.cp1.y +
+      3 * mt * t * t * seg.cp2.y +
+      t * t * t * seg.p2.y
+    const value = mt * seg.p1.value + t * seg.p2.value
+    return { x, y, value }
+  }
+
+  const out: ColoredSegment[] = []
+  for (const seg of beziers) {
+    let prev = { x: seg.p1.x, y: seg.p1.y, value: seg.p1.value }
+    for (let s = 1; s <= samplesPerBezier; s++) {
+      const t = s / samplesPerBezier
+      const curr = bezierPoint(seg, t)
+      const color = scoreToColor(curr.value, yMax)
+
+      out.push({
+        x1: prev.x,
+        y1: prev.y,
+        x2: curr.x,
+        y2: curr.y,
+        color,
+      })
+
+      prev = curr
+    }
+  }
+
+  return out
+}
+
+function formatWeekdayShort(date: LocalDateString): string {
+  const d = parseLocalDateString(date)
+  // JS getDay(): 0..6 (Sun..Sat). Convert to Monday-first index: 0..6 (Mon..Sun).
+  const names = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+  const idx = (d.getDay() + 6) % 7
+  return names[idx] ?? ''
+}
+
+function niceTickStep(maxValue: number): number {
+  const raw = maxValue / 5
+  const pow10 = Math.pow(10, Math.floor(Math.log10(raw || 1)))
+  const scaled = raw / pow10
+  const base = scaled <= 1 ? 1 : scaled <= 2 ? 2 : scaled <= 5 ? 5 : 10
+  return base * pow10
+}
+
+function clampInt(value: number, min: number, max: number): number {
+  const n = Number.isFinite(value) ? Math.floor(value) : min
+  return Math.max(min, Math.min(max, n))
+}
+
+type OverviewChartProps = {
+  series: ChartPoint[]
+  yMax: number
+}
+
+export function OverviewChart({ series, yMax }: OverviewChartProps) {
+  const chart = useMemo(() => {
+    const width = CHART_VIEWBOX_WIDTH
+    const height = CHART_VIEWBOX_HEIGHT
+    const paddingLeft = 44
+    const paddingRight = 10
+    const paddingTop = 10
+    const paddingBottom = 28
+
+    // Add a little extra plot breathing room so the smoothed curve/glow can overshoot
+    // slightly without clipping against the viewBox.
+    const plotInsetTop = 10
+    const plotInsetBottom = 10
+
+    const axisFontSize = 10
+    const axisTextFill = 'var(--chart-label)'
+    const gridStroke = 'var(--chart-grid)'
+    const zeroAxisStroke = 'var(--chart-axis)'
+    const zeroAxisStrokeWidth = 1.5
+
+    const primaryStrokeWidth = 3.25
+    const primaryPointRadius = 3.2
+    const glowStrokeWidth = 10
+    const glowOpacity = 0.16
+
+    const mainGlowStroke = 'var(--chart-axis)'
+
+    const maxStroke = 'var(--chart-axis)'
+    const maxStrokeWidth = 2.1
+    const maxPointRadius = 2.7
+    const maxGlowStrokeWidth = 13
+    const maxGlowOpacity = 0.22
+    const innerW = width - paddingLeft - paddingRight
+    const plotTop = paddingTop + plotInsetTop
+    const innerH = height - paddingTop - paddingBottom - plotInsetTop - plotInsetBottom
+    const stepX = series.length > 1 ? innerW / (series.length - 1) : innerW
+    const stepY = yMax > 0 ? innerH / yMax : innerH
+
+    const tickStep = niceTickStep(yMax)
+    const ticks: number[] = []
+    for (let v = 0; v <= yMax; v += tickStep) ticks.push(v)
+    if (ticks.at(-1) !== yMax) ticks.push(yMax)
+
+    const points: SvgPoint[] = series.map((p, i) => {
+      const x = paddingLeft + i * stepX
+      const y = plotTop + (innerH - p.value * stepY)
+      return { x, y, date: p.date, value: p.value }
+    })
+    const mainSeries = {
+      points,
+      lineD: buildSmoothPathD(points),
+    }
+
+    const rampMidOffset = `${Math.round(RAMP_AMBER_STOP * 100)}%`
+    const maxPoints: SvgPoint[] = series.map((p, i) => {
+      const x = paddingLeft + i * stepX
+      const y = plotTop + (innerH - yMax * stepY)
+      return { x, y, date: p.date, value: yMax }
+    })
+    const maxSeries = {
+      points: maxPoints,
+      lineD: buildSmoothPathD(maxPoints),
+    }
+
+    // Phase 6: performance cap for gradient micro-segments.
+    // We adapt sampling density based on how many days are being shown so
+    // we don't render excessive DOM nodes for long ranges.
+    const maxGradientSegments = 600
+    const daySegments = Math.max(1, mainSeries.points.length - 1)
+    const samplesPerBezier = clampInt(Math.floor(maxGradientSegments / daySegments), 6, 18)
+    const mainGradientSegments = buildGradientSegments(mainSeries.points, samplesPerBezier, yMax)
+
+    const xLabelEvery = Math.max(1, Math.round(series.length / 6))
+
+    return (
+      <svg className={styles.chartSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Overview chart">
+        <defs>
+          <filter id="overviewChartGlow" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
+            <feGaussianBlur stdDeviation="3.2" />
+          </filter>
+
+          <linearGradient id="overviewScoreRamp" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor={RAMP_RED} />
+            <stop offset={rampMidOffset} stopColor={RAMP_AMBER} />
+            <stop offset="100%" stopColor={RAMP_GREEN} />
+          </linearGradient>
+        </defs>
+
+        {/* axes (0 lines) */}
+        <line
+          x1={paddingLeft}
+          x2={paddingLeft}
+          y1={plotTop}
+          y2={plotTop + innerH}
+          stroke={zeroAxisStroke}
+          strokeWidth={zeroAxisStrokeWidth}
+          shapeRendering="crispEdges"
+        />
+
+        {/* grid + y labels */}
+        {ticks.map((t) => {
+          const y = plotTop + (innerH - t * stepY)
+          return (
+            <g key={t}>
+              <line
+                x1={paddingLeft}
+                x2={width - paddingRight}
+                y1={y}
+                y2={y}
+                stroke={t === 0 ? zeroAxisStroke : gridStroke}
+                strokeWidth={t === 0 ? zeroAxisStrokeWidth : 1}
+                shapeRendering="crispEdges"
+              />
+              <text x={paddingLeft - 8} y={y + 4} fontSize={axisFontSize} textAnchor="end" fill={axisTextFill}>
+                {`${Math.round(t * 100)}%`}
+              </text>
+            </g>
+          )
+        })}
+
+        {/* x labels */}
+        {points.map((p, i) => {
+          if (i % xLabelEvery !== 0 && i !== points.length - 1) return null
+          const label = formatWeekdayShort(p.date).toUpperCase()
+          return (
+            <text
+              key={p.date}
+              x={p.x}
+              y={height - 8}
+              fontSize={axisFontSize}
+              fontWeight={700}
+              textAnchor="middle"
+              fill={axisTextFill}
+            >
+              {label}
+            </text>
+          )
+        })}
+
+        {/* series */}
+        <path
+          d={maxSeries.lineD}
+          fill="none"
+          stroke={maxStroke}
+          strokeWidth={maxGlowStrokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={maxGlowOpacity}
+          filter="url(#overviewChartGlow)"
+        />
+        <path
+          d={maxSeries.lineD}
+          fill="none"
+          stroke={maxStroke}
+          strokeWidth={maxStrokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {maxSeries.points.map((p) => (
+          <circle key={`max-${p.date}`} cx={p.x} cy={p.y} r={maxPointRadius} fill={maxStroke} />
+        ))}
+
+        {/* Show raw maxPossible when it changes (elastic scaling). */}
+        {series.map((p, i) => {
+          const prev = i > 0 ? series[i - 1] : null
+          if (i !== 0 && prev && prev.maxPossible === p.maxPossible) return null
+          const x = points[i]?.x
+          if (!Number.isFinite(x)) return null
+          return (
+            <text
+              key={`maxlabel-${p.date}`}
+              x={x}
+              y={plotTop + 14}
+              fontSize={axisFontSize}
+              textAnchor="middle"
+              fill={axisTextFill}
+            >
+              {p.maxPossible}
+            </text>
+          )
+        })}
+
+        {/* Main series — Option B (gradient-by-segment). */}
+        <path
+          d={mainSeries.lineD}
+          fill="none"
+          stroke={mainGlowStroke}
+          strokeWidth={glowStrokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={glowOpacity}
+          filter="url(#overviewChartGlow)"
+        />
+        {mainGradientSegments.map((seg, idx) => (
+          <path
+            key={`main-${idx}`}
+            d={`M ${seg.x1.toFixed(1)} ${seg.y1.toFixed(1)} L ${seg.x2.toFixed(1)} ${seg.y2.toFixed(1)}`}
+            fill="none"
+            stroke={seg.color}
+            strokeWidth={primaryStrokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+        {mainSeries.points.map((p) => (
+          <circle
+            key={p.date}
+            cx={p.x}
+            cy={p.y}
+            r={primaryPointRadius}
+            fill={scoreToColor(p.value, yMax)}
+            stroke={zeroAxisStroke}
+            strokeWidth={0.8}
+          />
+        ))}
+      </svg>
+    )
+  }, [series, yMax])
+
+  return (
+    <div className={styles.chartWrap}>
+      <div className={styles.chartInlineLegend} aria-hidden>
+        <span className={styles.chartLegendItem}>
+          <span className={styles.chartLegendSwatchPrimary} />
+          Rezultāts
+        </span>
+        <span className={styles.chartLegendItem}>
+          <span className={styles.chartLegendSwatchMax} />
+          Maks.
+        </span>
+      </div>
+      {chart}
+    </div>
+  )
+}

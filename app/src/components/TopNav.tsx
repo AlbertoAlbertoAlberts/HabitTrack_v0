@@ -1,6 +1,7 @@
 import type { ThemeMode } from '../domain/types'
 import { appStore } from '../domain/store/appStore'
 import { useAppState } from '../domain/store/useAppStore'
+import { NavLink } from 'react-router-dom'
 
 import styles from './TopNav.module.css'
 
@@ -15,6 +16,26 @@ export function TopNav() {
     <header className={styles.header}>
       <div className={styles.left}>
         <div className={styles.brand}>HabitTrack</div>
+
+        <nav className={styles.toggle} aria-label="Section">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              [styles.toggleBtn, isActive ? styles.toggleBtnActive : ''].filter(Boolean).join(' ')
+            }
+          >
+            Habit
+          </NavLink>
+          <NavLink
+            to="/lab"
+            className={({ isActive }) =>
+              [styles.toggleBtn, isActive ? styles.toggleBtnActive : ''].filter(Boolean).join(' ')
+            }
+          >
+            Lab
+          </NavLink>
+        </nav>
       </div>
 
       <div className={styles.right}>

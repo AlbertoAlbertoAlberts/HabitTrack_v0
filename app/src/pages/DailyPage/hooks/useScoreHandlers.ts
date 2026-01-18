@@ -8,9 +8,6 @@ export function useScoreHandlers(
   activeDateRef: React.MutableRefObject<LocalDateString>,
   flushPendingPriorityChanges: () => void,
 ) {
-  const isLocked = appStore.selectors.isLocked(selectedDate)
-  const canEdit = !isLocked
-
   // Commit previous date when selectedDate changes.
   useEffect(() => {
     const previous = activeDateRef.current
@@ -60,8 +57,6 @@ export function useScoreHandlers(
   }, [selectedDate])
 
   return {
-    isLocked,
-    canEdit,
     setScore,
     goToPreviousDay,
     goToNextDay,

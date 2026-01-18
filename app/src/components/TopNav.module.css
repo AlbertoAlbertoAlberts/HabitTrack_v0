@@ -78,6 +78,9 @@
 }
 
 .toggleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   height: 32px;
   padding: 0 12px;
   border-radius: 999px;
@@ -88,6 +91,7 @@
   letter-spacing: 0.2px;
   cursor: pointer;
   opacity: 0.78;
+  line-height: 1;
 }
 
 .toggleBtn:hover {
@@ -99,6 +103,7 @@
   opacity: 1;
   border-color: var(--border);
   background: var(--accent-soft);
+  box-shadow: var(--focus-ring);
 }
 
 .toggleBtn:focus-visible,

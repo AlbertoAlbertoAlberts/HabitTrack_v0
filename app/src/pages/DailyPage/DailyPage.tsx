@@ -178,7 +178,7 @@ export function DailyPage() {
     return next
   }
 
-  const { setScore, isLocked, goToPreviousDay, goToNextDay } = useScoreHandlers(
+  const { setScore, goToPreviousDay, goToNextDay } = useScoreHandlers(
     state.uiState.selectedDate,
     activeDateRef,
     flushPendingPriorityChanges,
@@ -187,6 +187,7 @@ export function DailyPage() {
   const {
     today,
     selectedDate,
+    isLocked,
     currentWeekStart,
     formatDateLabel,
     categories,
@@ -197,7 +198,7 @@ export function DailyPage() {
     weeklyTasks,
     weekStartDate,
     weekEndDate,
-  } = useDailyData(state)
+  } = useDailyData(state.uiState.selectedDate)
 
   function downloadTextFile(filename: string, text: string) {
     const blob = new Blob([text], { type: 'application/json;charset=utf-8' })

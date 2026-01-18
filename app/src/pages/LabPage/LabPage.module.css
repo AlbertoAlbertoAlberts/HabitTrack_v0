@@ -1,0 +1,44 @@
+.page {
+  grid-template-columns: 1fr;
+}
+
+.panel {
+  border-radius: 16px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.emptyState {
+  padding: 6px 2px;
+}
+
+.emptyTitle {
+  font-weight: 900;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.emptyBody {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 13px;
+  max-width: 72ch;
+}
