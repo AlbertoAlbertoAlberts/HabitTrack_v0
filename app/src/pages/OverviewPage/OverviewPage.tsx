@@ -10,7 +10,6 @@ import { useOverviewData } from './hooks/useOverviewData'
 
 import sharedStyles from '../../components/ui/shared.module.css'
 import styles from './OverviewPage.module.css'
-import navButtonStyles from '../DailyPage/components/LeftNavButtons.module.css'
 
 function formatDateLabel(date: string): string {
   // Input is YYYY-MM-DD (local). Display as DD.MM.YYYY.
@@ -103,10 +102,10 @@ export function OverviewPage() {
 
         <aside className={styles.leftCol}>
           <section className={`${sharedStyles.panel} ${styles.sidebarPanel}`} aria-label="Pārskata sānu sadaļa">
-            <div className={navButtonStyles.leftNav}>
+            <div className={sharedStyles.leftNav}>
               <Link
                 to="/"
-                className={navButtonStyles.navBtn}
+                className={sharedStyles.navBtn}
                 onClick={() => {
                   appStore.actions.setSelectedDate(todayLocalDateString())
                 }}
@@ -116,14 +115,14 @@ export function OverviewPage() {
 
               <button
                 type="button"
-                className={`${navButtonStyles.navBtn} ${rangeDays === 7 ? navButtonStyles.navBtnActive : ''}`}
+                className={`${sharedStyles.navBtn} ${rangeDays === 7 ? sharedStyles.navBtnActive : ''}`}
                 onClick={() => appStore.actions.setOverviewRangeDays(7)}
               >
                 7 dienas
               </button>
               <button
                 type="button"
-                className={`${navButtonStyles.navBtn} ${rangeDays === 30 ? navButtonStyles.navBtnActive : ''}`}
+                className={`${sharedStyles.navBtn} ${rangeDays === 30 ? sharedStyles.navBtnActive : ''}`}
                 onClick={() => appStore.actions.setOverviewRangeDays(30)}
               >
                 30 dienas

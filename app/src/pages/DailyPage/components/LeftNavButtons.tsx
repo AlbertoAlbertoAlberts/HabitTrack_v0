@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 
 import type { DailyViewMode } from '../../../domain/types'
 
-import styles from './LeftNavButtons.module.css'
+import styles from '../../../components/ui/shared.module.css'
 
 interface LeftNavButtonsProps {
   activeMode: DailyViewMode

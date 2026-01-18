@@ -174,6 +174,19 @@ Create `app/src/components/ui/` with ONLY a few primitives:
 Do not create a full design system.  
 Only refactor repeated patterns if it reduces code in multiple places.
 
+**Status: IN PROGRESS**
+
+### 6.1 Navigation button consolidation ✅
+- Moved `.navBtn`, `.navBtnActive`, `.leftNav` from `LeftNavButtons.module.css` → `shared.module.css`
+- Updated imports in 3 files: LeftNavButtons, OverviewPage, OverviewFilters
+- Removed awkward cross-import from OverviewPage → DailyPage
+- LeftNavButtons.module.css now empty (can be deleted)
+- Build passing
+
+### 6.2 Icon button consolidation (TODO)
+- Consolidate `.iconBtn` from DailyShared.module.css and WeeklyTaskTile.module.css
+- Create size variants if needed
+
 ---
 
 ## Commit discipline
