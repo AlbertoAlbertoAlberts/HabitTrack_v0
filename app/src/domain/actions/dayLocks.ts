@@ -1,29 +1,14 @@
-import type { AppStateV1, IsoTimestamp, LocalDateString } from '../types'
-import { todayLocalDateString } from '../utils/localDate'
-
-function nowIso(): IsoTimestamp {
-  return new Date().toISOString()
-}
+import type { AppStateV1, LocalDateString } from '../types'
 
 export function isLocked(state: AppStateV1, date: LocalDateString): boolean {
-  // Policy: "today" stays editable even if a lock record exists.
-  if (date === todayLocalDateString()) return false
-  return Boolean(state.dayLocks[date])
+  void state
+  void date
+  // All days are editable.
+  return false
 }
 
 export function commitIfNeeded(state: AppStateV1, date: LocalDateString): AppStateV1 {
-  // Never auto-lock "today" so you can keep updating throughout the day.
-  if (date === todayLocalDateString()) return state
-  if (state.dayLocks[date]) return state
-
-  const scoresForDate = state.dailyScores[date]
-  if (!scoresForDate || Object.keys(scoresForDate).length === 0) return state
-
-  return {
-    ...state,
-    dayLocks: {
-      ...state.dayLocks,
-      [date]: nowIso(),
-    },
-  }
+  void date
+  // No-op: we no longer lock days on leave.
+  return state
 }
