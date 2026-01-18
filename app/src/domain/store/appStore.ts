@@ -146,8 +146,8 @@ export const appStore = {
     },
 
     // Overview UI state
-    setOverviewRangeDays() {
-      setState(setOverviewRangeDays(state))
+    setOverviewRangeDays(rangeDays: 7 | 30) {
+      setState(setOverviewRangeDays(state, rangeDays))
     },
     shiftOverviewWindow(direction: -1 | 1) {
       setState(shiftOverviewWindow(state, direction))

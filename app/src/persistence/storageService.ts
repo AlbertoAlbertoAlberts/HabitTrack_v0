@@ -121,8 +121,8 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     if (!dayLocks[date]) dayLocks[date] = repairNow
   }
 
-  // UI state repair (Overview): week-based only (Monday–Sunday).
-  const overviewRangeDays = 7
+  // UI state repair (Overview): clamp values.
+  const overviewRangeDays = state.uiState.overviewRangeDays === 7 ? 7 : 30
 
   const themeMode: ThemeMode =
     state.uiState.themeMode === 'light' ||

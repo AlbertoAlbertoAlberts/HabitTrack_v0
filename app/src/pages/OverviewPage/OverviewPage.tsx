@@ -283,14 +283,18 @@ export function OverviewPage() {
 
   const currentWeekStart = useMemo(() => weekStartMonday(todayLocalDateString()), [])
 
-  // Overview is always shown as a Monday–Sunday week window.
-  // `overviewWindowEndDate` acts as an anchor date (clamped to today in state);
-  // we snap the visible window to the week containing that date.
   const anchorDate = state.uiState.overviewWindowEndDate
-  const rangeDays = 7
+  const rangeDays = state.uiState.overviewRangeDays
 
-  const startDate = useMemo(() => weekStartMonday(anchorDate), [anchorDate])
-  const endDate = useMemo(() => addDays(startDate, 6), [startDate])
+  const { startDate, endDate } = useMemo(() => {
+    if (rangeDays === 7) {
+      const start = weekStartMonday(anchorDate)
+      return { startDate: start, endDate: addDays(start, 6) }
+    }
+
+    const end = anchorDate
+    return { startDate: addDays(end, -(rangeDays - 1)), endDate: end }
+  }, [anchorDate, rangeDays])
 
   const weeklyTasks = useMemo(
     () => Object.values(state.weeklyTasks).slice().sort((a, b) => a.sortIndex - b.sortIndex),
@@ -742,6 +746,21 @@ export function OverviewPage() {
               >
                 SĀKUMA LAPA
               </Link>
+
+              <button
+                type="button"
+                className={`${navButtonStyles.navBtn} ${rangeDays === 7 ? navButtonStyles.navBtnActive : ''}`}
+                onClick={() => appStore.actions.setOverviewRangeDays(7)}
+              >
+                7 dienas
+              </button>
+              <button
+                type="button"
+                className={`${navButtonStyles.navBtn} ${rangeDays === 30 ? navButtonStyles.navBtnActive : ''}`}
+                onClick={() => appStore.actions.setOverviewRangeDays(30)}
+              >
+                30 dienas
+              </button>
             </div>
 
             <div className={styles.sidebarStack}>

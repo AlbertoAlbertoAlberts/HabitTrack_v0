@@ -72,9 +72,8 @@ export function setThemeMode(state: AppStateV1, themeMode: ThemeMode): AppStateV
   }
 }
 
-export function setOverviewRangeDays(state: AppStateV1): AppStateV1 {
-  // Overview is week-based only (Monday–Sunday).
-  const normalized: OverviewRangeDays = 7
+export function setOverviewRangeDays(state: AppStateV1, rangeDays: OverviewRangeDays): AppStateV1 {
+  const normalized: OverviewRangeDays = rangeDays === 7 ? 7 : 30
 
   const nextUi: UiStateV1 = {
     ...state.uiState,
@@ -147,8 +146,7 @@ export function setOverviewWindowEndDate(state: AppStateV1, endDate: LocalDateSt
 }
 
 export function shiftOverviewWindow(state: AppStateV1, direction: -1 | 1): AppStateV1 {
-  // Overview is week-based only (Monday–Sunday).
-  const delta = 7 * direction
+  const delta = state.uiState.overviewRangeDays * direction
   const nextEnd = addDays(state.uiState.overviewWindowEndDate, delta)
   return setOverviewWindowEndDate(state, nextEnd)
 }
