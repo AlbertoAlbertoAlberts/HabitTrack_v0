@@ -1,6 +1,4 @@
-.selectionPanel {
-  /* No additional styles needed, uses parent panel styles */
-}
+/* Selection panel inherits parent styles */
 
 .panelTitle {
   margin: 0 0 8px;

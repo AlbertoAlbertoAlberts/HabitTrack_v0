@@ -1,5 +1,6 @@
 import type { OverviewMode, Category, Habit } from '../../../domain/types'
 import { appStore } from '../../../domain/store/appStore'
+import sharedStyles from '../../../components/ui/shared.module.css'
 import styles from './OverviewSelectionList.module.css'
 
 type OverviewSelectionListProps = {
@@ -23,7 +24,7 @@ export function OverviewSelectionList({
   const showHabitList = mode === 'habit'
 
   return (
-    <section className={styles.selectionPanel}>
+    <section className={sharedStyles.panel}>
       <h3 className={styles.panelTitle}>Atlase</h3>
 
       {showCategoryList ? (
