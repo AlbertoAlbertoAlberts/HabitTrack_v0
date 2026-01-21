@@ -35,24 +35,25 @@ function buildSeries(
 ): ChartPoint[] {
   const today = todayLocalDateString()
   
-  return dates.map((date) => {
-    const scores = dailyScores[date] ?? {}
+  return dates
+    .filter((date) => date <= today) // Only include dates up to today
+    .map((date) => {
+      const scores = dailyScores[date] ?? {}
 
-    const activeHabitIds = habitIds.filter((id) => {
-      const h = habitsById[id]
-      if (!h) return false
-      const start = h.startDate
-      return !start || date >= start
+      const activeHabitIds = habitIds.filter((id) => {
+        const h = habitsById[id]
+        if (!h) return false
+        const start = h.startDate
+        return !start || date >= start
+      })
+
+      const maxPossible = activeHabitIds.length * 2
+      let earned = 0
+      for (const id of activeHabitIds) earned += scores[id] ?? 0
+
+      const value = maxPossible > 0 ? earned / maxPossible : 0
+      return { date, value, earned, maxPossible }
     })
-
-    const maxPossible = activeHabitIds.length * 2
-    let earned = 0
-    for (const id of activeHabitIds) earned += scores[id] ?? 0
-
-    // Only show data for dates up to today
-    const value = date <= today && maxPossible > 0 ? earned / maxPossible : 0
-    return { date, value, earned, maxPossible }
-  })
 }
 
 function clampInt(value: number, min: number, max: number): number {
