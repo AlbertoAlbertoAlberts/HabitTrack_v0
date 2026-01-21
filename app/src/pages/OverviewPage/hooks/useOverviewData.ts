@@ -33,6 +33,8 @@ function buildSeries(
   habitIds: string[],
   habitsById: Record<string, Habit>,
 ): ChartPoint[] {
+  const today = todayLocalDateString()
+  
   return dates.map((date) => {
     const scores = dailyScores[date] ?? {}
 
@@ -47,7 +49,8 @@ function buildSeries(
     let earned = 0
     for (const id of activeHabitIds) earned += scores[id] ?? 0
 
-    const value = maxPossible > 0 ? earned / maxPossible : 0
+    // Only show data for dates up to today
+    const value = date <= today && maxPossible > 0 ? earned / maxPossible : 0
     return { date, value, earned, maxPossible }
   })
 }
