@@ -1,5 +1,5 @@
 import type { AppStateV1 } from '../domain/types'
-import { repairState } from './storageService'
+import { repairState, wasBootstrappedFromEmptyState } from './storageService'
 import { getSupabaseClient } from './supabaseClient'
 import { appStore } from '../domain/store/appStore'
 
@@ -122,6 +122,15 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   if (!remoteRow?.state) {
     // First-time migration: push local state to Supabase.
     await upsertRemoteState(userId, local)
+    return
+  }
+
+  // If this browser started from an empty localStorage (new device/incognito),
+  // prefer remote to avoid treating a freshly-created default state as authoritative.
+  if (wasBootstrappedFromEmptyState()) {
+    suppressNextPush = true
+    appStore.hydrate(repairState(remoteRow.state))
+    setStatus({ lastPulledAt: new Date().toISOString(), lastError: null })
     return
   }
 

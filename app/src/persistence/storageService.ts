@@ -12,6 +12,12 @@ import type {
 const STORAGE_KEY = 'habitTracker.appState'
 const CURRENT_SCHEMA_VERSION: SchemaVersion = 1
 
+let bootstrappedFromEmpty = false
+
+export function wasBootstrappedFromEmptyState(): boolean {
+  return bootstrappedFromEmpty
+}
+
 type ImportResult = { ok: true } | { ok: false; error: string }
 
 /**
@@ -545,6 +551,7 @@ export function createDefaultState(now: Date = new Date()): AppStateV1 {
 export function loadState(): AppStateV1 {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) {
+    bootstrappedFromEmpty = true
     const initial = createDefaultState()
     return saveState(initial)
   }
