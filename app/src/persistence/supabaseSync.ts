@@ -85,7 +85,7 @@ async function withTimeout<T>(promiseLike: PromiseLike<T>, ms: number, label: st
   }
 }
 
-async function pullRemoteState(userId: string): Promise<AppStateV1 | null> {
+async function pullRemoteRow(userId: string): Promise<AppStatesRow | null> {
   const supabase = getSupabaseClient()
   if (!supabase) return null
 
@@ -112,8 +112,36 @@ async function pullRemoteState(userId: string): Promise<AppStateV1 | null> {
     return null
   }
 
-  if (!data?.state) return null
-  return data.state
+  return data
+}
+
+async function reconcileRemoteLocal(userId: string): Promise<void> {
+  const local = appStore.getState()
+  const remoteRow = await pullRemoteRow(userId)
+
+  if (!remoteRow?.state) {
+    // First-time migration: push local state to Supabase.
+    await upsertRemoteState(userId, local)
+    return
+  }
+
+  // Prefer comparing the canonical savedAt values.
+  const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
+  const localSavedAt = local.savedAt
+
+  // If local is newer (or equal), keep local and push it up.
+  // This avoids losing recent local edits if a stale remote pull happens.
+  if (localSavedAt >= remoteSavedAt) {
+    if (localSavedAt > remoteSavedAt) {
+      await upsertRemoteState(userId, local)
+    }
+    return
+  }
+
+  // Remote is newer → hydrate local from remote.
+  suppressNextPush = true
+  appStore.hydrate(repairState(remoteRow.state))
+  setStatus({ lastPulledAt: new Date().toISOString(), lastError: null })
 }
 
 async function upsertRemoteState(userId: string, state: AppStateV1): Promise<void> {
@@ -182,19 +210,11 @@ export function startSupabaseSync(): void {
         email: session.user.email ?? null,
       })
 
-      const remote = await pullRemoteState(session.user.id)
-      if (remote) {
-        suppressNextPush = true
-        appStore.hydrate(repairState(remote))
-        setStatus({ lastPulledAt: new Date().toISOString(), lastError: null })
-      } else {
-        // First-time migration: push local state to Supabase.
-        await upsertRemoteState(session.user.id, appStore.getState())
-      }
+      await reconcileRemoteLocal(session.user.id)
     }
   })()
 
-  supabase.auth.onAuthStateChange(async (_event, session) => {
+  supabase.auth.onAuthStateChange(async (event, session) => {
     if (!session?.user) {
       setStatus({ signedIn: false, userId: null, email: null })
       return
@@ -202,13 +222,12 @@ export function startSupabaseSync(): void {
 
     setStatus({ signedIn: true, userId: session.user.id, email: session.user.email ?? null })
 
-    const remote = await pullRemoteState(session.user.id)
-    if (remote) {
-      suppressNextPush = true
-      appStore.hydrate(repairState(remote))
-      setStatus({ lastPulledAt: new Date().toISOString(), lastError: null })
-    } else {
-      await upsertRemoteState(session.user.id, appStore.getState())
+    // Avoid re-pulling and overwriting local edits on token refresh.
+    if (event === 'TOKEN_REFRESHED') return
+
+    if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      await reconcileRemoteLocal(session.user.id)
+      return
     }
   })
 
