@@ -52,6 +52,16 @@ export function subscribeSupabaseSync(listener: SyncListener): () => void {
   return () => listeners.delete(listener)
 }
 
+export async function forceSupabasePush(): Promise<void> {
+  const s = status
+  if (!s.configured || !s.signedIn || !s.userId) {
+    setStatus({ lastError: 'Not signed in to Supabase.' })
+    return
+  }
+
+  await upsertRemoteState(s.userId, appStore.getState())
+}
+
 let started = false
 let suppressNextPush = false
 let pushTimer: number | null = null

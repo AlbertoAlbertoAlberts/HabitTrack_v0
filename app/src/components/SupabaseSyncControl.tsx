@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from './ui/Dialog'
 import navStyles from './TopNav.module.css'
 import { getSupabaseClient, isSupabaseConfigured } from '../persistence/supabaseClient'
-import { getSupabaseSyncStatus, subscribeSupabaseSync } from '../persistence/supabaseSync'
+import { forceSupabasePush, getSupabaseSyncStatus, subscribeSupabaseSync } from '../persistence/supabaseSync'
 
 export function SupabaseSyncControl() {
   const [open, setOpen] = useState(false)
@@ -67,6 +67,25 @@ export function SupabaseSyncControl() {
     }
   }
 
+  async function forcePushNow() {
+    setBusy(true)
+    setMessage(null)
+    try {
+      await forceSupabasePush()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function formatTime(value: string | null): string {
+    if (!value) return '—'
+    try {
+      return new Date(value).toLocaleString()
+    } catch {
+      return value
+    }
+  }
+
   return (
     <>
       <button
@@ -91,6 +110,13 @@ export function SupabaseSyncControl() {
           ) : status.signedIn ? (
             <div className={dialogStyles.hint}>
               Signed in{status.email ? ` as ${status.email}` : ''}. Changes sync automatically.
+
+              <div style={{ marginTop: 8, fontSize: 12, opacity: 0.9 }}>
+                Last pulled: {formatTime(status.lastPulledAt)}
+                <br />
+                Last pushed: {formatTime(status.lastPushedAt)}
+              </div>
+
               {status.lastError ? (
                 <div style={{ marginTop: 8, color: 'var(--danger)' }}>Last sync error: {status.lastError}</div>
               ) : null}
@@ -122,6 +148,9 @@ export function SupabaseSyncControl() {
             <>
               <button type="button" className={dialogStyles.btn} onClick={() => setOpen(false)} disabled={busy}>
                 Close
+              </button>
+              <button type="button" className={dialogStyles.btn} onClick={forcePushNow} disabled={busy}>
+                Force push now
               </button>
               <button type="button" className={dialogStyles.btn} onClick={signOut} disabled={busy}>
                 Sign out
