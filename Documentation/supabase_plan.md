@@ -149,17 +149,26 @@ In Supabase:
   - `VITE_SUPABASE_URL=...`
   - `VITE_SUPABASE_ANON_KEY=...`
 
-### 2.3 Implement a persistence adapter
+Notes:
+- Vite reads env vars at startup, so restart `npm run dev` after adding/changing `app/.env.local`.
+- In Supabase Dashboard → Authentication → URL Configuration, ensure redirect URLs include:
+  - `http://localhost:5173`
+  - `http://localhost:5173/*`
 
-Current persistence is `localStorage` via `loadState()` / `saveState()` in `app/src/persistence/storageService.ts`.
+### 2.3 Implement Supabase sync (current approach)
 
-Plan:
-- Add a Supabase-backed storage module, e.g.:
-  - `app/src/persistence/supabaseStorage.ts`
-- Keep `storageService.ts` as the “local” implementation.
-- Add a tiny abstraction so the app can switch between:
-  - Local only
-  - Supabase (with local cache)
+Current persistence is still `localStorage` via `loadState()` / `saveState()` in `app/src/persistence/storageService.ts`.
+
+What’s implemented:
+- A Supabase client wrapper: `app/src/persistence/supabaseClient.ts`
+- A sync engine that:
+  - hydrates from Supabase on login (remote wins when it exists)
+  - does a first-time migration upsert when no remote row exists
+  - debounces pushes on local changes
+  - exposes basic sync status for UI
+  - `app/src/persistence/supabaseSync.ts`
+- A small TopNav UI control to sign in with magic link and sign out:
+  - `app/src/components/SupabaseSyncControl.tsx`
 
 ### 2.4 Auth UX
 
@@ -185,6 +194,13 @@ On startup:
    - Fetch `app_states` row.
    - If it exists → use it as source of truth.
    - If it does not exist → run migration upload (Phase 3).
+
+### 2.7 Pre-Phase 3 checklist (do this before migration testing)
+
+1) Create `app/.env.local` and restart dev server.
+2) Confirm Supabase Auth redirect URLs are set (see notes in 2.2).
+3) Confirm `app_states` exists and RLS policies are enabled (Phase 1.4).
+4) Have your local backup JSON from Phase 0 available.
 
 ---
 
