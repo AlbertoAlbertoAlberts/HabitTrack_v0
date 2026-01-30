@@ -67,15 +67,45 @@ let suppressNextPush = false
 let pushTimer: number | null = null
 let lastPushedSavedAt: string | null = null
 
+const REQUEST_TIMEOUT_MS = 10_000
+
+async function withTimeout<T>(promiseLike: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  let timeoutId: number | null = null
+  const promise = Promise.resolve(promiseLike as unknown as T)
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(`${label} timed out after ${ms}ms`))
+    }, ms)
+  })
+
+  try {
+    return await Promise.race([promise, timeoutPromise])
+  } finally {
+    if (timeoutId) window.clearTimeout(timeoutId)
+  }
+}
+
 async function pullRemoteState(userId: string): Promise<AppStateV1 | null> {
   const supabase = getSupabaseClient()
   if (!supabase) return null
 
-  const { data, error } = await supabase
-    .from('app_states')
-    .select('user_id, schema_version, state, saved_at')
-    .eq('user_id', userId)
-    .maybeSingle<AppStatesRow>()
+  let data: AppStatesRow | null = null
+  let error: { message: string } | null = null
+
+  try {
+    ;({ data, error } = await withTimeout(
+      supabase
+        .from('app_states')
+        .select('user_id, schema_version, state, saved_at')
+        .eq('user_id', userId)
+        .maybeSingle<AppStatesRow>(),
+      REQUEST_TIMEOUT_MS,
+      'Supabase pull',
+    ))
+  } catch (e) {
+    setStatus({ lastError: e instanceof Error ? e.message : 'Supabase pull failed.' })
+    return null
+  }
 
   if (error) {
     setStatus({ lastError: error.message })
@@ -97,9 +127,19 @@ async function upsertRemoteState(userId: string, state: AppStateV1): Promise<voi
     saved_at: state.savedAt,
   }
 
-  const { error } = await supabase.from('app_states').upsert(payload)
-  if (error) {
-    setStatus({ lastError: error.message })
+  try {
+    const result = await withTimeout(
+      supabase.from('app_states').upsert(payload, { onConflict: 'user_id' }),
+      REQUEST_TIMEOUT_MS,
+      'Supabase push',
+    )
+    const error = (result as { error?: { message: string } | null }).error
+    if (error) {
+      setStatus({ lastError: error.message })
+      return
+    }
+  } catch (e) {
+    setStatus({ lastError: e instanceof Error ? e.message : 'Supabase push failed.' })
     return
   }
 
