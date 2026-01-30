@@ -112,7 +112,39 @@
   box-shadow: var(--focus-ring);
 }
 
+@media (max-width: 760px) {
+  .header {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .left {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .toggle,
+  .nav {
+    flex-wrap: wrap;
+  }
+}
+
 @media (max-width: 520px) {
+  .header {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .left {
+    gap: 10px;
+  }
+
   .brand {
     font-size: 14px;
   }

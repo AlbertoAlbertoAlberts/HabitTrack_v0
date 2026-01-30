@@ -53,10 +53,24 @@ export function RightTodosPanel({
   return (
     <section className={`${uiStyles.panel} ${layoutStyles.todoPanel}`}>
       <div className={styles.todoHeaderRow}>
-        <div className={styles.todoHeaderSpacer} aria-hidden="true" />
+        <div className={`${uiStyles.panelHeaderActions} ${styles.todoHeaderLeftActions}`}>
+          <button
+            type="button"
+            className={styles.addTodoBtn}
+            aria-label="Pievienot uzdevumu"
+            title="Pievienot uzdevumu"
+            onClick={() => {
+              onSetTodoMode('normal')
+              onOpenAddTodo()
+              onCloseTodoMenu()
+            }}
+          >
+            +
+          </button>
+        </div>
         <h2 className={styles.todoTitle}>Uzdevumi</h2>
 
-        <div className={uiStyles.panelHeaderActions}>
+        <div className={`${uiStyles.panelHeaderActions} ${styles.todoHeaderActions}`}>
           {todoMode !== 'normal' ? (
             <button
               type="button"

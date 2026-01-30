@@ -11,6 +11,8 @@
   --bg: #f4f5f7;
   --panel-bg: rgba(255, 255, 255, 0.72);
   --panel-bg-strong: rgba(255, 255, 255, 0.92);
+  --panel-bg-opaque: #ffffff;
+  --panel-bg-strong-opaque: #ffffff;
   --border: rgba(17, 24, 39, 0.12);
   --text: #0f172a;
   --muted: rgba(15, 23, 42, 0.64);
@@ -69,6 +71,8 @@
     /* Opaque surfaces in dark mode (no see-through cards) */
     --panel-bg: rgba(15, 20, 28, 0.96);
     --panel-bg-strong: rgba(15, 20, 28, 0.98);
+    --panel-bg-opaque: rgb(15, 20, 28);
+    --panel-bg-strong-opaque: rgb(15, 20, 28);
     --border: rgba(255, 255, 255, 0.10);
     --text: rgba(255, 255, 255, 0.92);
     --muted: rgba(255, 255, 255, 0.62);
@@ -105,6 +109,8 @@ html[data-theme='light'] {
   --bg: #f4f5f7;
   --panel-bg: rgba(255, 255, 255, 0.72);
   --panel-bg-strong: rgba(255, 255, 255, 0.92);
+  --panel-bg-opaque: #ffffff;
+  --panel-bg-strong-opaque: #ffffff;
   --border: rgba(17, 24, 39, 0.12);
   --text: #0f172a;
   --muted: rgba(15, 23, 42, 0.64);
@@ -141,6 +147,8 @@ html[data-theme='dark'] {
   /* Opaque surfaces in dark mode (no see-through cards) */
   --panel-bg: rgba(15, 20, 28, 0.96);
   --panel-bg-strong: rgba(15, 20, 28, 0.98);
+  --panel-bg-opaque: rgb(15, 20, 28);
+  --panel-bg-strong-opaque: rgb(15, 20, 28);
   --border: rgba(255, 255, 255, 0.10);
   --text: rgba(255, 255, 255, 0.92);
   --muted: rgba(255, 255, 255, 0.62);

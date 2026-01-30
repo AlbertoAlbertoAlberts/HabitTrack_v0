@@ -1,7 +1,6 @@
 .scrollArea {
   flex: 1;
   overflow-y: auto;
-  overscroll-behavior-y: contain;
   padding: 10px 8px 12px;
   scroll-padding-bottom: 28px;
 }

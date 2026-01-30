@@ -92,6 +92,9 @@
 .body {
   display: grid;
   gap: 10px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .row {
@@ -179,4 +182,20 @@
   font-size: 12px;
   color: var(--muted);
   line-height: 1.35;
+}
+
+@media (max-width: 560px) {
+  .panel {
+    width: calc(100vw - 20px);
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }

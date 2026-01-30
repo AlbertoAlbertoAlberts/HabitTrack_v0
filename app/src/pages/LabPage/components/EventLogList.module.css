@@ -1,0 +1,456 @@
+.container {
+  margin-top: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.severityNudge {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 193, 7, 0.25);
+  background: rgba(255, 193, 7, 0.08);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.severityNudgeText {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.severityNudgeBtn {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.severityNudgeBtn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.addButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.addButton:hover {
+  opacity: 0.9;
+}
+
+.form {
+  padding: 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+}
+
+.formHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.formHeader h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.closeButton {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: var(--btn-bg);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text);
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+
+.closeButton:hover {
+  background: var(--btn-bg-hover);
+}
+
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.input {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.textarea {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.tagsSection {
+  margin-bottom: 10px;
+}
+
+.tagGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tagLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.tagLabel input[type='checkbox'] {
+  cursor: pointer;
+}
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.cancelButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+
+.cancelButton:hover {
+  background: var(--btn-bg-hover);
+}
+
+.saveButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.saveButton:hover {
+  opacity: 0.9;
+}
+
+.empty {
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.logList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.logList::-webkit-scrollbar {
+  width: 10px;
+}
+
+.logList::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.logList::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.logItem {
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  overflow: hidden;
+}
+
+.logHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+
+.logHeader:hover {
+  background: var(--hover);
+}
+
+.logTime {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 100px;
+}
+
+.logTags {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+@media (max-width: 560px) {
+  .header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .addButton {
+    padding: 10px 14px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+
+  .closeButton {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 16px;
+  }
+
+  .severityNudge {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .severityNudgeBtn {
+    width: 100%;
+    white-space: normal;
+  }
+
+  .logHeader {
+    flex-wrap: wrap;
+  }
+
+  .logTime {
+    min-width: 0;
+  }
+
+  .logTags {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tagGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cancelButton,
+  .saveButton,
+  .editButton {
+    width: 100%;
+  }
+
+  .deleteButton {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 16px;
+  }
+}
+
+.severityBadge {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text);
+  background: rgba(120, 120, 120, 0.15);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.logDetails {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.logNote {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.logActions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.editButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+
+.editButton:hover {
+  background: var(--btn-bg-hover);
+}
+
+.intensityList {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.intensityTitle {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.intensityRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.intensityName {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.intensityUnit {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.deleteButton {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--muted);
+  transition: all var(--t-fast) var(--ease-out);
+}
+
+.deleteButton:hover {
+  background: var(--btn-bg-hover);
+  color: var(--text);
+}

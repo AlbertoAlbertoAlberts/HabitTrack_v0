@@ -56,29 +56,89 @@ function buildLinearPathD(points: Array<Pick<SvgPoint, 'x' | 'y'>>): string {
     .join(' ')
 }
 
-function buildSmoothPathD(points: Array<Pick<SvgPoint, 'x' | 'y'>>): string {
-  if (points.length <= 2) return buildLinearPathD(points)
+function computeMonotoneBeziers(points: SvgPoint[]): BezierSeg[] {
+  if (points.length < 2) return []
 
-  const alpha = 1
-  const clampPoint = (idx: number) => points[Math.max(0, Math.min(points.length - 1, idx))]
+  const n = points.length
+  const d: number[] = new Array(Math.max(0, n - 1))
+  const m: number[] = new Array(n)
 
-  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
-
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = clampPoint(i - 1)
-    const p1 = clampPoint(i)
-    const p2 = clampPoint(i + 1)
-    const p3 = clampPoint(i + 2)
-
-    const cp1x = p1.x + ((p2.x - p0.x) / 6) * alpha
-    const cp1y = p1.y + ((p2.y - p0.y) / 6) * alpha
-    const cp2x = p2.x - ((p3.x - p1.x) / 6) * alpha
-    const cp2y = p2.y - ((p3.y - p1.y) / 6) * alpha
-
-    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)} ${cp2x.toFixed(1)} ${cp2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`
+  for (let i = 0; i < n - 1; i++) {
+    const dx = points[i + 1].x - points[i].x
+    const dy = points[i + 1].y - points[i].y
+    d[i] = dx !== 0 ? dy / dx : 0
   }
 
-  return d
+  m[0] = d[0] ?? 0
+  m[n - 1] = d[n - 2] ?? 0
+
+  for (let i = 1; i < n - 1; i++) {
+    const d0 = d[i - 1] ?? 0
+    const d1 = d[i] ?? 0
+    m[i] = d0 * d1 <= 0 ? 0 : (d0 + d1) / 2
+  }
+
+  // Fritsch–Carlson monotone cubic adjustment.
+  for (let i = 0; i < n - 1; i++) {
+    const di = d[i] ?? 0
+    if (di === 0) {
+      m[i] = 0
+      m[i + 1] = 0
+      continue
+    }
+
+    const a = (m[i] ?? 0) / di
+    const b = (m[i + 1] ?? 0) / di
+    const h = Math.hypot(a, b)
+    if (h > 3) {
+      const t = 3 / h
+      m[i] = t * a * di
+      m[i + 1] = t * b * di
+    }
+  }
+
+  const beziers: BezierSeg[] = []
+  for (let i = 0; i < n - 1; i++) {
+    const p1 = points[i]
+    const p2 = points[i + 1]
+    const dx = p2.x - p1.x
+    if (!Number.isFinite(dx) || dx === 0) {
+      beziers.push({
+        p1,
+        cp1: { x: p1.x, y: p1.y },
+        cp2: { x: p2.x, y: p2.y },
+        p2,
+      })
+      continue
+    }
+
+    const cp1x = p1.x + dx / 3
+    const cp1y = p1.y + (m[i] ?? 0) * (dx / 3)
+    const cp2x = p2.x - dx / 3
+    const cp2y = p2.y - (m[i + 1] ?? 0) * (dx / 3)
+
+    beziers.push({
+      p1,
+      cp1: { x: cp1x, y: cp1y },
+      cp2: { x: cp2x, y: cp2y },
+      p2,
+    })
+  }
+
+  return beziers
+}
+
+function buildSmoothPathD(points: SvgPoint[]): string {
+  if (points.length <= 2) return buildLinearPathD(points)
+
+  const beziers = computeMonotoneBeziers(points)
+  if (beziers.length === 0) return buildLinearPathD(points)
+
+  let dStr = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
+  for (const seg of beziers) {
+    dStr += ` C ${seg.cp1.x.toFixed(1)} ${seg.cp1.y.toFixed(1)} ${seg.cp2.x.toFixed(1)} ${seg.cp2.y.toFixed(1)} ${seg.p2.x.toFixed(1)} ${seg.p2.y.toFixed(1)}`
+  }
+  return dStr
 }
 
 type BezierSeg = {
@@ -103,28 +163,7 @@ function buildGradientSegments(
 ): ColoredSegment[] {
   if (points.length < 2) return []
 
-  const alpha = 1
-  const clampPoint = (idx: number) => points[Math.max(0, Math.min(points.length - 1, idx))]
-
-  const beziers: BezierSeg[] = []
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = clampPoint(i - 1)
-    const p1 = clampPoint(i)
-    const p2 = clampPoint(i + 1)
-    const p3 = clampPoint(i + 2)
-
-    const cp1x = p1.x + ((p2.x - p0.x) / 6) * alpha
-    const cp1y = p1.y + ((p2.y - p0.y) / 6) * alpha
-    const cp2x = p2.x - ((p3.x - p1.x) / 6) * alpha
-    const cp2y = p2.y - ((p3.y - p1.y) / 6) * alpha
-
-    beziers.push({
-      p1,
-      cp1: { x: cp1x, y: cp1y },
-      cp2: { x: cp2x, y: cp2y },
-      p2,
-    })
-  }
+  const beziers = computeMonotoneBeziers(points)
 
   function bezierPoint(
     seg: BezierSeg,
@@ -203,8 +242,7 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
     const paddingTop = 10
     const paddingBottom = 28
 
-    // Add a little extra plot breathing room so the smoothed curve/glow can overshoot
-    // slightly without clipping against the viewBox.
+    // A bit of inset keeps the glow from touching the SVG bounds.
     const plotInsetTop = 10
     const plotInsetBottom = 10
 
@@ -221,11 +259,6 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
 
     const mainGlowStroke = 'var(--chart-axis)'
 
-    const maxStroke = 'var(--chart-axis)'
-    const maxStrokeWidth = 2.1
-    const maxPointRadius = 2.7
-    const maxGlowStrokeWidth = 13
-    const maxGlowOpacity = 0.22
     const innerW = width - paddingLeft - paddingRight
     const plotTop = paddingTop + plotInsetTop
     const innerH = height - paddingTop - paddingBottom - plotInsetTop - plotInsetBottom
@@ -237,26 +270,22 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
     for (let v = 0; v <= yMax; v += tickStep) ticks.push(v)
     if (ticks.at(-1) !== yMax) ticks.push(yMax)
 
-    const points: SvgPoint[] = series.map((p, i) => {
+    // Keep all points for X-axis positioning
+    const allPoints: SvgPoint[] = series.map((p, i) => {
       const x = paddingLeft + i * stepX
       const y = plotTop + (innerH - p.value * stepY)
       return { x, y, date: p.date, value: p.value }
     })
+    
+    // Filter out NaN values for line rendering
+    const validPoints = allPoints.filter(p => Number.isFinite(p.value))
+    
     const mainSeries = {
-      points,
-      lineD: buildSmoothPathD(points),
+      points: validPoints,
+      lineD: buildSmoothPathD(validPoints),
     }
 
     const rampMidOffset = `${Math.round(RAMP_AMBER_STOP * 100)}%`
-    const maxPoints: SvgPoint[] = series.map((p, i) => {
-      const x = paddingLeft + i * stepX
-      const y = plotTop + (innerH - yMax * stepY)
-      return { x, y, date: p.date, value: yMax }
-    })
-    const maxSeries = {
-      points: maxPoints,
-      lineD: buildSmoothPathD(maxPoints),
-    }
 
     // Phase 6: performance cap for gradient micro-segments.
     // We adapt sampling density based on how many days are being shown so
@@ -268,12 +297,18 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
 
     const xLabelEvery = Math.max(1, Math.round(series.length / 6))
 
+    const plotClipId = 'overviewPlotClip'
+
     return (
       <svg className={styles.chartSvg} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Overview chart">
         <defs>
           <filter id="overviewChartGlow" x="-20%" y="-20%" width="140%" height="140%" colorInterpolationFilters="sRGB">
             <feGaussianBlur stdDeviation="3.2" />
           </filter>
+
+          <clipPath id={plotClipId}>
+            <rect x={paddingLeft} y={plotTop} width={innerW} height={innerH} />
+          </clipPath>
 
           <linearGradient id="overviewScoreRamp" x1="0" y1="1" x2="0" y2="0">
             <stop offset="0%" stopColor={RAMP_RED} />
@@ -315,8 +350,8 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
         })}
 
         {/* x labels */}
-        {points.map((p, i) => {
-          if (i % xLabelEvery !== 0 && i !== points.length - 1) return null
+        {allPoints.map((p, i) => {
+          if (i % xLabelEvery !== 0 && i !== allPoints.length - 1) return null
           const label = formatWeekdayShort(p.date).toUpperCase()
           return (
             <text
@@ -334,70 +369,30 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
         })}
 
         {/* series */}
-        <path
-          d={maxSeries.lineD}
-          fill="none"
-          stroke={maxStroke}
-          strokeWidth={maxGlowStrokeWidth}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity={maxGlowOpacity}
-          filter="url(#overviewChartGlow)"
-        />
-        <path
-          d={maxSeries.lineD}
-          fill="none"
-          stroke={maxStroke}
-          strokeWidth={maxStrokeWidth}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {maxSeries.points.map((p) => (
-          <circle key={`max-${p.date}`} cx={p.x} cy={p.y} r={maxPointRadius} fill={maxStroke} />
-        ))}
-
-        {/* Show raw maxPossible when it changes (elastic scaling). */}
-        {series.map((p, i) => {
-          const prev = i > 0 ? series[i - 1] : null
-          if (i !== 0 && prev && prev.maxPossible === p.maxPossible) return null
-          const x = points[i]?.x
-          if (!Number.isFinite(x)) return null
-          return (
-            <text
-              key={`maxlabel-${p.date}`}
-              x={x}
-              y={plotTop + 14}
-              fontSize={axisFontSize}
-              textAnchor="middle"
-              fill={axisTextFill}
-            >
-              {p.maxPossible}
-            </text>
-          )
-        })}
-
         {/* Main series — Option B (gradient-by-segment). */}
-        <path
-          d={mainSeries.lineD}
-          fill="none"
-          stroke={mainGlowStroke}
-          strokeWidth={glowStrokeWidth}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity={glowOpacity}
-          filter="url(#overviewChartGlow)"
-        />
-        {mainGradientSegments.map((seg, idx) => (
+        <g clipPath={`url(#${plotClipId})`}>
           <path
-            key={`main-${idx}`}
-            d={`M ${seg.x1.toFixed(1)} ${seg.y1.toFixed(1)} L ${seg.x2.toFixed(1)} ${seg.y2.toFixed(1)}`}
+            d={mainSeries.lineD}
             fill="none"
-            stroke={seg.color}
-            strokeWidth={primaryStrokeWidth}
+            stroke={mainGlowStroke}
+            strokeWidth={glowStrokeWidth}
             strokeLinecap="round"
             strokeLinejoin="round"
+            opacity={glowOpacity}
+            filter="url(#overviewChartGlow)"
           />
-        ))}
+          {mainGradientSegments.map((seg, idx) => (
+            <path
+              key={`main-${idx}`}
+              d={`M ${seg.x1.toFixed(1)} ${seg.y1.toFixed(1)} L ${seg.x2.toFixed(1)} ${seg.y2.toFixed(1)}`}
+              fill="none"
+              stroke={seg.color}
+              strokeWidth={primaryStrokeWidth}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+        </g>
         {mainSeries.points.map((p) => (
           <circle
             key={p.date}

@@ -1,7 +1,179 @@
+import type { FindingsCache } from './lab/analysis/cache'
+
 export type IsoTimestamp = string
 export type LocalDateString = string // YYYY-MM-DD (local time)
 
 export type SchemaVersion = 1
+
+// ============================================================
+// LAB Mode Types
+// ============================================================
+
+export type LabProjectId = string
+export type LabTagId = string
+export type LabLogId = string
+export type ISODate = string // YYYY-MM-DD (local timezone)
+export type ISOTimestamp = string // ISO-8601 timestamp
+
+export type LabProjectMode = 'daily' | 'event'
+
+export interface LabProject {
+  id: LabProjectId
+  name: string
+  mode: LabProjectMode
+  createdAt: ISOTimestamp
+  updatedAt: ISOTimestamp
+  config: LabProjectConfig
+  archived?: boolean
+}
+
+export type LabProjectConfig = LabDailyProjectConfig | LabEventProjectConfig
+
+export interface LabDailyProjectConfig {
+  kind: 'daily'
+  outcome: {
+    id: 'outcome'
+    name: string
+    scale: {
+      min: number
+      max: number
+      step?: number
+    }
+    required: boolean
+  }
+  exposureLabel?: string
+  alignment: {
+    exposureWindow: 'sameDay' | 'previousEvening'
+  }
+  completion: {
+    requireOutcome: boolean
+    requireAtLeastOneTag: boolean
+  }
+  allowExplicitNoTags?: boolean
+}
+
+export interface LabEventProjectConfig {
+  kind: 'event'
+  event: {
+    name: string
+    severity?: {
+      enabled: boolean
+      scale?: { min: number; max: number; step?: number }
+      required?: boolean
+    }
+  }
+  dailyAbsenceMarker?: {
+    enabled: boolean
+    labelTemplate?: string
+  }
+  completion: {
+    requireAtLeastOneTag: boolean
+  }
+}
+
+export interface LabTagDef {
+  id: LabTagId
+  name: string
+  createdAt: ISOTimestamp
+  updatedAt: ISOTimestamp
+  intensity?: {
+    enabled: boolean
+    min: number
+    max: number
+    step?: number
+    unitLabel?: string
+  }
+  group?: string
+}
+
+export interface LabTagUse {
+  tagId: LabTagId
+  intensity?: number
+}
+
+export interface LabDailyLog {
+  date: ISODate
+  updatedAt: ISOTimestamp
+  outcome?: number
+  tags: LabTagUse[]
+  note?: string
+  noTags?: boolean
+}
+
+export interface LabDailyAbsenceMarker {
+  date: ISODate
+  updatedAt: ISOTimestamp
+  noEvent: true
+}
+
+export interface LabEventLog {
+  id: LabLogId
+  timestamp: ISOTimestamp
+  createdAt: ISOTimestamp
+  updatedAt: ISOTimestamp
+  severity?: number
+  tags: LabTagUse[]
+  note?: string
+}
+
+export type LabFindingDirection = 'positive' | 'negative' | 'null'
+export type LabFindingConfidence = 'low' | 'medium' | 'high'
+
+export interface LabFinding {
+  id: string
+  projectId: LabProjectId
+  methodId: string
+  target: {
+    kind: 'tag'
+    tagId: LabTagId
+  }
+  window: {
+    kind: 'sameDay' | 'lag' | 'rolling' | 'streak'
+    lagDays?: number
+    rollingDays?: number
+    streakMinDays?: number
+  }
+  direction: LabFindingDirection
+  effectSize: number
+  sample: {
+    nTotal: number
+    nExposed: number
+    nUnexposed: number
+    meanExposed?: number
+    meanUnexposed?: number
+    stdExposed?: number
+    stdUnexposed?: number
+  }
+  confidence: LabFindingConfidence
+  summary: string
+  notes?: string[]
+  createdAt: ISOTimestamp
+}
+
+export interface LabFindingsCache {
+  computedAt: ISOTimestamp
+  findings: LabFinding[]
+  inputFingerprint: string
+}
+
+export interface LabState {
+  version: 1
+  projects: Record<LabProjectId, LabProject>
+  projectOrder: LabProjectId[]
+  tagsByProject: Record<LabProjectId, Record<LabTagId, LabTagDef>>
+  tagOrderByProject: Record<LabProjectId, LabTagId[]>
+  dailyLogsByProject: Record<LabProjectId, Record<ISODate, LabDailyLog>>
+  eventLogsByProject: Record<LabProjectId, Record<LabLogId, LabEventLog>>
+  absenceMarkersByProject?: Record<LabProjectId, Record<ISODate, LabDailyAbsenceMarker>>
+  findingsCache?: Record<LabProjectId, FindingsCache> // Cache for analysis findings
+  ui?: {
+    activeProjectId?: LabProjectId
+  }
+}
+
+// ============================================================
+// End LAB Mode Types
+// ============================================================
 
 export type CategoryId = string
 export type HabitId = string
@@ -133,4 +305,7 @@ export interface AppStateV1 {
   todoArchive: Record<TodoArchiveId, TodoArchiveItem>
 
   uiState: UiStateV1
+
+  // LAB mode state (optional for migration)
+  lab?: LabState
 }

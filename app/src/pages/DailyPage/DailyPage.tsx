@@ -9,6 +9,7 @@ import { LeftPanelMenu } from './components/LeftPanelMenu'
 import { LeftPanelCategoriesList } from './components/LeftPanelCategoriesList'
 import { WeekPanel } from './components/WeekPanel'
 import { RightTodosPanel } from './components/RightTodosPanel'
+import { DailyLabWidget } from './components/DailyLabWidget'
 import { useDailyData } from './hooks/useDailyData'
 import { useScoreHandlers } from './hooks/useScoreHandlers'
 import { appStore } from '../../domain/store/appStore'
@@ -947,6 +948,8 @@ export function DailyPage() {
           <div className={layoutStyles.dailyContentGrid}>
             <div className={layoutStyles.dailyMainCol}>
               <div className={styles.scrollArea}>
+                <DailyLabWidget date={selectedDate} />
+
                 {state.uiState.dailyViewMode === 'category'
                   ? categories.map((cat) => {
                       const habits = habitsByCategory.get(cat.id) ?? []

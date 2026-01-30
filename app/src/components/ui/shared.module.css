@@ -6,6 +6,8 @@
   text-align: left;
   min-height: 100%;
   box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Shared panel/card component */

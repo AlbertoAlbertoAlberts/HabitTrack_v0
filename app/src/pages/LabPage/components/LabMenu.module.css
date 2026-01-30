@@ -1,0 +1,101 @@
+.menu {
+  position: relative;
+}
+
+.menuButton {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--icon-btn-bg);
+  cursor: pointer;
+  font-size: 16px;
+  color: var(--text);
+  list-style: none;
+  transition: background var(--t-fast) var(--ease-out);
+}
+
+.menuButton::-webkit-details-marker,
+.menuButton::marker {
+  display: none;
+}
+
+.menuButton:hover {
+  background: var(--icon-btn-bg-hover);
+}
+
+.menu[open] .menuButton {
+  background: var(--icon-btn-bg-hover);
+}
+
+.menuPanel {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  min-width: 180px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--popover-bg);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+}
+
+@media (max-width: 560px) {
+  .menuButton {
+    width: 40px;
+    height: 40px;
+  }
+
+  .menuPanel {
+    min-width: 0;
+    width: min(92vw, 280px);
+    max-width: calc(100vw - 16px);
+  }
+}
+
+.menuItem {
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  transition: background var(--t-fast) var(--ease-out);
+}
+
+.menuItem:hover {
+  background: var(--btn-bg-hover);
+}
+
+.menuItemDanger {
+  color: var(--danger);
+}
+
+.menuItemDanger:hover {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.menuItemDisabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.menuItemDisabled:hover {
+  background: transparent;
+}
+
+.menuDivider {
+  margin: 4px 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}

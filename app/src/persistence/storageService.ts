@@ -1,9 +1,37 @@
-import type { AppStateV1, SchemaVersion, ThemeMode } from '../domain/types'
+import type {
+  AppStateV1,
+  SchemaVersion,
+  ThemeMode,
+  LabDailyAbsenceMarker,
+  LabDailyLog,
+  LabEventLog,
+  LabState,
+  LabTagUse,
+} from '../domain/types'
 
 const STORAGE_KEY = 'habitTracker.appState'
 const CURRENT_SCHEMA_VERSION: SchemaVersion = 1
 
 type ImportResult = { ok: true } | { ok: false; error: string }
+
+/**
+ * Creates an empty LAB state for new users or migrations.
+ * Exported for use in future LAB action creators.
+ */
+export function createEmptyLabState(): LabState {
+  return {
+    version: 1,
+    projects: {},
+    projectOrder: [],
+    tagsByProject: {},
+    tagOrderByProject: {},
+    dailyLogsByProject: {},
+    eventLogsByProject: {},
+    absenceMarkersByProject: {},
+    findingsCache: {},
+    ui: {},
+  }
+}
 
 function toLocalDateString(date: Date): string {
   const year = date.getFullYear()
@@ -26,6 +54,150 @@ function normalizeSortIndices<T extends { id: string; sortIndex: number }>(
 function repairStateV1(state: AppStateV1): AppStateV1 {
   const repairNow = new Date().toISOString()
   const today = toLocalDateString(new Date())
+
+  function isRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+  }
+
+  function coerceFiniteNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) return value
+    if (typeof value === 'string' && value.trim() !== '') {
+      const n = Number(value)
+      if (Number.isFinite(n)) return n
+    }
+    return undefined
+  }
+
+  function repairLabState(input: unknown): LabState {
+    const base = createEmptyLabState()
+    const raw = isRecord(input) ? input : {}
+
+    const projects = isRecord(raw.projects) ? (raw.projects as LabState['projects']) : base.projects
+    const projectOrder = Array.isArray(raw.projectOrder)
+      ? (raw.projectOrder.filter((v) => typeof v === 'string') as LabState['projectOrder'])
+      : base.projectOrder
+
+    const tagsByProject = isRecord(raw.tagsByProject)
+      ? (raw.tagsByProject as LabState['tagsByProject'])
+      : base.tagsByProject
+
+    const tagOrderByProject = isRecord(raw.tagOrderByProject)
+      ? (raw.tagOrderByProject as LabState['tagOrderByProject'])
+      : base.tagOrderByProject
+
+    const dailyLogsRaw = isRecord(raw.dailyLogsByProject) ? raw.dailyLogsByProject : {}
+    const eventLogsRaw = isRecord(raw.eventLogsByProject) ? raw.eventLogsByProject : {}
+    const absenceRaw = isRecord(raw.absenceMarkersByProject) ? raw.absenceMarkersByProject : {}
+
+    const findingsRaw = raw.findingsCache
+    const legacyFindingsRaw = raw['findingsCacheByProject']
+    const findingsCache = isRecord(findingsRaw)
+      ? (findingsRaw as LabState['findingsCache'])
+      : isRecord(legacyFindingsRaw)
+        ? (legacyFindingsRaw as LabState['findingsCache'])
+        : base.findingsCache
+
+    const ui = isRecord(raw.ui) ? (raw.ui as NonNullable<LabState['ui']>) : (base.ui ?? {})
+
+    const dailyLogsByProject: LabState['dailyLogsByProject'] = {}
+    for (const [projectId, byDate] of Object.entries(dailyLogsRaw)) {
+      if (!isRecord(byDate)) continue
+      const nextForProject: Record<string, LabDailyLog> = {}
+
+      for (const [date, log] of Object.entries(byDate)) {
+        if (!isRecord(log)) continue
+
+        const tagsRaw = Array.isArray(log.tags) ? log.tags : []
+        const tags: LabTagUse[] = tagsRaw
+          .map((t) => {
+            if (!isRecord(t)) return null
+            const tagId = typeof t.tagId === 'string' ? t.tagId : ''
+            if (!tagId) return null
+            const intensity = coerceFiniteNumber(t.intensity)
+            return { tagId, ...(intensity !== undefined ? { intensity } : {}) }
+          })
+          .filter((t): t is LabTagUse => Boolean(t))
+
+        nextForProject[date] = {
+          date,
+          updatedAt: typeof log.updatedAt === 'string' ? log.updatedAt : repairNow,
+          outcome: coerceFiniteNumber(log.outcome),
+          tags,
+          note: typeof log.note === 'string' ? log.note : undefined,
+          noTags: typeof log.noTags === 'boolean' ? log.noTags : undefined,
+        }
+      }
+
+      dailyLogsByProject[projectId] = nextForProject
+    }
+
+    const eventLogsByProject: LabState['eventLogsByProject'] = {}
+    for (const [projectId, byLogId] of Object.entries(eventLogsRaw)) {
+      if (!isRecord(byLogId)) continue
+      const nextForProject: Record<string, LabEventLog> = {}
+
+      for (const [logId, log] of Object.entries(byLogId)) {
+        if (!isRecord(log)) continue
+
+        const tagsRaw = Array.isArray(log.tags) ? log.tags : []
+        const tags: LabTagUse[] = tagsRaw
+          .map((t) => {
+            if (!isRecord(t)) return null
+            const tagId = typeof t.tagId === 'string' ? t.tagId : ''
+            if (!tagId) return null
+            const intensity = coerceFiniteNumber(t.intensity)
+            return { tagId, ...(intensity !== undefined ? { intensity } : {}) }
+          })
+          .filter((t): t is LabTagUse => Boolean(t))
+
+        const severity = coerceFiniteNumber(log.severity)
+
+        nextForProject[logId] = {
+          id: typeof log.id === 'string' ? log.id : logId,
+          timestamp: typeof log.timestamp === 'string' ? log.timestamp : repairNow,
+          createdAt: typeof log.createdAt === 'string' ? log.createdAt : repairNow,
+          updatedAt: typeof log.updatedAt === 'string' ? log.updatedAt : repairNow,
+          severity,
+          tags,
+          note: typeof log.note === 'string' ? log.note : undefined,
+        }
+      }
+
+      eventLogsByProject[projectId] = nextForProject
+    }
+
+    const absenceMarkersByProject: NonNullable<LabState['absenceMarkersByProject']> = {}
+    for (const [projectId, byDate] of Object.entries(absenceRaw)) {
+      if (!isRecord(byDate)) continue
+      const nextForProject: Record<string, LabDailyAbsenceMarker> = {}
+
+      for (const [date, marker] of Object.entries(byDate)) {
+        if (!isRecord(marker)) continue
+        if (marker.noEvent !== true) continue
+
+        nextForProject[date] = {
+          date,
+          updatedAt: typeof marker.updatedAt === 'string' ? marker.updatedAt : repairNow,
+          noEvent: true,
+        }
+      }
+
+      absenceMarkersByProject[projectId] = nextForProject
+    }
+
+    return {
+      version: 1,
+      projects,
+      projectOrder,
+      tagsByProject,
+      tagOrderByProject,
+      dailyLogsByProject,
+      eventLogsByProject,
+      absenceMarkersByProject,
+      findingsCache,
+      ui,
+    }
+  }
 
   function parseLocalDateString(value: string): Date {
     const [y, m, d] = value.split('-').map((v) => Number(v))
@@ -294,6 +466,9 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     if (Object.keys(nextForWeek).length > 0) weeklyProgress[weekStartDate] = nextForWeek
   }
 
+  // LAB Migration/Repair: ensure LAB containers exist and coerce new fields.
+  const lab = repairLabState((state as Partial<AppStateV1>).lab)
+
   return {
     ...state,
     categories,
@@ -303,6 +478,7 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     weeklyTasks,
     weeklyProgress,
     weeklyCompletionDays,
+    lab,
     uiState: {
       ...state.uiState,
       // Never resume priority edit mode after reload.
@@ -341,6 +517,8 @@ export function createDefaultState(now: Date = new Date()): AppStateV1 {
 
     todos: {},
     todoArchive: {},
+
+    lab: createEmptyLabState(),
 
     uiState: {
       dailyViewMode: 'category',
