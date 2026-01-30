@@ -493,6 +493,10 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
   }
 }
 
+export function repairState(state: AppStateV1): AppStateV1 {
+  return repairStateV1(state)
+}
+
 export function createDefaultState(now: Date = new Date()): AppStateV1 {
   const isoNow = now.toISOString()
   const today = toLocalDateString(now)
@@ -542,8 +546,7 @@ export function loadState(): AppStateV1 {
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) {
     const initial = createDefaultState()
-    saveState(initial)
-    return initial
+    return saveState(initial)
   }
 
   let parsed: unknown
@@ -551,14 +554,12 @@ export function loadState(): AppStateV1 {
     parsed = JSON.parse(raw)
   } catch {
     const initial = createDefaultState()
-    saveState(initial)
-    return initial
+    return saveState(initial)
   }
 
   if (!parsed || typeof parsed !== 'object') {
     const initial = createDefaultState()
-    saveState(initial)
-    return initial
+    return saveState(initial)
   }
 
   const state = parsed as Partial<AppStateV1>
@@ -570,17 +571,15 @@ export function loadState(): AppStateV1 {
 
   if (!state.uiState || !state.meta) {
     const initial = createDefaultState()
-    saveState(initial)
-    return initial
+    return saveState(initial)
   }
 
   const repaired = repairStateV1(parsed as AppStateV1)
   // Persist repairs immediately so state doesn't drift.
-  saveState(repaired)
-  return repaired
+  return saveState(repaired)
 }
 
-export function saveState(state: AppStateV1): void {
+export function saveState(state: AppStateV1): AppStateV1 {
   const next: AppStateV1 = {
     ...state,
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -588,6 +587,8 @@ export function saveState(state: AppStateV1): void {
   }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+
+  return next
 }
 
 export function clearState(): void {

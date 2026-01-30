@@ -4,10 +4,13 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { seedMorningDummyIfNeeded } from './domain/lab/seed/morningDummySeed'
+import { startSupabaseSync } from './persistence/supabaseSync'
 
 if (import.meta.env.DEV) {
   seedMorningDummyIfNeeded()
 }
+
+startSupabaseSync()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

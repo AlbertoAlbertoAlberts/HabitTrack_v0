@@ -1,0 +1,6 @@
+# Local backups / exports
+habittrack_backup_*.json
+
+# Local env files (Vite)
+.env.local
+.env.*.local

@@ -4,6 +4,7 @@ import { useAppState } from '../domain/store/useAppStore'
 import { NavLink } from 'react-router-dom'
 
 import styles from './TopNav.module.css'
+import { SupabaseSyncControl } from './SupabaseSyncControl'
 
 export function TopNav() {
   const themeMode = useAppState().uiState.themeMode
@@ -39,6 +40,10 @@ export function TopNav() {
       </div>
 
       <div className={styles.right}>
+        <div className={styles.toggle} role="group" aria-label="Sync">
+          <SupabaseSyncControl />
+        </div>
+
         <div className={styles.toggle} role="group" aria-label="Theme">
           <button
             type="button"

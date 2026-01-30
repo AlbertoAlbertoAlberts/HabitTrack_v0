@@ -95,14 +95,22 @@ function emit() {
 }
 
 function setState(next: AppStateV1) {
-  state = next
-  saveState(state)
+  state = saveState(next)
+  emit()
+}
+
+function hydrateState(next: AppStateV1) {
+  state = saveState(next)
   emit()
 }
 
 export const appStore = {
   getState(): AppStateV1 {
     return state
+  },
+
+  hydrate(next: AppStateV1) {
+    hydrateState(next)
   },
 
   subscribe(listener: Listener): () => void {
