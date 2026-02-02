@@ -3,7 +3,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from './ui/Dialog'
 import navStyles from './TopNav.module.css'
 import { getSupabaseClient, isSupabaseConfigured } from '../persistence/supabaseClient'
-import { forceSupabasePush, getSupabaseSyncStatus, subscribeSupabaseSync } from '../persistence/supabaseSync'
+import {
+  forceSupabasePull,
+  forceSupabasePush,
+  getConflictPolicyForUi,
+  getSupabaseSyncStatus,
+  setConflictPolicy,
+  subscribeSupabaseSync,
+} from '../persistence/supabaseSync'
 
 export function SupabaseSyncControl() {
   const [open, setOpen] = useState(false)
@@ -11,10 +18,21 @@ export function SupabaseSyncControl() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [status, setStatus] = useState(getSupabaseSyncStatus())
+  const [conflictPolicy, setConflictPolicyState] = useState(getConflictPolicyForUi())
 
   useEffect(() => subscribeSupabaseSync(() => setStatus(getSupabaseSyncStatus())), [])
 
   const configured = isSupabaseConfigured()
+
+  const supabaseHost = useMemo(() => {
+    const raw = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? ''
+    if (!raw) return null
+    try {
+      return new URL(raw).host
+    } catch {
+      return raw
+    }
+  }, [])
 
   const label = useMemo(() => {
     if (!configured) return 'Sync'
@@ -38,10 +56,13 @@ export function SupabaseSyncControl() {
     setBusy(true)
     setMessage(null)
     try {
+      // Remember where the user was so the callback can return there.
+      sessionStorage.setItem('habittrack.postAuthRedirect', window.location.pathname + window.location.search)
+
       const { error } = await supabase.auth.signInWithOtp({
         email: trimmed,
         options: {
-          emailRedirectTo: window.location.origin,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
       if (error) {
@@ -77,12 +98,45 @@ export function SupabaseSyncControl() {
     }
   }
 
+  async function forcePullNow() {
+    setBusy(true)
+    setMessage(null)
+    try {
+      await forceSupabasePull()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function formatTime(value: string | null): string {
     if (!value) return '—'
     try {
       return new Date(value).toLocaleString()
     } catch {
       return value
+    }
+  }
+
+  async function copyDebugInfo() {
+    const info = {
+      supabaseHost,
+      signedIn: status.signedIn,
+      email: status.email,
+      userId: status.userId,
+      lastPulledAt: status.lastPulledAt,
+      lastPushedAt: status.lastPushedAt,
+      lastError: status.lastError,
+      conflict: status.conflict,
+      conflictPolicy,
+      page: window.location.href,
+    }
+
+    const text = JSON.stringify(info, null, 2)
+    try {
+      await navigator.clipboard.writeText(text)
+      setMessage('Copied debug info to clipboard.')
+    } catch {
+      setMessage(text)
     }
   }
 
@@ -112,6 +166,14 @@ export function SupabaseSyncControl() {
               Signed in{status.email ? ` as ${status.email}` : ''}. Changes sync automatically.
 
               <div style={{ marginTop: 8, fontSize: 12, opacity: 0.9 }}>
+                {supabaseHost ? (
+                  <>
+                    Supabase: {supabaseHost}
+                    <br />
+                  </>
+                ) : null}
+                User id: {status.userId ?? '—'}
+                <br />
                 Last pulled: {formatTime(status.lastPulledAt)}
                 <br />
                 Last pushed: {formatTime(status.lastPushedAt)}
@@ -120,6 +182,54 @@ export function SupabaseSyncControl() {
               {status.lastError ? (
                 <div style={{ marginTop: 8, color: 'var(--danger)' }}>Last sync error: {status.lastError}</div>
               ) : null}
+
+              <div style={{ marginTop: 10, fontSize: 12, opacity: 0.9 }}>
+                Conflict policy:{' '}
+                <select
+                  value={conflictPolicy}
+                  onChange={(e) => {
+                    const v = e.target.value === 'manual' ? 'manual' : 'last-write-wins'
+                    setConflictPolicy(v)
+                    setConflictPolicyState(v)
+                  }}
+                  style={{ marginLeft: 6 }}
+                >
+                  <option value="last-write-wins">Auto (last write wins)</option>
+                  <option value="manual">Manual (ask on conflicts)</option>
+                </select>
+                <div style={{ marginTop: 6 }}>
+                  Auto mode avoids pull/push prompts but can overwrite near-simultaneous edits.
+                </div>
+              </div>
+
+              {status.conflict ? (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ color: 'var(--danger)' }}>Sync needs a decision.</div>
+                  <div style={{ marginTop: 6, fontSize: 12, opacity: 0.9 }}>
+                    This device’s local data looks newer than what’s in Supabase.
+                    <br />
+                    Local savedAt: {formatTime(status.conflict.localSavedAt)}
+                    <br />
+                    Supabase savedAt: {formatTime(status.conflict.remoteSavedAt)}
+                    <br />
+                    To avoid accidentally overwriting Supabase, automatic push is paused.
+                  </div>
+                  <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" className={dialogStyles.btn} onClick={forcePullNow} disabled={busy}>
+                      Use Supabase data (pull)
+                    </button>
+                    <button type="button" className={dialogStyles.btn} onClick={forcePushNow} disabled={busy}>
+                      Overwrite Supabase (push)
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div style={{ marginTop: 12 }}>
+                <button type="button" className={dialogStyles.btn} onClick={copyDebugInfo} disabled={busy}>
+                  Copy debug info
+                </button>
+              </div>
             </div>
           ) : (
             <div className={dialogStyles.row}>
@@ -148,6 +258,9 @@ export function SupabaseSyncControl() {
             <>
               <button type="button" className={dialogStyles.btn} onClick={() => setOpen(false)} disabled={busy}>
                 Close
+              </button>
+              <button type="button" className={dialogStyles.btn} onClick={forcePullNow} disabled={busy}>
+                Force pull now
               </button>
               <button type="button" className={dialogStyles.btn} onClick={forcePushNow} disabled={busy}>
                 Force push now

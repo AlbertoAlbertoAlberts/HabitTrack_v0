@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 
 import TopNav from './components/TopNav'
 import ArchivePage from './pages/ArchivePage/ArchivePage'
+import AuthCallbackPage from './pages/AuthCallbackPage/AuthCallbackPage'
 import DailyPage from './pages/DailyPage/DailyPage'
 import LabPage from './pages/LabPage/LabPage'
 import OverviewPage from './pages/OverviewPage/OverviewPage'
@@ -26,6 +27,7 @@ export default function App() {
       <TopNav />
       <main>
         <Routes>
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/" element={<DailyPage />} />
           <Route path="/lab" element={<LabPage />} />
           <Route path="/overview" element={<OverviewPage />} />

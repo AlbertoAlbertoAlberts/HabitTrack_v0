@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react'
 import { Link } from 'react-router-dom'
 
 import { appStore } from '../../domain/store/appStore'
@@ -24,6 +25,14 @@ function clampInt(value: number, min: number, max: number): number {
 }
 
 export function OverviewPage() {
+  useLayoutEffect(() => {
+    const today = todayLocalDateString()
+    const current = appStore.getState().uiState.overviewWindowEndDate
+    if (current < today) {
+      appStore.actions.setOverviewWindowEndDate(today)
+    }
+  }, [])
+
   const {
     startDate,
     endDate,

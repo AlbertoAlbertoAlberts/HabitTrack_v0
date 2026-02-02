@@ -69,6 +69,7 @@ In Supabase Dashboard:
   - For local dev add:
     - `http://localhost:5173`
     - `http://localhost:5173/*`
+    - `http://localhost:5173/auth/callback`
   - If you deploy later (Vercel), add your deployed domain too.
 
 ### 1.3 Create the database table (minimal “lift-and-shift” schema)
@@ -261,6 +262,25 @@ If user has data in both places:
 4) Multi-device test
 - Login on a second browser/device.
 - Confirm the same state loads.
+
+5) Live update test (recommended)
+- Keep two browsers open (regular + incognito).
+- Make a small change on device A (toggle habit / change score / edit todo).
+- Confirm device B updates automatically.
+
+Notes:
+- The app uses a fast debounced push (sub-second) and then listens for changes.
+- For best “updates appear instantly” behavior across devices, enable Supabase Realtime for the `public.app_states` table.
+
+### Enabling Realtime for `app_states` (Supabase UI)
+
+**(You)** In Supabase Dashboard:
+- Database → Replication (or Realtime) → find table replication settings
+- Ensure `public.app_states` is enabled for Realtime / replication
+
+If Realtime is unavailable or temporarily degraded, the app still checks for updates on:
+- tab focus / returning to the tab
+- periodic polling (lightweight)
 
 ---
 
