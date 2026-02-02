@@ -93,6 +93,23 @@
   }
 }
 
+/* Phone landscape: prioritize content width over side-by-side columns */
+@media (orientation: landscape) and (max-height: 520px) {
+  .overviewLayout {
+    flex-direction: column;
+  }
+
+  .mainCol {
+    order: 1;
+  }
+
+  .leftCol {
+    order: 2;
+    width: 100%;
+    flex: 0 0 auto;
+  }
+}
+
 .legend {
   display: flex;
   gap: 10px;
