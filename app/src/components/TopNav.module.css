@@ -67,6 +67,15 @@
   gap: 10px;
 }
 
+.sectionToggle {
+}
+
+.syncToggle {
+}
+
+.themeToggle {
+}
+
 .toggle {
   display: inline-flex;
   align-items: center;
@@ -139,21 +148,59 @@
   .header {
     padding: 10px 12px;
     gap: 10px;
-  }
 
-  .left {
-    gap: 10px;
+    /* Mobile layout:
+       Row 1: Title (left) + Sync (right)
+       Row 2: Habit/Lab (left) + Theme (right)
+    */
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'brand sync'
+      'section theme';
+    align-items: center;
   }
 
   .brand {
-    font-size: 14px;
+    grid-area: brand;
+    font-size: 18px;
+  }
+
+  .left,
+  .right {
+    display: contents;
+  }
+
+  .sectionToggle {
+    grid-area: section;
+    justify-self: start;
+  }
+
+  .syncToggle {
+    grid-area: sync;
+    justify-self: end;
+    max-width: 52vw;
+  }
+
+  .syncToggle .toggleBtn {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .themeToggle {
+    grid-area: theme;
+    justify-self: end;
+  }
+
+  .themeToggle .toggleBtn {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 12px;
   }
 
   .navLink {
     padding: 8px 10px;
-  }
-
-  .toggleBtn {
-    padding: 0 10px;
   }
 }

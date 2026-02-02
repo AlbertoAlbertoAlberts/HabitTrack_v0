@@ -18,7 +18,7 @@ export function TopNav() {
       <div className={styles.left}>
         <div className={styles.brand}>HabitTrack</div>
 
-        <nav className={styles.toggle} aria-label="Section">
+        <nav className={[styles.toggle, styles.sectionToggle].filter(Boolean).join(' ')} aria-label="Section">
           <NavLink
             to="/"
             end
@@ -40,11 +40,11 @@ export function TopNav() {
       </div>
 
       <div className={styles.right}>
-        <div className={styles.toggle} role="group" aria-label="Sync">
+        <div className={[styles.toggle, styles.syncToggle].filter(Boolean).join(' ')} role="group" aria-label="Sync">
           <SupabaseSyncControl />
         </div>
 
-        <div className={styles.toggle} role="group" aria-label="Theme">
+        <div className={[styles.toggle, styles.themeToggle].filter(Boolean).join(' ')} role="group" aria-label="Theme">
           <button
             type="button"
             className={[styles.toggleBtn, themeMode === 'system' ? styles.toggleBtnActive : '']
