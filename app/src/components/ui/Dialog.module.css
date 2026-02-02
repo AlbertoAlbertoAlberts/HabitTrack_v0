@@ -189,7 +189,7 @@
     iOS/Safari can position <dialog> inconsistently, causing the panel to clip
     off-screen. On small screens, force a full-viewport overlay and center the panel.
   */
-  .backdropDialog {
+  .backdropDialog[open] {
     position: fixed;
     inset: 0;
     margin: 0;
