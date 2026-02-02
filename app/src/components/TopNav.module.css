@@ -174,18 +174,25 @@
   .sectionToggle {
     grid-area: section;
     justify-self: start;
+    flex-wrap: nowrap;
+    max-width: 100%;
+  }
+
+  .sectionToggle .toggleBtn {
+    height: 30px;
+    padding: 0 10px;
+    white-space: nowrap;
   }
 
   .syncToggle {
     grid-area: sync;
     justify-self: end;
-    max-width: 52vw;
+    max-width: 46vw;
   }
 
   .syncToggle .toggleBtn {
     max-width: 100%;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
   }
 

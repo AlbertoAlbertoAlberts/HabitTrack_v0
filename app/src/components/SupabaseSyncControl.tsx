@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from './ui/Dialog'
 import navStyles from './TopNav.module.css'
@@ -20,6 +20,8 @@ export function SupabaseSyncControl() {
   const [status, setStatus] = useState(getSupabaseSyncStatus())
   const [conflictPolicy, setConflictPolicyState] = useState(getConflictPolicyForUi())
 
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
+
   useEffect(() => subscribeSupabaseSync(() => setStatus(getSupabaseSyncStatus())), [])
 
   const configured = isSupabaseConfigured()
@@ -39,6 +41,53 @@ export function SupabaseSyncControl() {
     if (!status.signedIn) return 'Sync'
     return status.email ? `Synced: ${status.email}` : 'Synced'
   }, [configured, status.signedIn, status.email])
+
+  useLayoutEffect(() => {
+    const el = buttonRef.current
+    if (!el) return
+    const element: HTMLButtonElement = el
+
+    const mql = window.matchMedia('(max-width: 520px)')
+
+    function fitText() {
+      if (!mql.matches) {
+        element.style.fontSize = ''
+        return
+      }
+
+      // Try to shrink the font so the label fits without pushing the header.
+      const min = 10
+      const max = 14
+
+      // Start from max each time to re-fit after resizes.
+      element.style.fontSize = `${max}px`
+
+      // If it already fits, keep default.
+      if (element.scrollWidth <= element.clientWidth) return
+
+      // Binary-search a font size that fits.
+      let lo = min
+      let hi = max
+      while (lo < hi) {
+        const mid = Math.floor((lo + hi) / 2)
+        element.style.fontSize = `${mid}px`
+        if (element.scrollWidth <= element.clientWidth) {
+          hi = mid
+        } else {
+          lo = mid + 1
+        }
+      }
+
+      element.style.fontSize = `${lo}px`
+    }
+
+    const raf = requestAnimationFrame(fitText)
+    window.addEventListener('resize', fitText)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', fitText)
+    }
+  }, [label])
 
   async function sendMagicLink() {
     const supabase = getSupabaseClient()
@@ -145,6 +194,7 @@ export function SupabaseSyncControl() {
       <button
         type="button"
         className={[navStyles.toggleBtn, status.signedIn ? navStyles.toggleBtnActive : ''].filter(Boolean).join(' ')}
+        ref={buttonRef}
         onClick={() => setOpen(true)}
         title={configured ? 'Supabase sync' : 'Supabase not configured'}
       >
