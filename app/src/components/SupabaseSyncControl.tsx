@@ -15,6 +15,8 @@ import {
 export function SupabaseSyncControl() {
   const [open, setOpen] = useState(false)
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up' | 'magic-link'>('sign-in')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [status, setStatus] = useState(getSupabaseSyncStatus())
@@ -119,6 +121,99 @@ export function SupabaseSyncControl() {
       } else {
         setMessage('Magic link sent. Check your inbox and open the link on this device.')
       }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function signInWithPassword() {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      setMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+      return
+    }
+
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      setMessage('Enter your email address.')
+      return
+    }
+    if (!password) {
+      setMessage('Enter your password.')
+      return
+    }
+
+    setBusy(true)
+    setMessage(null)
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: trimmedEmail, password })
+      if (error) setMessage(error.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function signUpWithPassword() {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      setMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+      return
+    }
+
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      setMessage('Enter your email address.')
+      return
+    }
+    if (!password) {
+      setMessage('Enter a password.')
+      return
+    }
+
+    setBusy(true)
+    setMessage(null)
+    try {
+      sessionStorage.setItem('habittrack.postAuthRedirect', window.location.pathname + window.location.search)
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) {
+        setMessage(error.message)
+      } else if (!data.session) {
+        setMessage('Account created. Check your email to confirm, then sign in.')
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function sendPasswordReset() {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      setMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+      return
+    }
+
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      setMessage('Enter your email address.')
+      return
+    }
+
+    setBusy(true)
+    setMessage(null)
+    try {
+      sessionStorage.setItem('habittrack.postAuthRedirect', window.location.pathname + window.location.search)
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      })
+      if (error) setMessage(error.message)
+      else setMessage('Password reset email sent. Open it on this device to set a new password.')
     } finally {
       setBusy(false)
     }
@@ -283,6 +378,45 @@ export function SupabaseSyncControl() {
             </div>
           ) : (
             <div className={dialogStyles.row}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className={dialogStyles.btn}
+                  onClick={() => {
+                    setAuthMode('sign-in')
+                    setMessage(null)
+                  }}
+                  disabled={busy}
+                  aria-pressed={authMode === 'sign-in'}
+                >
+                  Sign in
+                </button>
+                <button
+                  type="button"
+                  className={dialogStyles.btn}
+                  onClick={() => {
+                    setAuthMode('sign-up')
+                    setMessage(null)
+                  }}
+                  disabled={busy}
+                  aria-pressed={authMode === 'sign-up'}
+                >
+                  Create account
+                </button>
+                <button
+                  type="button"
+                  className={dialogStyles.btn}
+                  onClick={() => {
+                    setAuthMode('magic-link')
+                    setMessage(null)
+                  }}
+                  disabled={busy}
+                  aria-pressed={authMode === 'magic-link'}
+                >
+                  Magic link
+                </button>
+              </div>
+
               <label className={dialogStyles.label}>
                 Email
                 <input
@@ -294,9 +428,41 @@ export function SupabaseSyncControl() {
                   autoComplete="email"
                 />
               </label>
-              <div className={dialogStyles.hint}>
-                We’ll email you a magic link. Opening it signs this device in and enables sync.
-              </div>
+
+              {authMode === 'magic-link' ? (
+                <div className={dialogStyles.hint}>
+                  We’ll email you a magic link. Opening it signs this device in and enables sync.
+                </div>
+              ) : (
+                <label className={dialogStyles.label}>
+                  Password
+                  <input
+                    className={dialogStyles.input}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password"
+                    type="password"
+                    autoComplete={authMode === 'sign-up' ? 'new-password' : 'current-password'}
+                  />
+                </label>
+              )}
+
+              {authMode !== 'magic-link' ? (
+                <div className={dialogStyles.hint}>
+                  Sessions stay signed in on this device until you sign out.
+                  <div>
+                    <button
+                      type="button"
+                      className={dialogStyles.btn}
+                      onClick={sendPasswordReset}
+                      disabled={busy}
+                      style={{ marginTop: 8 }}
+                    >
+                      Forgot / set password
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -324,14 +490,34 @@ export function SupabaseSyncControl() {
               <button type="button" className={dialogStyles.btn} onClick={() => setOpen(false)} disabled={busy}>
                 Cancel
               </button>
-              <button
-                type="button"
-                className={[dialogStyles.btn, dialogStyles.btnPrimary].join(' ')}
-                onClick={sendMagicLink}
-                disabled={busy || !configured}
-              >
-                Send magic link
-              </button>
+              {authMode === 'magic-link' ? (
+                <button
+                  type="button"
+                  className={[dialogStyles.btn, dialogStyles.btnPrimary].join(' ')}
+                  onClick={sendMagicLink}
+                  disabled={busy || !configured}
+                >
+                  Send magic link
+                </button>
+              ) : authMode === 'sign-up' ? (
+                <button
+                  type="button"
+                  className={[dialogStyles.btn, dialogStyles.btnPrimary].join(' ')}
+                  onClick={signUpWithPassword}
+                  disabled={busy || !configured}
+                >
+                  Create account
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={[dialogStyles.btn, dialogStyles.btnPrimary].join(' ')}
+                  onClick={signInWithPassword}
+                  disabled={busy || !configured}
+                >
+                  Sign in
+                </button>
+              )}
             </>
           )}
         </DialogFooter>

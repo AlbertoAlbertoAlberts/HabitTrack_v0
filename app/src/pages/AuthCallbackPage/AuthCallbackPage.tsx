@@ -3,7 +3,7 @@ import {useNavigate} from 'react-router-dom'
 
 import {getSupabaseClient} from '../../persistence/supabaseClient'
 
-type Phase = 'idle' | 'exchanging' | 'signed-in' | 'error'
+type Phase = 'idle' | 'exchanging' | 'signed-in' | 'recovery' | 'resetting' | 'error'
 
 function readRedirectPath(): string {
   const raw = sessionStorage.getItem('habittrack.postAuthRedirect')
@@ -17,6 +17,8 @@ export default function AuthCallbackPage() {
   const navigate = useNavigate()
   const [phase, setPhase] = useState<Phase>('idle')
   const [details, setDetails] = useState<string | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
   const urlError = useMemo(() => {
     const params = new URLSearchParams(window.location.search)
@@ -28,6 +30,13 @@ export default function AuthCallbackPage() {
 
     const parts = [errorCode, errorDescription, error].filter(Boolean)
     return parts.join(' — ')
+  }, [])
+
+  const isRecovery = useMemo(() => {
+    const hash = window.location.hash.replace(/^#/, '')
+    if (!hash) return false
+    const params = new URLSearchParams(hash)
+    return params.get('type') === 'recovery'
   }, [])
 
   useEffect(() => {
@@ -78,6 +87,12 @@ export default function AuthCallbackPage() {
           return
         }
 
+        if (isRecovery) {
+          if (cancelled) return
+          setPhase('recovery')
+          return
+        }
+
         if (cancelled) return
         setPhase('signed-in')
 
@@ -94,11 +109,45 @@ export default function AuthCallbackPage() {
     return () => {
       cancelled = true
     }
-  }, [navigate, urlError])
+  }, [isRecovery, navigate, urlError])
+
+  async function submitNewPassword() {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      setPhase('error')
+      setDetails('Supabase is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).')
+      return
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      setDetails('Choose a new password (at least 6 characters).')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setDetails('Passwords do not match.')
+      return
+    }
+
+    setDetails(null)
+    setPhase('resetting')
+    const {error} = await supabase.auth.updateUser({password: newPassword})
+    if (error) {
+      setPhase('error')
+      setDetails(error.message)
+      return
+    }
+
+    const nextPath = readRedirectPath()
+    window.setTimeout(() => navigate(nextPath, {replace: true}), 50)
+  }
 
   const title =
     phase === 'signed-in'
       ? 'Signed in'
+      : phase === 'recovery'
+        ? 'Set a new password'
+        : phase === 'resetting'
+          ? 'Updating password…'
       : phase === 'error'
         ? 'Sign-in failed'
         : phase === 'exchanging'
@@ -111,6 +160,41 @@ export default function AuthCallbackPage() {
       <div style={{marginTop: 10, opacity: 0.85, lineHeight: 1.4}}>
         {phase === 'exchanging' ? 'Completing Supabase sign-in. This should only take a second.' : null}
         {phase === 'signed-in' ? 'Redirecting back to the app…' : null}
+        {phase === 'recovery' || phase === 'resetting' ? (
+          <div style={{marginTop: 12, display: 'grid', gap: 10, maxWidth: 420}}>
+            <div>Enter a new password for your account.</div>
+            <label style={{display: 'grid', gap: 6}}>
+              New password
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                style={{padding: 10, borderRadius: 10}}
+                disabled={phase === 'resetting'}
+              />
+            </label>
+            <label style={{display: 'grid', gap: 6}}>
+              Confirm password
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                style={{padding: 10, borderRadius: 10}}
+                disabled={phase === 'resetting'}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={submitNewPassword}
+              style={{padding: '10px 12px', borderRadius: 10}}
+              disabled={phase === 'resetting'}
+            >
+              Set password
+            </button>
+          </div>
+        ) : null}
         {phase === 'error' ? (
           <>
             <div style={{marginTop: 8}}>Details:</div>
