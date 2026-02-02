@@ -19,6 +19,7 @@ export function SupabaseSyncControl() {
   const [authMode, setAuthMode] = useState<'sign-in' | 'sign-up' | 'magic-link'>('sign-in')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false)
   const [status, setStatus] = useState(getSupabaseSyncStatus())
   const [conflictPolicy, setConflictPolicyState] = useState(getConflictPolicyForUi())
 
@@ -172,6 +173,7 @@ export function SupabaseSyncControl() {
 
     setBusy(true)
     setMessage(null)
+    setAwaitingConfirmation(false)
     try {
       sessionStorage.setItem('habittrack.postAuthRedirect', window.location.pathname + window.location.search)
       const { data, error } = await supabase.auth.signUp({
@@ -183,10 +185,50 @@ export function SupabaseSyncControl() {
       })
 
       if (error) {
-        setMessage(error.message)
-      } else if (!data.session) {
+        const msg = error.message
+        if (/already\s*registered/i.test(msg) || /user\s*already\s*registered/i.test(msg)) {
+          setMessage('This email already has an account. Use “Forgot / set password” or just sign in.')
+        } else {
+          setMessage(msg)
+        }
+        return
+      }
+
+      if (!data.session) {
+        setAwaitingConfirmation(true)
         setMessage('Account created. Check your email to confirm, then sign in.')
       }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function resendSignupConfirmation() {
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      setMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+      return
+    }
+
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      setMessage('Enter your email address.')
+      return
+    }
+
+    setBusy(true)
+    setMessage(null)
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: trimmedEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (error) setMessage(error.message)
+      else setMessage('Confirmation email re-sent. Check your inbox/spam.')
     } finally {
       setBusy(false)
     }
@@ -461,6 +503,20 @@ export function SupabaseSyncControl() {
                       Forgot / set password
                     </button>
                   </div>
+
+                  {authMode === 'sign-up' && awaitingConfirmation ? (
+                    <div>
+                      <button
+                        type="button"
+                        className={dialogStyles.btn}
+                        onClick={resendSignupConfirmation}
+                        disabled={busy}
+                        style={{ marginTop: 8 }}
+                      >
+                        Resend confirmation email
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
