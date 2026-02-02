@@ -13,6 +13,11 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null)
   const titleId = useId()
 
+  const handleBackdropClick: React.MouseEventHandler<HTMLDialogElement> = (e) => {
+    // Clicks on the <dialog> element itself are backdrop clicks.
+    if (e.target === dialogRef.current) onClose()
+  }
+
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
@@ -49,7 +54,13 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
   }, [open])
 
   return (
-    <dialog ref={dialogRef} className={styles.backdropDialog} aria-labelledby={titleId} onClose={onClose}>
+    <dialog
+      ref={dialogRef}
+      className={styles.backdropDialog}
+      aria-labelledby={titleId}
+      onClick={handleBackdropClick}
+      onClose={onClose}
+    >
       <div className={styles.panel}>
         <div className={styles.header}>
           <h3 id={titleId} className={styles.title}>
