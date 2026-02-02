@@ -68,6 +68,6 @@
   }
 
   .chartInlineLegend {
-    left: 12px;
+    display: none;
   }
 }
