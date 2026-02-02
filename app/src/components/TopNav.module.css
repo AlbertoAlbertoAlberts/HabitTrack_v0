@@ -65,6 +65,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .toggle {
@@ -75,6 +76,8 @@
   border-radius: 999px;
   border: 1px solid var(--btn-border);
   background: var(--btn-bg);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .toggleBtn {
@@ -92,6 +95,7 @@
   cursor: pointer;
   opacity: 0.78;
   line-height: 1;
+  min-width: 0;
 }
 
 .toggleBtn:hover {
@@ -127,6 +131,7 @@
   .right {
     width: 100%;
     justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .toggle,
@@ -155,5 +160,18 @@
 
   .toggleBtn {
     padding: 0 10px;
+  }
+
+  /* On small screens, the Sync label can be long (email). Keep it from breaking the header. */
+  .toggleBtn {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Prefer stacking Sync above Theme when space is tight. */
+  .toggle[aria-label='Sync'] {
+    flex: 1 1 100%;
   }
 }
