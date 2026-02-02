@@ -11,6 +11,9 @@
   flex: 0 0 auto;
   position: relative;
   z-index: 5;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: clip;
 }
 
 .left {
@@ -144,10 +147,15 @@
   .header {
     padding: 10px 12px;
     gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .left {
+    width: 100%;
     gap: 10px;
+    justify-content: space-between;
+    flex-wrap: nowrap;
   }
 
   .brand {
@@ -162,16 +170,39 @@
     padding: 0 10px;
   }
 
-  /* On small screens, the Sync label can be long (email). Keep it from breaking the header. */
-  .toggleBtn {
+  /* 3 lines on mobile: section nav, theme, sync */
+  .right {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .sectionToggle {
+    flex: 0 0 auto;
     max-width: 100%;
+  }
+
+  .themeToggle {
+    order: 1;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .themeToggle .toggleBtn {
+    flex: 1 1 0;
+  }
+
+  .syncToggle {
+    order: 2;
+    width: 100%;
+  }
+
+  .syncToggle .toggleBtn {
+    width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  /* Prefer stacking Sync above Theme when space is tight. */
-  .toggle[aria-label='Sync'] {
-    flex: 1 1 100%;
   }
 }
