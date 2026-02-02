@@ -56,7 +56,18 @@
 
 .chartSvg {
   display: block;
-  max-width: 60%;
+  width: 100%;
+  max-width: 100%;
   height: auto;
   margin: 0 auto;
+}
+
+@media (max-width: 520px) {
+  .chartWrap {
+    padding: 10px;
+  }
+
+  .chartInlineLegend {
+    left: 12px;
+  }
 }
