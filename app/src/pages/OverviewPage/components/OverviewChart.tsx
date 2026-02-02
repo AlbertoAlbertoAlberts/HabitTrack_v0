@@ -234,6 +234,11 @@ type OverviewChartProps = {
 }
 
 export function OverviewChart({ series, yMax }: OverviewChartProps) {
+  const isMobile =
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(max-width: 520px)').matches
+
   const chart = useMemo(() => {
     const width = CHART_VIEWBOX_WIDTH
     const height = CHART_VIEWBOX_HEIGHT
@@ -246,7 +251,7 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
     const plotInsetTop = 10
     const plotInsetBottom = 10
 
-    const axisFontSize = 10
+    const axisFontSize = isMobile ? 12 : 10
     const axisTextFill = 'var(--chart-label)'
     const gridStroke = 'var(--chart-grid)'
     const zeroAxisStroke = 'var(--chart-axis)'
@@ -406,7 +411,7 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
         ))}
       </svg>
     )
-  }, [series, yMax])
+  }, [isMobile, series, yMax])
 
   return (
     <div className={styles.chartWrap}>
