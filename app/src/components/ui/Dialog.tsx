@@ -13,9 +13,10 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null)
   const titleId = useId()
 
-  const handleBackdropClick: React.MouseEventHandler<HTMLDialogElement> = (e) => {
-    // Clicks on the <dialog> element itself are backdrop clicks.
-    if (e.target === dialogRef.current) onClose()
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
+    // Only close when clicking the backdrop area (the dialog element itself),
+    // not when clicking inside the panel.
+    if (e.target === e.currentTarget) onClose()
   }
 
   useEffect(() => {
