@@ -14,11 +14,40 @@
   font-size: 12px;
   line-height: 1;
   cursor: pointer;
+  position: relative;
+  transform: translateZ(0);
+  transition:
+    background-color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out),
+    box-shadow 140ms var(--ease-out),
+    transform 140ms var(--ease-out),
+    opacity 140ms var(--ease-out);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 10px;
+  background: rgba(120, 255, 120, 0.14);
+  opacity: 0;
+  transition: opacity 140ms var(--ease-out);
+  pointer-events: none;
 }
 
 .btnActive {
   border-color: rgba(120, 255, 120, 0.45);
   background: rgba(120, 255, 120, 0.14);
+  box-shadow: 0 0 0 3px rgba(120, 255, 120, 0.08);
+  transform: translateY(-1px) scale(1.05);
+}
+
+.btnActive::after {
+  opacity: 1;
 }
 
 .btn:focus-visible {
@@ -33,4 +62,16 @@
   background: rgba(255, 255, 255, 0.06);
   padding: 6px 8px;
   color: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .btn::after {
+    transition: none;
+  }
+
+  .btn:active,
+  .btnActive {
+    transform: none;
+  }
 }

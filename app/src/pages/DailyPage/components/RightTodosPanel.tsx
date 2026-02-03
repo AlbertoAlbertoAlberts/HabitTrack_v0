@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import { Link } from 'react-router-dom'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 
 import type { TodoItem, TodoMode } from '../../../domain/types'
 
@@ -50,6 +51,9 @@ export function RightTodosPanel({
   onReorderTodos,
   onBeginRenameTodo,
 }: RightTodosPanelProps) {
+  const reduceMotion = useReducedMotion()
+  const itemTransition = reduceMotion ? { duration: 0 } : { duration: 0.16 }
+
   return (
     <section className={`${uiStyles.panel} ${layoutStyles.todoPanel}`}>
       <div className={styles.todoHeaderRow}>
@@ -142,82 +146,90 @@ export function RightTodosPanel({
       <div className={uiStyles.scrollArea}>
         {todos.length === 0 ? <p className={uiStyles.muted}>Nav uzdevumu.</p> : null}
 
-        {todos.map((t) => {
-          const canDrag = todoMode === 'reorder'
-          return (
-            <div
-              key={t.id}
-              className={`${styles.todoRow} ${canDrag ? styles.todoRowReorder : ''} ${todoDragOverId === t.id ? styles.todoRowDragOver : ''}`}
-              draggable={canDrag}
-              onDragStart={(e) => {
-                if (!canDrag) return
-                e.dataTransfer.effectAllowed = 'move'
-                e.dataTransfer.setData('text/plain', t.id)
-              }}
-              onDragOver={(e) => {
-                if (!canDrag) return
-                e.preventDefault()
-                onSetTodoDragOverId(t.id)
-              }}
-              onDragLeave={() => {
-                if (!canDrag) return
-                onSetTodoDragOverId((v) => (v === t.id ? null : v))
-              }}
-              onDrop={(e) => {
-                if (!canDrag) return
-                e.preventDefault()
-                onSetTodoDragOverId(null)
-
-                const draggedId = e.dataTransfer.getData('text/plain')
-                if (!draggedId) return
-                if (draggedId === t.id) return
-
-                const ordered = todos.map((x) => x.id)
-                const fromIndex = ordered.indexOf(draggedId)
-                const toIndex = ordered.indexOf(t.id)
-                if (fromIndex === -1 || toIndex === -1) return
-
-                const next = reorderIds(ordered, draggedId, toIndex)
-                onReorderTodos(next)
-              }}
-            >
-              <input
-                type="checkbox"
-                onChange={() => {
-                  onCompleteTodo(t.id)
+        <AnimatePresence initial={false}>
+          {todos.map((t) => {
+            const canDrag = todoMode === 'reorder'
+            return (
+              <motion.div
+                key={t.id}
+                layout={!reduceMotion}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                transition={itemTransition}
+                whileTap={canDrag ? undefined : { scale: 0.99 }}
+                className={`${styles.todoRow} ${canDrag ? styles.todoRowReorder : ''} ${todoDragOverId === t.id ? styles.todoRowDragOver : ''}`}
+                draggable={canDrag}
+                onDragStartCapture={(e) => {
+                  if (!canDrag) return
+                  e.dataTransfer.effectAllowed = 'move'
+                  e.dataTransfer.setData('text/plain', t.id)
                 }}
-                aria-label={`Pabeigt uzdevumu: ${t.text}`}
-              />
-              <span className={styles.todoText} title={t.text}>
-                {t.text}
-              </span>
+                onDragOverCapture={(e) => {
+                  if (!canDrag) return
+                  e.preventDefault()
+                  onSetTodoDragOverId(t.id)
+                }}
+                onDragLeaveCapture={() => {
+                  if (!canDrag) return
+                  onSetTodoDragOverId((v) => (v === t.id ? null : v))
+                }}
+                onDropCapture={(e) => {
+                  if (!canDrag) return
+                  e.preventDefault()
+                  onSetTodoDragOverId(null)
 
-              {todoMode === 'rename' ? (
-                <button
-                  type="button"
-                  className={sharedStyles.smallBtn}
-                  onClick={() => {
-                    onBeginRenameTodo(t.id, t.text)
+                  const draggedId = e.dataTransfer.getData('text/plain')
+                  if (!draggedId) return
+                  if (draggedId === t.id) return
+
+                  const ordered = todos.map((x) => x.id)
+                  const fromIndex = ordered.indexOf(draggedId)
+                  const toIndex = ordered.indexOf(t.id)
+                  if (fromIndex === -1 || toIndex === -1) return
+
+                  const next = reorderIds(ordered, draggedId, toIndex)
+                  onReorderTodos(next)
+                }}
+              >
+                <input
+                  type="checkbox"
+                  onChange={() => {
+                    onCompleteTodo(t.id)
                   }}
-                  aria-label={`Pārdēvēt uzdevumu: ${t.text}`}
-                >
-                  Mainīt
-                </button>
-              ) : null}
+                  aria-label={`Pabeigt uzdevumu: ${t.text}`}
+                />
+                <span className={styles.todoText} title={t.text}>
+                  {t.text}
+                </span>
 
-              {todoMode === 'delete' ? (
-                <button
-                  type="button"
-                  className={`${sharedStyles.smallBtn} ${uiStyles.dangerBtn}`}
-                  onClick={() => onDeleteTodo(t.id)}
-                  aria-label={`Dzēst uzdevumu: ${t.text}`}
-                >
-                  Dzēst
-                </button>
-              ) : null}
-            </div>
-          )
-        })}
+                {todoMode === 'rename' ? (
+                  <button
+                    type="button"
+                    className={sharedStyles.smallBtn}
+                    onClick={() => {
+                      onBeginRenameTodo(t.id, t.text)
+                    }}
+                    aria-label={`Pārdēvēt uzdevumu: ${t.text}`}
+                  >
+                    Mainīt
+                  </button>
+                ) : null}
+
+                {todoMode === 'delete' ? (
+                  <button
+                    type="button"
+                    className={`${sharedStyles.smallBtn} ${uiStyles.dangerBtn}`}
+                    onClick={() => onDeleteTodo(t.id)}
+                    aria-label={`Dzēst uzdevumu: ${t.text}`}
+                  >
+                    Dzēst
+                  </button>
+                ) : null}
+              </motion.div>
+            )
+          })}
+        </AnimatePresence>
       </div>
 
       <div className={styles.todoFooter}>
