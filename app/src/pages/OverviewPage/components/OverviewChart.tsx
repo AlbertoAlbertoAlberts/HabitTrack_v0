@@ -415,17 +415,19 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
 
   return (
     <div className={styles.chartWrap}>
-      <div className={styles.chartInlineLegend} aria-hidden>
-        <span className={styles.chartLegendItem}>
-          <span className={styles.chartLegendSwatchPrimary} />
-          Rezultāts
-        </span>
-        <span className={styles.chartLegendItem}>
-          <span className={styles.chartLegendSwatchMax} />
-          Maks.
-        </span>
+      <div className={styles.chartFrame}>
+        <div className={styles.chartInlineLegend} aria-hidden>
+          <span className={styles.chartLegendItem}>
+            <span className={styles.chartLegendSwatchPrimary} />
+            Rezultāts
+          </span>
+          <span className={styles.chartLegendItem}>
+            <span className={styles.chartLegendSwatchMax} />
+            Maks.
+          </span>
+        </div>
+        {chart}
       </div>
-      {chart}
     </div>
   )
 }

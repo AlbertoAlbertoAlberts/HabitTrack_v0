@@ -12,6 +12,13 @@
     0 14px 30px rgba(17, 24, 39, 0.06);
 }
 
+.chartFrame {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
 .chartInlineLegend {
   position: absolute;
   top: 10px;
@@ -60,6 +67,12 @@
   max-width: 100%;
   height: auto;
   margin: 0 auto;
+}
+
+@media (min-width: 1200px) {
+  .chartFrame {
+    max-width: 860px;
+  }
 }
 
 @media (max-width: 520px) {
