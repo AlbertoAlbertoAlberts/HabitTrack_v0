@@ -208,6 +208,14 @@
     max-height: calc(100dvh - 20px);
   }
 
+  /*
+    iOS Safari auto-zooms focused inputs when font-size < 16px.
+    Keep inputs at 16px on mobile to prevent zoom/jank.
+  */
+  .input {
+    font-size: 16px;
+  }
+
   .body {
     max-height: calc(100dvh - 180px);
   }
