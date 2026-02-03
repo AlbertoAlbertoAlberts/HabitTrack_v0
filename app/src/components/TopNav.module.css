@@ -103,6 +103,20 @@
   line-height: 1;
 }
 
+.syncBtn {
+  justify-content: flex-start;
+  text-align: left;
+  min-width: 0;
+}
+
+.syncBtnLabel {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .toggleBtn:hover {
   opacity: 0.92;
   background: var(--btn-bg-hover);

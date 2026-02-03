@@ -24,6 +24,7 @@ export function SupabaseSyncControl() {
   const [conflictPolicy, setConflictPolicyState] = useState(getConflictPolicyForUi())
 
   const buttonRef = useRef<HTMLButtonElement | null>(null)
+  const labelRef = useRef<HTMLSpanElement | null>(null)
 
   useEffect(() => subscribeSupabaseSync(() => setStatus(getSupabaseSyncStatus())), [])
 
@@ -47,48 +48,63 @@ export function SupabaseSyncControl() {
 
   useLayoutEffect(() => {
     const el = buttonRef.current
-    if (!el) return
-    const element: HTMLButtonElement = el
+    const labelEl = labelRef.current
+    if (!el || !labelEl) return
+    const buttonEl: HTMLButtonElement = el
+    const textEl: HTMLSpanElement = labelEl
 
     const mql = window.matchMedia('(max-width: 520px)')
 
+    function getInnerWidth(): number {
+      const cs = window.getComputedStyle(buttonEl)
+      const pl = Number.parseFloat(cs.paddingLeft || '0') || 0
+      const pr = Number.parseFloat(cs.paddingRight || '0') || 0
+      return Math.max(0, buttonEl.clientWidth - pl - pr)
+    }
+
     function fitText() {
       if (!mql.matches) {
-        element.style.fontSize = ''
+        textEl.style.fontSize = ''
         return
       }
 
       // Try to shrink the font so the label fits without pushing the header.
-      const min = 10
+      const min = 8
       const max = 14
 
+      const innerWidth = getInnerWidth()
+      if (innerWidth <= 0) return
+
       // Start from max each time to re-fit after resizes.
-      element.style.fontSize = `${max}px`
+      textEl.style.fontSize = `${max}px`
 
       // If it already fits, keep default.
-      if (element.scrollWidth <= element.clientWidth) return
+      if (textEl.scrollWidth <= innerWidth) return
 
       // Binary-search a font size that fits.
       let lo = min
       let hi = max
       while (lo < hi) {
         const mid = Math.floor((lo + hi) / 2)
-        element.style.fontSize = `${mid}px`
-        if (element.scrollWidth <= element.clientWidth) {
+        textEl.style.fontSize = `${mid}px`
+        if (textEl.scrollWidth <= innerWidth) {
           hi = mid
         } else {
           lo = mid + 1
         }
       }
 
-      element.style.fontSize = `${lo}px`
+      textEl.style.fontSize = `${lo}px`
     }
 
     const raf = requestAnimationFrame(fitText)
     window.addEventListener('resize', fitText)
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => fitText()) : null
+    ro?.observe(buttonEl)
     return () => {
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', fitText)
+      ro?.disconnect()
     }
   }, [label])
 
@@ -330,12 +346,20 @@ export function SupabaseSyncControl() {
     <>
       <button
         type="button"
-        className={[navStyles.toggleBtn, status.signedIn ? navStyles.toggleBtnActive : ''].filter(Boolean).join(' ')}
+        className={[
+          navStyles.toggleBtn,
+          navStyles.syncBtn,
+          status.signedIn ? navStyles.toggleBtnActive : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         ref={buttonRef}
         onClick={() => setOpen(true)}
         title={configured ? 'Supabase sync' : 'Supabase not configured'}
       >
-        {label}
+        <span ref={labelRef} className={navStyles.syncBtnLabel}>
+          {label}
+        </span>
       </button>
 
       <Dialog open={open} title="Supabase Sync" onClose={() => setOpen(false)}>
