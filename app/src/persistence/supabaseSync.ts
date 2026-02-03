@@ -86,6 +86,12 @@ export function getSupabaseSyncStatus(): SyncStatus {
 
 export function subscribeSupabaseSync(listener: SyncListener): () => void {
   listeners.add(listener)
+  // Immediately deliver the current snapshot so UI doesn't wait for the next emit.
+  try {
+    listener()
+  } catch {
+    // ignore listener errors
+  }
   return () => listeners.delete(listener)
 }
 

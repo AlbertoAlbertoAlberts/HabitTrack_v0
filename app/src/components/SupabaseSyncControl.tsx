@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from './ui/Dialog'
 import navStyles from './TopNav.module.css'
 import { getSupabaseClient, isSupabaseConfigured } from '../persistence/supabaseClient'
+import { clearState } from '../persistence/storageService'
 import {
   forceSupabasePull,
   forceSupabasePush,
@@ -290,6 +291,33 @@ export function SupabaseSyncControl() {
     }
   }
 
+  async function signOutAndClearDevice() {
+    const ok = window.confirm(
+      'Sign out and clear local data on this device?\n\nThis removes your HabitTrack data from this browser. Your Supabase data remains in the cloud.',
+    )
+    if (!ok) return
+
+    const supabase = getSupabaseClient()
+    if (!supabase) {
+      setMessage('Supabase is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.')
+      return
+    }
+
+    setBusy(true)
+    setMessage(null)
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        setMessage(error.message)
+        return
+      }
+      clearState()
+      window.location.reload()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function forcePushNow() {
     setBusy(true)
     setMessage(null)
@@ -563,6 +591,9 @@ export function SupabaseSyncControl() {
               </button>
               <button type="button" className={dialogStyles.btn} onClick={signOut} disabled={busy}>
                 Sign out
+              </button>
+              <button type="button" className={dialogStyles.btn} onClick={signOutAndClearDevice} disabled={busy}>
+                Sign out + clear device
               </button>
             </>
           ) : (
