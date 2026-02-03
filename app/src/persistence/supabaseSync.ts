@@ -43,6 +43,7 @@ type AppStatesRow = {
 
 type SyncStatus = {
   configured: boolean
+  authChecked: boolean
   signedIn: boolean
   userId: string | null
   email: string | null
@@ -60,6 +61,7 @@ type SyncListener = () => void
 
 let status: SyncStatus = {
   configured: false,
+  authChecked: false,
   signedIn: false,
   userId: null,
   email: null,
@@ -482,31 +484,40 @@ export function startSupabaseSync(): void {
   activeUserId = null
 
   ;(async () => {
-    const { data } = await supabase.auth.getSession()
-    const session = data.session
+    try {
+      const { data } = await supabase.auth.getSession()
+      const session = data.session
 
-    if (session?.user) {
-      setStatus({
-        signedIn: true,
-        userId: session.user.id,
-        email: session.user.email ?? null,
-      })
+      if (session?.user) {
+        setStatus({
+          authChecked: true,
+          signedIn: true,
+          userId: session.user.id,
+          email: session.user.email ?? null,
+        })
 
-      await reconcileRemoteLocal(session.user.id)
+        await reconcileRemoteLocal(session.user.id)
 
-      if (activeUserId !== session.user.id) {
-        realtimeCleanup?.()
-        pollCleanup?.()
-        activeUserId = session.user.id
-        realtimeCleanup = startRealtimeForUser(session.user.id)
-        pollCleanup = startPollForUser(session.user.id)
+        if (activeUserId !== session.user.id) {
+          realtimeCleanup?.()
+          pollCleanup?.()
+          activeUserId = session.user.id
+          realtimeCleanup = startRealtimeForUser(session.user.id)
+          pollCleanup = startPollForUser(session.user.id)
+        }
+        return
       }
+
+      setStatus({ authChecked: true, signedIn: false, userId: null, email: null, conflict: null })
+    } catch {
+      // If session check fails (network / storage), consider auth checked so UI can prompt sign-in.
+      setStatus({ authChecked: true })
     }
   })()
 
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (!session?.user) {
-      setStatus({ signedIn: false, userId: null, email: null, conflict: null })
+      setStatus({ authChecked: true, signedIn: false, userId: null, email: null, conflict: null })
       readyToPush = false
       activeUserId = null
       realtimeCleanup?.()
@@ -516,7 +527,7 @@ export function startSupabaseSync(): void {
       return
     }
 
-    setStatus({ signedIn: true, userId: session.user.id, email: session.user.email ?? null })
+    setStatus({ authChecked: true, signedIn: true, userId: session.user.id, email: session.user.email ?? null })
 
     // Avoid re-pulling and overwriting local edits on token refresh.
     if (event === 'TOKEN_REFRESHED') return

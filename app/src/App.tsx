@@ -9,11 +9,16 @@ import LabPage from './pages/LabPage/LabPage'
 import OverviewPage from './pages/OverviewPage/OverviewPage'
 
 import { useAppState } from './domain/store/useAppStore'
+import { getSupabaseSyncStatus, subscribeSupabaseSync } from './persistence/supabaseSync'
+import { useState } from 'react'
 
 export default function App() {
   const themeMode = useAppState().uiState.themeMode
   const location = useLocation()
   const navigate = useNavigate()
+  const [syncStatus, setSyncStatus] = useState(getSupabaseSyncStatus())
+
+  useEffect(() => subscribeSupabaseSync(() => setSyncStatus(getSupabaseSyncStatus())), [])
 
   // Supabase links sometimes land on `/` (site URL) instead of the desired callback route.
   // If auth parameters are present, route to `/auth/callback` while preserving URL state.
@@ -54,14 +59,40 @@ export default function App() {
     <>
       <TopNav />
       <main>
-        <Routes>
-          <Route path="/auth/callback" element={<AuthCallbackPage />} />
-          <Route path="/" element={<DailyPage />} />
-          <Route path="/lab" element={<LabPage />} />
-          <Route path="/overview" element={<OverviewPage />} />
-          <Route path="/archive" element={<ArchivePage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        {syncStatus.configured && location.pathname !== '/auth/callback' ? (
+          syncStatus.authChecked ? (
+            syncStatus.signedIn ? (
+              <Routes>
+                <Route path="/auth/callback" element={<AuthCallbackPage />} />
+                <Route path="/" element={<DailyPage />} />
+                <Route path="/lab" element={<LabPage />} />
+                <Route path="/overview" element={<OverviewPage />} />
+                <Route path="/archive" element={<ArchivePage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            ) : (
+              <div style={{ maxWidth: 560, margin: '0 auto', padding: '22px 16px', opacity: 0.9 }}>
+                <h2 style={{ margin: 0, fontSize: 18 }}>Signed out</h2>
+                <p style={{ marginTop: 10, lineHeight: 1.4 }}>
+                  Sign in using <strong>Sync</strong> in the top-right to view your data.
+                </p>
+              </div>
+            )
+          ) : (
+            <div style={{ maxWidth: 560, margin: '0 auto', padding: '22px 16px', opacity: 0.9 }}>
+              Checking sign-in…
+            </div>
+          )
+        ) : (
+          <Routes>
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            <Route path="/" element={<DailyPage />} />
+            <Route path="/lab" element={<LabPage />} />
+            <Route path="/overview" element={<OverviewPage />} />
+            <Route path="/archive" element={<ArchivePage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        )}
       </main>
     </>
   )
