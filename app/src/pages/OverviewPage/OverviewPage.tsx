@@ -1,6 +1,5 @@
 import { useLayoutEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 
 import { appStore } from '../../domain/store/appStore'
 import { todayLocalDateString } from '../../domain/utils/localDate'
@@ -26,9 +25,6 @@ function clampInt(value: number, min: number, max: number): number {
 }
 
 export function OverviewPage() {
-  const reduceMotion = useReducedMotion()
-  const fadeTransition = reduceMotion ? { duration: 0 } : { duration: 0.18 }
-
   useLayoutEffect(() => {
     const today = todayLocalDateString()
     const current = appStore.getState().uiState.overviewWindowEndDate
@@ -65,71 +61,42 @@ export function OverviewPage() {
       <div className={styles.overviewLayout}>
         <main className={styles.mainCol}>
           <section className={sharedStyles.panel}>
-            <div className={styles.overviewHeader}>
-              <h2 className={styles.panelTitle} style={{ margin: 0 }}>
-                PĀRSKATS
-              </h2>
+          <div className={styles.overviewHeader}>
+            <h2 className={styles.panelTitle} style={{ margin: 0 }}>
+              PĀRSKATS
+            </h2>
 
-              <div className={styles.windowNav}>
-                <button
-                  type="button"
-                  className={sharedStyles.smallBtn}
-                  onClick={() => appStore.actions.shiftOverviewWindow(-1)}
-                >
-                  ←
-                </button>
-
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.span
-                    key={`${startDate}-${endDate}`}
-                    className={styles.dateRangeLabel}
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 4 }}
-                    transition={fadeTransition}
-                  >
-                    {formatDateLabel(startDate)} → {formatDateLabel(endDate)}
-                  </motion.span>
-                </AnimatePresence>
-
-                <button
-                  type="button"
-                  className={sharedStyles.smallBtn}
-                  onClick={() => appStore.actions.shiftOverviewWindow(1)}
-                >
-                  →
-                </button>
-              </div>
-
-              <div aria-hidden />
+            <div className={styles.windowNav}>
+              <button type="button" className={sharedStyles.smallBtn} onClick={() => appStore.actions.shiftOverviewWindow(-1)}>
+                ←
+              </button>
+              <span className={styles.dateRangeLabel}>
+                {formatDateLabel(startDate)} → {formatDateLabel(endDate)}
+              </span>
+              <button type="button" className={sharedStyles.smallBtn} onClick={() => appStore.actions.shiftOverviewWindow(1)}>
+                →
+              </button>
             </div>
 
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={`${startDate}-${endDate}-${rangeDays}-${mode}-${selectedCategoryId ?? 'all'}-${selectedHabitId ?? 'all'}`}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={fadeTransition}
-              >
-                <OverviewChart series={series} yMax={yMax} />
+            <div aria-hidden />
+          </div>
 
-                <div className={styles.legend}>
-                  <span className={styles.kpi}>
-                    <strong>Kopā</strong>: {Math.round(totalPct * 100)}%
-                  </span>
-                  <span className={styles.kpi}>
-                    <strong>Vidēji</strong>: {Math.round(avgPct * 100)}%
-                  </span>
-                  <span className={styles.kpi}>
-                    <strong>Maks.</strong>: {maxPossibleEnd}
-                  </span>
-                  <span className={styles.kpi}>
-                    <strong>Ieradumi</strong>: {activeHabitsEnd}
-                  </span>
-                </div>
-              </motion.div>
-            </AnimatePresence>
+          <OverviewChart series={series} yMax={yMax} />
+
+          <div className={styles.legend}>
+            <span className={styles.kpi}>
+              <strong>Kopā</strong>: {Math.round(totalPct * 100)}%
+            </span>
+            <span className={styles.kpi}>
+              <strong>Vidēji</strong>: {Math.round(avgPct * 100)}%
+            </span>
+            <span className={styles.kpi}>
+              <strong>Maks.</strong>: {maxPossibleEnd}
+            </span>
+            <span className={styles.kpi}>
+              <strong>Ieradumi</strong>: {activeHabitsEnd}
+            </span>
+          </div>
           </section>
 
           <OverviewSelectionList
@@ -174,68 +141,53 @@ export function OverviewPage() {
             <div className={styles.sidebarStack}>
 
               <div className={styles.weeklyPanel} aria-label="Nedēļas punkti">
-                <AnimatePresence mode="wait" initial={false}>
-                  <motion.div
-                    key={`${overviewWeekStart}-${overviewWeekEnd}`}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={fadeTransition}
-                  >
-                    <div className={styles.weeklyHeader}>
-                      <h3 className={styles.panelTitle} style={{ margin: 0 }}>
-                        Nedēļa
-                      </h3>
-                      <div className={styles.weeklyRange}>
-                        {formatDateLabel(overviewWeekStart)}–{formatDateLabel(overviewWeekEnd)}
+                <div className={styles.weeklyHeader}>
+                  <h3 className={styles.panelTitle} style={{ margin: 0 }}>
+                    Nedēļa
+                  </h3>
+                  <div className={styles.weeklyRange}>
+                    {formatDateLabel(overviewWeekStart)}–{formatDateLabel(overviewWeekEnd)}
+                  </div>
+                </div>
+
+                {weeklyTasks.length === 0 ? (
+                  <p className={styles.muted} style={{ margin: 0 }}>
+                    Nav nedēļas uzdevumu.
+                  </p>
+                ) : (
+                  <>
+                    <div className={styles.weeklySummaryRow}>
+                      <div className={styles.progressBar} aria-hidden>
+                        <div
+                          className={styles.progressFill}
+                          style={{
+                            width:
+                              weeklyPoints.max > 0
+                                ? `${Math.round((weeklyPoints.earned / weeklyPoints.max) * 100)}%`
+                                : '0%',
+                          }}
+                        />
+                      </div>
+
+                      <div className={styles.pointsText}>
+                        {weeklyPoints.earned} / {weeklyPoints.max}
                       </div>
                     </div>
 
-                    {weeklyTasks.length === 0 ? (
-                      <p className={styles.muted} style={{ margin: 0 }}>
-                        Nav nedēļas uzdevumu.
-                      </p>
-                    ) : (
-                      <>
-                        <div className={styles.weeklySummaryRow}>
-                          <div className={styles.progressBar} aria-hidden>
-                            <div
-                              className={styles.progressFill}
-                              style={{
-                                width:
-                                  weeklyPoints.max > 0
-                                    ? `${Math.round((weeklyPoints.earned / weeklyPoints.max) * 100)}%`
-                                    : '0%',
-                              }}
-                            />
-                          </div>
-
-                          <div className={styles.pointsText}>
-                            {weeklyPoints.earned} / {weeklyPoints.max}
-                          </div>
+                    <div className={styles.weeklyTaskBreakdown}>
+                      {weeklyPoints.perTask.map(({ task, earned }) => (
+                        <div key={task.id} className={styles.weeklyTaskRow}>
+                          <span className={styles.weeklyTaskName} title={task.name}>
+                            {task.name}
+                          </span>
+                          <span className={styles.muted}>
+                            {earned}/{clampInt(getWeeklyTaskTargetPerWeekForWeekStart(task, overviewWeekStart, currentWeekStart), 1, 7)}
+                          </span>
                         </div>
-
-                        <div className={styles.weeklyTaskBreakdown}>
-                          {weeklyPoints.perTask.map(({ task, earned }) => (
-                            <div key={task.id} className={styles.weeklyTaskRow}>
-                              <span className={styles.weeklyTaskName} title={task.name}>
-                                {task.name}
-                              </span>
-                              <span className={styles.muted}>
-                                {earned}/
-                                {clampInt(
-                                  getWeeklyTaskTargetPerWeekForWeekStart(task, overviewWeekStart, currentWeekStart),
-                                  1,
-                                  7,
-                                )}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
 
               <hr className={styles.sidebarDivider} />

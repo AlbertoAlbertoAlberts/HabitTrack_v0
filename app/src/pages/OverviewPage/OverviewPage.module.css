@@ -169,13 +169,6 @@
   width: 0;
   background: var(--accent);
   border-radius: 999px;
-  transition: width 160ms var(--ease-out);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .progressFill {
-    transition: none;
-  }
 }
 
 .pointsText {

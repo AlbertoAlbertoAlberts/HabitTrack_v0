@@ -1,5 +1,4 @@
 import { useRef } from 'react'
-import { AnimatePresence } from 'framer-motion'
 import type { WeeklyTask } from '../../../domain/types'
 import { WeeklyTaskTile } from '../../../components/weekly/WeeklyTaskTile'
 import uiStyles from '../DailyShared.module.css'
@@ -148,75 +147,73 @@ export function WeekPanel({
             </div>
           ) : (
             <div className={styles.weeklyList}>
-              <AnimatePresence initial={false}>
-                {weeklyTasks.map((t) => {
-                  const count = weeklyProgress[weekStartDate]?.[t.id] ?? 0
-                  const canDrag = weeklyMode === 'reorder'
-                  const notStartedYet = Boolean(t.startWeekStart && weekStartDate < t.startWeekStart)
-                  const effectiveTargetPerWeek = getWeeklyTaskTargetPerWeekForWeekStart(
-                    t,
-                    weekStartDate,
-                    currentWeekStart,
-                  )
-                  const progressTitle =
-                    notStartedYet && t.startWeekStart
-                      ? `Sākas nedēļā: ${formatDateLabel(t.startWeekStart)}`
-                      : undefined
-                  return (
-                    <WeeklyTaskTile
-                      key={t.id}
-                      task={t}
-                      max={effectiveTargetPerWeek}
-                      count={count}
-                      mode={weeklyMode}
-                      progressDisabled={notStartedYet}
-                      progressTitle={progressTitle}
-                      className={`${styles.weeklyRow} ${weeklyMode === 'reorder' ? styles.weeklyRowReorder : ''} ${weeklyDragOverId === t.id ? styles.weeklyRowDragOver : ''}`}
-                      onAdjust={(delta) => {
-                        onAdjustWeeklyCompletion(weekStartDate, selectedDate, t.id, delta)
-                      }}
-                      onRename={() => {
-                        onRenameWeeklyTask(t.id, t.name, t.targetPerWeek)
-                      }}
-                      onDelete={() => {
-                        onDeleteWeeklyTask(t.id)
-                      }}
-                      draggable={canDrag}
-                      onDragStart={(e) => {
-                        if (!canDrag) return
-                        e.dataTransfer.effectAllowed = 'move'
-                        e.dataTransfer.setData('text/plain', t.id)
-                      }}
-                      onDragOver={(e) => {
-                        if (!canDrag) return
-                        e.preventDefault()
-                        onSetWeeklyDragOverId(t.id)
-                      }}
-                      onDragLeave={() => {
-                        if (!canDrag) return
-                        onSetWeeklyDragOverId((v) => (v === t.id ? null : v))
-                      }}
-                      onDrop={(e) => {
-                        if (!canDrag) return
-                        e.preventDefault()
-                        onSetWeeklyDragOverId(null)
+              {weeklyTasks.map((t) => {
+                const count = weeklyProgress[weekStartDate]?.[t.id] ?? 0
+                const canDrag = weeklyMode === 'reorder'
+                const notStartedYet = Boolean(t.startWeekStart && weekStartDate < t.startWeekStart)
+                const effectiveTargetPerWeek = getWeeklyTaskTargetPerWeekForWeekStart(
+                  t,
+                  weekStartDate,
+                  currentWeekStart,
+                )
+                const progressTitle =
+                  notStartedYet && t.startWeekStart
+                    ? `Sākas nedēļā: ${formatDateLabel(t.startWeekStart)}`
+                    : undefined
+                return (
+                  <WeeklyTaskTile
+                    key={t.id}
+                    task={t}
+                    max={effectiveTargetPerWeek}
+                    count={count}
+                    mode={weeklyMode}
+                    progressDisabled={notStartedYet}
+                    progressTitle={progressTitle}
+                    className={`${styles.weeklyRow} ${weeklyMode === 'reorder' ? styles.weeklyRowReorder : ''} ${weeklyDragOverId === t.id ? styles.weeklyRowDragOver : ''}`}
+                    onAdjust={(delta) => {
+                      onAdjustWeeklyCompletion(weekStartDate, selectedDate, t.id, delta)
+                    }}
+                    onRename={() => {
+                      onRenameWeeklyTask(t.id, t.name, t.targetPerWeek)
+                    }}
+                    onDelete={() => {
+                      onDeleteWeeklyTask(t.id)
+                    }}
+                    draggable={canDrag}
+                    onDragStart={(e) => {
+                      if (!canDrag) return
+                      e.dataTransfer.effectAllowed = 'move'
+                      e.dataTransfer.setData('text/plain', t.id)
+                    }}
+                    onDragOver={(e) => {
+                      if (!canDrag) return
+                      e.preventDefault()
+                      onSetWeeklyDragOverId(t.id)
+                    }}
+                    onDragLeave={() => {
+                      if (!canDrag) return
+                      onSetWeeklyDragOverId((v) => (v === t.id ? null : v))
+                    }}
+                    onDrop={(e) => {
+                      if (!canDrag) return
+                      e.preventDefault()
+                      onSetWeeklyDragOverId(null)
 
-                        const draggedId = e.dataTransfer.getData('text/plain')
-                        if (!draggedId) return
-                        if (draggedId === t.id) return
+                      const draggedId = e.dataTransfer.getData('text/plain')
+                      if (!draggedId) return
+                      if (draggedId === t.id) return
 
-                        const ordered = weeklyTasks.map((x) => x.id)
-                        const fromIndex = ordered.indexOf(draggedId)
-                        const toIndex = ordered.indexOf(t.id)
-                        if (fromIndex === -1 || toIndex === -1) return
+                      const ordered = weeklyTasks.map((x) => x.id)
+                      const fromIndex = ordered.indexOf(draggedId)
+                      const toIndex = ordered.indexOf(t.id)
+                      if (fromIndex === -1 || toIndex === -1) return
 
-                        const next = reorderIds(ordered, draggedId, toIndex)
-                        onReorderWeeklyTasks(next)
-                      }}
-                    />
-                  )
-                })}
-              </AnimatePresence>
+                      const next = reorderIds(ordered, draggedId, toIndex)
+                      onReorderWeeklyTasks(next)
+                    }}
+                  />
+                )
+              })}
             </div>
           )}
         </div>

@@ -1,5 +1,4 @@
 import type { DragEventHandler } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
 
 import type { WeeklyTask } from '../../domain/types'
 
@@ -40,26 +39,17 @@ export function WeeklyTaskTile({
   onDragLeave?: DragEventHandler<HTMLDivElement>
   onDrop?: DragEventHandler<HTMLDivElement>
 }) {
-  const reduceMotion = useReducedMotion()
-  const tileTransition = reduceMotion ? { duration: 0 } : { duration: 0.16 }
-
   const defaultTitle = `Nedēļas progress: ${task.name}. Klikšķis: atzīmē izvēlēto dienu. Shift+klikšķis: noņem izvēlētās dienas atzīmi.`
   const title = progressTitle ?? defaultTitle
 
   return (
-    <motion.div
-      layout={!reduceMotion}
-      initial={{ opacity: 0, y: -6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4, scale: 0.98 }}
-      transition={tileTransition}
-      whileTap={mode === 'normal' ? { scale: 0.99 } : undefined}
+    <div
       className={className ? `${styles.tile} ${className}` : styles.tile}
       draggable={draggable}
-      onDragStartCapture={onDragStart}
-      onDragOverCapture={onDragOver}
-      onDragLeaveCapture={onDragLeave}
-      onDropCapture={onDrop}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
     >
       <div className={styles.actions} aria-hidden={mode === 'normal'}>
         {mode === 'reorder' ? <span className={styles.dragHandle} title="Velc, lai pārkārtotu">⠿</span> : null}
@@ -99,6 +89,6 @@ export function WeeklyTaskTile({
           {task.name}
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
