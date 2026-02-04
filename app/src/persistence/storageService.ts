@@ -583,14 +583,17 @@ export function loadState(): AppStateV1 {
 
   const repaired = repairStateV1(parsed as AppStateV1)
   // Persist repairs immediately so state doesn't drift.
-  return saveState(repaired)
+  return saveState(repaired, { preserveSavedAt: true })
 }
 
-export function saveState(state: AppStateV1): AppStateV1 {
+export function saveState(state: AppStateV1, options?: { preserveSavedAt?: boolean }): AppStateV1 {
+  const shouldPreserve = options?.preserveSavedAt === true
+  const preservedSavedAt = typeof state.savedAt === 'string' && state.savedAt ? state.savedAt : null
+
   const next: AppStateV1 = {
     ...state,
     schemaVersion: CURRENT_SCHEMA_VERSION,
-    savedAt: new Date().toISOString(),
+    savedAt: shouldPreserve && preservedSavedAt ? preservedSavedAt : new Date().toISOString(),
   }
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next))

@@ -69,6 +69,7 @@ type SyncStatus = {
     labTagsCount: number
     labActiveProjectId: string | null
   } | null
+  autoSyncPausedReason: 'pull-only-restore' | null
   preferRemoteOnLogin: boolean
   readyToPush: boolean
   suppressNextPush: boolean
@@ -96,6 +97,41 @@ function pushDebugEvent(event: string, data?: Record<string, unknown>) {
   }
 }
 
+function summarizeAppState(state: AppStateV1): NonNullable<SyncStatus['localStateSummary']> {
+  const selectedDate = state.uiState?.selectedDate ?? null
+  const locked = Boolean(selectedDate && state.dayLocks?.[selectedDate])
+
+  const lab = state.lab
+  const labProjectsCount = lab?.projects ? Object.keys(lab.projects).length : 0
+  const labDailyLogsCount = lab?.dailyLogsByProject
+    ? Object.values(lab.dailyLogsByProject).reduce((sum, byDate) => sum + Object.keys(byDate || {}).length, 0)
+    : 0
+  const labEventLogsCount = lab?.eventLogsByProject
+    ? Object.values(lab.eventLogsByProject).reduce((sum, byId) => sum + Object.keys(byId || {}).length, 0)
+    : 0
+  const labTagsCount = lab?.tagsByProject
+    ? Object.values(lab.tagsByProject).reduce((sum, byTag) => sum + Object.keys(byTag || {}).length, 0)
+    : 0
+
+  return {
+    schemaVersion: state.schemaVersion,
+    savedAt: state.savedAt,
+    selectedDate,
+    locked,
+    categoriesCount: Object.keys(state.categories || {}).length,
+    habitsCount: Object.keys(state.habits || {}).length,
+    todosCount: Object.keys(state.todos || {}).length,
+    todoArchiveCount: Object.keys(state.todoArchive || {}).length,
+    weeklyTasksCount: Object.keys(state.weeklyTasks || {}).length,
+    dailyScoresDaysCount: Object.keys(state.dailyScores || {}).length,
+    labProjectsCount,
+    labDailyLogsCount,
+    labEventLogsCount,
+    labTagsCount,
+    labActiveProjectId: lab?.ui?.activeProjectId ?? null,
+  }
+}
+
 type SyncListener = () => void
 
 let status: SyncStatus = {
@@ -109,6 +145,7 @@ let status: SyncStatus = {
   lastError: null,
   localSavedAt: null,
   localStateSummary: null,
+  autoSyncPausedReason: null,
   preferRemoteOnLogin: false,
   readyToPush: false,
   suppressNextPush: false,
@@ -138,42 +175,7 @@ export function getSupabaseSyncStatus(): SyncStatus {
   try {
     const state = appStore.getState()
     localSavedAt = state.savedAt
-
-    const selectedDate = state.uiState?.selectedDate ?? null
-    const locked = Boolean(selectedDate && state.dayLocks?.[selectedDate])
-
-    const lab = state.lab
-    const labProjectsCount = lab?.projects ? Object.keys(lab.projects).length : 0
-
-    const labDailyLogsCount = lab?.dailyLogsByProject
-      ? Object.values(lab.dailyLogsByProject).reduce((sum, byDate) => sum + Object.keys(byDate || {}).length, 0)
-      : 0
-
-    const labEventLogsCount = lab?.eventLogsByProject
-      ? Object.values(lab.eventLogsByProject).reduce((sum, byId) => sum + Object.keys(byId || {}).length, 0)
-      : 0
-
-    const labTagsCount = lab?.tagsByProject
-      ? Object.values(lab.tagsByProject).reduce((sum, byTag) => sum + Object.keys(byTag || {}).length, 0)
-      : 0
-
-    localStateSummary = {
-      schemaVersion: state.schemaVersion,
-      savedAt: state.savedAt,
-      selectedDate,
-      locked,
-      categoriesCount: Object.keys(state.categories || {}).length,
-      habitsCount: Object.keys(state.habits || {}).length,
-      todosCount: Object.keys(state.todos || {}).length,
-      todoArchiveCount: Object.keys(state.todoArchive || {}).length,
-      weeklyTasksCount: Object.keys(state.weeklyTasks || {}).length,
-      dailyScoresDaysCount: Object.keys(state.dailyScores || {}).length,
-      labProjectsCount,
-      labDailyLogsCount,
-      labEventLogsCount,
-      labTagsCount,
-      labActiveProjectId: lab?.ui?.activeProjectId ?? null,
-    }
+    localStateSummary = summarizeAppState(state)
   } catch {
     localSavedAt = null
     localStateSummary = null
@@ -242,6 +244,7 @@ export async function forceSupabasePull(): Promise<void> {
 
   suppressNextPush = true
   appStore.hydrate(repairState(remoteRow.state))
+  lastHydratedRemoteSavedAt = remoteSavedAt
   setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
   readyToPush = true
   setPreferRemoteOnLogin(true)
@@ -251,10 +254,96 @@ export async function forceSupabasePull(): Promise<void> {
   })
 }
 
+export type SupabaseRemotePeek = {
+  userId: string
+  remoteSavedAt: string
+  remoteStateSummary: NonNullable<SyncStatus['localStateSummary']>
+}
+
+export async function peekSupabaseRemoteSummary(): Promise<SupabaseRemotePeek | null> {
+  const s = status
+  if (!s.configured || !s.signedIn || !s.userId) {
+    setStatus({ lastError: 'Not signed in to Supabase.' })
+    return null
+  }
+
+  pushDebugEvent('remotePeek:start', { userId: s.userId })
+  let remoteRow: AppStatesRow | null = null
+  try {
+    remoteRow = await pullRemoteRow(s.userId)
+  } catch {
+    return null
+  }
+
+  if (!remoteRow?.state) {
+    setStatus({ lastError: 'No Supabase state found for this user yet.' })
+    pushDebugEvent('remotePeek:no-remote', { userId: s.userId })
+    return null
+  }
+
+  const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
+  noteRemoteSavedAt(remoteSavedAt, 'remotePeek')
+  const remoteStateSummary = summarizeAppState(remoteRow.state)
+  pushDebugEvent('remotePeek:ok', { userId: s.userId, remoteSavedAt })
+  return { userId: s.userId, remoteSavedAt, remoteStateSummary }
+}
+
+export async function restoreSupabasePullOnly(): Promise<void> {
+  const s = status
+  if (!s.configured || !s.signedIn || !s.userId) {
+    setStatus({ lastError: 'Not signed in to Supabase.' })
+    return
+  }
+
+  pushDebugEvent('pullOnlyRestore:start', { userId: s.userId })
+  let remoteRow: AppStatesRow | null = null
+  try {
+    remoteRow = await pullRemoteRow(s.userId)
+  } catch {
+    return
+  }
+
+  if (!remoteRow?.state) {
+    setStatus({ lastError: 'No Supabase state found for this user yet.' })
+    pushDebugEvent('pullOnlyRestore:no-remote', { userId: s.userId })
+    return
+  }
+
+  const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
+  noteRemoteSavedAt(remoteSavedAt, 'pullOnlyRestore')
+
+  // Hydrate local from remote, but explicitly pause auto-push so the user can verify.
+  suppressNextPush = true
+  readyToPush = false
+  appStore.hydrate(repairState(remoteRow.state))
+  lastHydratedRemoteSavedAt = remoteSavedAt
+  setPreferRemoteOnLogin(true)
+  setStatus({
+    lastPulledAt: new Date().toISOString(),
+    lastError: null,
+    conflict: null,
+    autoSyncPausedReason: 'pull-only-restore',
+  })
+
+  pushDebugEvent('pullOnlyRestore:hydrated', { userId: s.userId, remoteSavedAt })
+}
+
+export function resumeSupabaseAutoSync(): void {
+  const s = status
+  setStatus({ autoSyncPausedReason: null })
+  // Don't immediately push the restored snapshot; resume on next local change.
+  suppressNextPush = true
+  if (s.configured && s.signedIn && s.userId && !s.conflict) {
+    readyToPush = true
+  }
+  pushDebugEvent('autoSync:resumed', { userId: s.userId ?? null })
+}
+
 let started = false
 let suppressNextPush = false
 let pushTimer: number | null = null
 let lastPushedSavedAt: string | null = null
+let lastHydratedRemoteSavedAt: string | null = null
 let knownRemoteSavedAt: string | null = null
 let readyToPush = false
 let activeUserId: string | null = null
@@ -383,8 +472,9 @@ async function pullAndHydrateIfNewer(userId: string, reason: string): Promise<vo
 
   suppressNextPush = true
   appStore.hydrate(repairState(remoteRow.state))
+  lastHydratedRemoteSavedAt = remoteSavedAt
   setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
-  readyToPush = true
+  readyToPush = status.autoSyncPausedReason ? false : true
   setPreferRemoteOnLogin(true)
 
   pushDebugEvent('autoPull:hydrated', { userId, reason, remoteSavedAt })
@@ -462,6 +552,7 @@ function startPollForUser(userId: string): () => void {
 }
 
 async function reconcileRemoteLocal(userId: string): Promise<void> {
+  const paused = Boolean(status.autoSyncPausedReason)
   const local = appStore.getState()
   let remoteRow: AppStatesRow | null = null
   try {
@@ -477,7 +568,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
     // First-time migration: push local state to Supabase.
     pushDebugEvent('reconcile:first-push', { userId, localSavedAt: local.savedAt })
     await upsertRemoteState(userId, local, { force: true, reason: 'reconcile:first-push' })
-    readyToPush = true
+    readyToPush = paused ? false : true
     return
   }
 
@@ -488,8 +579,9 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
     noteRemoteSavedAt(remoteSavedAt, 'reconcile:bootstrapped-empty')
     suppressNextPush = true
     appStore.hydrate(repairState(remoteRow.state))
+    lastHydratedRemoteSavedAt = remoteSavedAt
     setStatus({ lastPulledAt: new Date().toISOString(), lastError: null })
-    readyToPush = true
+    readyToPush = paused ? false : true
     setPreferRemoteOnLogin(true)
     pushDebugEvent('reconcile:bootstrapped-empty->pull', {
       userId,
@@ -517,8 +609,9 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
     if (getPreferRemoteOnLogin() || isEffectivelyEmptyState(local)) {
       suppressNextPush = true
       appStore.hydrate(repairState(remoteRow.state))
+      lastHydratedRemoteSavedAt = remoteSavedAt
       setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
-      readyToPush = true
+      readyToPush = paused ? false : true
       setPreferRemoteOnLogin(true)
       pushDebugEvent('reconcile:local-newer-but-prefer-remote->pull', {
         userId,
@@ -543,7 +636,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   // Equal timestamps: treat as in sync.
   if (safeLocalMs === safeRemoteMs) {
     setStatus({ conflict: null })
-    readyToPush = true
+    readyToPush = paused ? false : true
     pushDebugEvent('reconcile:in-sync', { userId, savedAt: localSavedAt })
     return
   }
@@ -551,8 +644,9 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   // Remote is newer → hydrate local from remote.
   suppressNextPush = true
   appStore.hydrate(repairState(remoteRow.state))
+  lastHydratedRemoteSavedAt = remoteSavedAt
   setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
-  readyToPush = true
+  readyToPush = paused ? false : true
   pushDebugEvent('reconcile:remote-newer->pull', { userId, localSavedAt, remoteSavedAt })
 }
 
@@ -724,6 +818,7 @@ function schedulePush(userId: string) {
   if (pushTimer) window.clearTimeout(pushTimer)
   pushTimer = window.setTimeout(async () => {
     pushTimer = null
+    if (status.autoSyncPausedReason) return
     if (suppressNextPush) {
       suppressNextPush = false
       pushDebugEvent('push:suppressed', { userId })
@@ -732,6 +827,7 @@ function schedulePush(userId: string) {
 
     const current = appStore.getState()
     if (lastPushedSavedAt && current.savedAt === lastPushedSavedAt) return
+    if (lastHydratedRemoteSavedAt && current.savedAt === lastHydratedRemoteSavedAt) return
 
     await upsertRemoteState(userId, current, { reason: 'autoPush' })
   }, PUSH_DEBOUNCE_MS)
@@ -816,6 +912,7 @@ export function startSupabaseSync(): void {
   appStore.subscribe(() => {
     const s = status
     if (!s.configured || !s.signedIn || !s.userId) return
+    if (s.autoSyncPausedReason) return
     if (!readyToPush) return
     if (s.conflict) return
     schedulePush(s.userId)

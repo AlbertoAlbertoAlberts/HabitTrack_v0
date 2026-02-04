@@ -100,7 +100,14 @@ function setState(next: AppStateV1) {
 }
 
 function hydrateState(next: AppStateV1) {
-  state = saveState(next)
+  // Hydrates (e.g., Supabase pull) should NOT manufacture a new savedAt.
+  state = saveState(next, { preserveSavedAt: true })
+  emit()
+}
+
+function setUiState(next: AppStateV1) {
+  // UI-only changes should not affect sync ordering.
+  state = saveState(next, { preserveSavedAt: true })
   emit()
 }
 
@@ -171,41 +178,41 @@ export const appStore = {
 
     // UI state
     setSelectedDate(date: LocalDateString) {
-      setState(setSelectedDate(state, date))
+      setUiState(setSelectedDate(state, date))
     },
     setDailyViewMode(mode: 'category' | 'priority') {
-      setState(setDailyViewMode(state, mode))
+      setUiState(setDailyViewMode(state, mode))
     },
     setDailyLeftMode(mode: 'normal' | 'reorder' | 'delete' | 'priorityEdit' | 'rename') {
-      setState(setDailyLeftMode(state, mode))
+      setUiState(setDailyLeftMode(state, mode))
     },
 
     setTodoMode(mode: TodoMode) {
-      setState(setTodoMode(state, mode))
+      setUiState(setTodoMode(state, mode))
     },
 
     setThemeMode(themeMode: ThemeMode) {
-      setState(setThemeMode(state, themeMode))
+      setUiState(setThemeMode(state, themeMode))
     },
 
     // Overview UI state
     setOverviewRangeDays(rangeDays: 7 | 30) {
-      setState(setOverviewRangeDays(state, rangeDays))
+      setUiState(setOverviewRangeDays(state, rangeDays))
     },
     shiftOverviewWindow(direction: -1 | 1) {
-      setState(shiftOverviewWindow(state, direction))
+      setUiState(shiftOverviewWindow(state, direction))
     },
     setOverviewMode(mode: AppStateV1['uiState']['overviewMode']) {
-      setState(setOverviewMode(state, mode))
+      setUiState(setOverviewMode(state, mode))
     },
     selectOverviewCategory(categoryId: CategoryId | null) {
-      setState(selectOverviewCategory(state, categoryId))
+      setUiState(selectOverviewCategory(state, categoryId))
     },
     selectOverviewHabit(habitId: HabitId | null) {
-      setState(selectOverviewHabit(state, habitId))
+      setUiState(selectOverviewHabit(state, habitId))
     },
     setOverviewWindowEndDate(date: LocalDateString) {
-      setState(setOverviewWindowEndDate(state, date))
+      setUiState(setOverviewWindowEndDate(state, date))
     },
 
     // Todos
@@ -273,7 +280,7 @@ export const appStore = {
       setState(reorderLabProjects(state, orderedIds))
     },
     setActiveLabProject(projectId: LabProjectId | null) {
-      setState(setActiveLabProject(state, projectId))
+      setUiState(setActiveLabProject(state, projectId))
     },
 
     // LAB Tags

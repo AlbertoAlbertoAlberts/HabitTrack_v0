@@ -3,15 +3,19 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Dialog, DialogBody, DialogFooter, dialogStyles } from './ui/Dialog'
 import navStyles from './TopNav.module.css'
 import { getSupabaseClient, isSupabaseConfigured } from '../persistence/supabaseClient'
-import { clearState } from '../persistence/storageService'
+import { clearState, exportBackupJson } from '../persistence/storageService'
 import {
   forceSupabasePull,
   forceSupabasePush,
   getConflictPolicyForUi,
   getSupabaseSyncStatus,
+  peekSupabaseRemoteSummary,
+  restoreSupabasePullOnly,
+  resumeSupabaseAutoSync,
   setConflictPolicy,
   subscribeSupabaseSync,
 } from '../persistence/supabaseSync'
+import { appStore } from '../domain/store/appStore'
 
 export function SupabaseSyncControl() {
   const [open, setOpen] = useState(false)
@@ -357,6 +361,7 @@ export function SupabaseSyncControl() {
       activeUserId: live.activeUserId,
       localSavedAt: live.localSavedAt,
       localStateSummary: live.localStateSummary,
+      autoSyncPausedReason: live.autoSyncPausedReason,
       preferRemoteOnLogin: live.preferRemoteOnLogin,
       readyToPush: live.readyToPush,
       suppressNextPush: live.suppressNextPush,
@@ -378,6 +383,76 @@ export function SupabaseSyncControl() {
     } catch {
       setMessage(text)
     }
+  }
+
+  function downloadTextFile(filename: string, text: string, mime = 'application/json') {
+    const blob = new Blob([text], { type: `${mime};charset=utf-8` })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  function makeBackupFilename() {
+    const iso = new Date().toISOString().replace(/[:.]/g, '-').replace('T', '_').replace('Z', '')
+    return `habittrack_backup_${iso}.json`
+  }
+
+  async function downloadLocalBackup() {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const json = exportBackupJson(appStore.getState())
+      downloadTextFile(makeBackupFilename(), json)
+      setMessage('Downloaded local backup JSON.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function peekRemote() {
+    setBusy(true)
+    setMessage(null)
+    try {
+      const peek = await peekSupabaseRemoteSummary()
+      if (!peek) return
+      const text = JSON.stringify(peek, null, 2)
+      try {
+        await navigator.clipboard.writeText(text)
+        setMessage('Copied remote summary to clipboard.')
+      } catch {
+        setMessage(text)
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function pullOnlyRestore() {
+    const ok = window.confirm(`Restore local data from Supabase?
+
+This will overwrite this device’s local data with the cloud copy.
+
+Auto sync will be paused afterward until you click “Resume auto sync”.`)
+    if (!ok) return
+
+    setBusy(true)
+    setMessage(null)
+    try {
+      await restoreSupabasePullOnly()
+      setMessage('Restored from Supabase. Auto sync is paused (pull-only mode).')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function resumeAutoSync() {
+    resumeSupabaseAutoSync()
+    setMessage('Auto sync resumed. It will push on your next change.')
   }
 
   return (
@@ -432,6 +507,8 @@ export function SupabaseSyncControl() {
                 Last pushed: {formatTime(status.lastPushedAt)}
                 <br />
                 Ready to push: {status.readyToPush ? 'yes' : 'no'}
+                <br />
+                Auto-sync paused: {status.autoSyncPausedReason ? `yes (${status.autoSyncPausedReason})` : 'no'}
                 <br />
                 Suppress next push: {status.suppressNextPush ? 'yes' : 'no'}
                 <br />
@@ -516,6 +593,22 @@ export function SupabaseSyncControl() {
                 <button type="button" className={dialogStyles.btn} onClick={copyDebugInfo} disabled={busy}>
                   Copy debug info
                 </button>
+                <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" className={dialogStyles.btn} onClick={downloadLocalBackup} disabled={busy}>
+                    Download my data (backup)
+                  </button>
+                  <button type="button" className={dialogStyles.btn} onClick={peekRemote} disabled={busy}>
+                    Peek remote summary
+                  </button>
+                  <button type="button" className={dialogStyles.btn} onClick={pullOnlyRestore} disabled={busy}>
+                    Restore from Supabase (pull-only)
+                  </button>
+                  {status.autoSyncPausedReason ? (
+                    <button type="button" className={dialogStyles.btn} onClick={resumeAutoSync} disabled={busy}>
+                      Resume auto sync
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           ) : (
