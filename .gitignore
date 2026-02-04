@@ -7,3 +7,9 @@ habittrack_backup_*.json
 # Local env files (Vite)
 .env.local
 .env.*.local
+
+# Editor
+.vscode/
+
+# Local scratch files
+image.png

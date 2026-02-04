@@ -50,11 +50,32 @@ type SyncStatus = {
   lastPulledAt: string | null
   lastPushedAt: string | null
   lastError: string | null
+  // Debug/diagnostics fields (helpful for Phase 1 sync investigations).
+  localSavedAt: string | null
+  preferRemoteOnLogin: boolean
+  readyToPush: boolean
+  suppressNextPush: boolean
+  lastPushedSavedAt: string | null
+  activeUserId: string | null
+  debugEvents: Array<{ at: string; event: string; data?: Record<string, unknown> }>
   conflict: {
     kind: 'local-newer-than-remote'
     localSavedAt: string
     remoteSavedAt: string
   } | null
+}
+
+type SyncDebugEvent = { at: string; event: string; data?: Record<string, unknown> }
+const debugEvents: SyncDebugEvent[] = []
+const DEBUG_EVENTS_MAX = 30
+
+function pushDebugEvent(event: string, data?: Record<string, unknown>) {
+  debugEvents.push({ at: new Date().toISOString(), event, data })
+  while (debugEvents.length > DEBUG_EVENTS_MAX) debugEvents.shift()
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('[supabaseSync]', event, data ?? '')
+  }
 }
 
 type SyncListener = () => void
@@ -68,6 +89,13 @@ let status: SyncStatus = {
   lastPulledAt: null,
   lastPushedAt: null,
   lastError: null,
+  localSavedAt: null,
+  preferRemoteOnLogin: false,
+  readyToPush: false,
+  suppressNextPush: false,
+  lastPushedSavedAt: null,
+  activeUserId: null,
+  debugEvents: [],
   conflict: null,
 }
 
@@ -83,7 +111,25 @@ function setStatus(patch: Partial<SyncStatus>) {
 }
 
 export function getSupabaseSyncStatus(): SyncStatus {
-  return status
+  // Return a snapshot with derived runtime flags so the UI can reliably capture
+  // what the sync engine is currently doing (without needing extra emits).
+  let localSavedAt: string | null = null
+  try {
+    localSavedAt = appStore.getState().savedAt
+  } catch {
+    localSavedAt = null
+  }
+
+  return {
+    ...status,
+    localSavedAt,
+    preferRemoteOnLogin: getPreferRemoteOnLogin(),
+    readyToPush,
+    suppressNextPush,
+    lastPushedSavedAt,
+    activeUserId,
+    debugEvents: [...debugEvents],
+  }
 }
 
 export function subscribeSupabaseSync(listener: SyncListener): () => void {
@@ -104,6 +150,7 @@ export async function forceSupabasePush(): Promise<void> {
     return
   }
 
+  pushDebugEvent('forcePush:start', { userId: s.userId })
   await upsertRemoteState(s.userId, appStore.getState())
   readyToPush = true
 }
@@ -115,6 +162,7 @@ export async function forceSupabasePull(): Promise<void> {
     return
   }
 
+  pushDebugEvent('forcePull:start', { userId: s.userId })
   let remoteRow: AppStatesRow | null = null
   try {
     remoteRow = await pullRemoteRow(s.userId)
@@ -124,6 +172,7 @@ export async function forceSupabasePull(): Promise<void> {
 
   if (!remoteRow?.state) {
     setStatus({ lastError: 'No Supabase state found for this user yet.' })
+    pushDebugEvent('forcePull:no-remote', { userId: s.userId })
     return
   }
 
@@ -132,6 +181,10 @@ export async function forceSupabasePull(): Promise<void> {
   setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
   readyToPush = true
   setPreferRemoteOnLogin(true)
+  pushDebugEvent('forcePull:hydrated', {
+    userId: s.userId,
+    remoteSavedAt: remoteRow.state.savedAt || remoteRow.saved_at,
+  })
 }
 
 let started = false
@@ -259,11 +312,7 @@ async function pullAndHydrateIfNewer(userId: string, reason: string): Promise<vo
   readyToPush = true
   setPreferRemoteOnLogin(true)
 
-  // Helpful breadcrumb when debugging.
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
-    console.log(`[supabaseSync] hydrated from remote (${reason})`)
-  }
+  pushDebugEvent('autoPull:hydrated', { userId, reason, remoteSavedAt })
 }
 
 function startRealtimeForUser(userId: string): () => void {
@@ -345,11 +394,13 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   } catch {
     // If we can't reach Supabase right now, do NOT push local (would overwrite remote).
     readyToPush = false
+    pushDebugEvent('reconcile:pull-failed', { userId })
     return
   }
 
   if (!remoteRow?.state) {
     // First-time migration: push local state to Supabase.
+    pushDebugEvent('reconcile:first-push', { userId, localSavedAt: local.savedAt })
     await upsertRemoteState(userId, local)
     readyToPush = true
     return
@@ -363,6 +414,10 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
     setStatus({ lastPulledAt: new Date().toISOString(), lastError: null })
     readyToPush = true
     setPreferRemoteOnLogin(true)
+    pushDebugEvent('reconcile:bootstrapped-empty->pull', {
+      userId,
+      remoteSavedAt: remoteRow.state.savedAt || remoteRow.saved_at,
+    })
     return
   }
 
@@ -388,12 +443,18 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
       setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
       readyToPush = true
       setPreferRemoteOnLogin(true)
+      pushDebugEvent('reconcile:local-newer-but-prefer-remote->pull', {
+        userId,
+        localSavedAt,
+        remoteSavedAt,
+      })
       return
     }
 
     // Auto-resolve conflicts for a single-user app: last write wins.
     // This prevents multi-tab/device edits from getting stuck requiring manual pull/push.
     if (getConflictPolicy() === 'last-write-wins') {
+      pushDebugEvent('reconcile:local-newer->push', { userId, localSavedAt, remoteSavedAt })
       await upsertRemoteState(userId, local)
       readyToPush = true
       setStatus({ conflict: null })
@@ -408,6 +469,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
       },
     })
     readyToPush = false
+    pushDebugEvent('reconcile:conflict', { userId, localSavedAt, remoteSavedAt })
     return
   }
 
@@ -415,6 +477,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   if (safeLocalMs === safeRemoteMs) {
     setStatus({ conflict: null })
     readyToPush = true
+    pushDebugEvent('reconcile:in-sync', { userId, savedAt: localSavedAt })
     return
   }
 
@@ -423,6 +486,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   appStore.hydrate(repairState(remoteRow.state))
   setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
   readyToPush = true
+  pushDebugEvent('reconcile:remote-newer->pull', { userId, localSavedAt, remoteSavedAt })
 }
 
 async function upsertRemoteState(userId: string, state: AppStateV1): Promise<void> {
@@ -454,6 +518,7 @@ async function upsertRemoteState(userId: string, state: AppStateV1): Promise<voi
 
   lastPushedSavedAt = state.savedAt
   setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
+  pushDebugEvent('push:ok', { userId, savedAt: state.savedAt })
 }
 
 function schedulePush(userId: string) {
@@ -462,6 +527,7 @@ function schedulePush(userId: string) {
     pushTimer = null
     if (suppressNextPush) {
       suppressNextPush = false
+      pushDebugEvent('push:suppressed', { userId })
       return
     }
 
@@ -520,6 +586,7 @@ export function startSupabaseSync(): void {
       setStatus({ authChecked: true, signedIn: false, userId: null, email: null, conflict: null })
       readyToPush = false
       activeUserId = null
+      pushDebugEvent('auth:signed-out', { event })
       realtimeCleanup?.()
       realtimeCleanup = null
       pollCleanup?.()
@@ -533,6 +600,7 @@ export function startSupabaseSync(): void {
     if (event === 'TOKEN_REFRESHED') return
 
     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      pushDebugEvent('auth:' + event, { userId: session.user.id, email: session.user.email ?? null })
       await reconcileRemoteLocal(session.user.id)
 
       if (activeUserId !== session.user.id) {

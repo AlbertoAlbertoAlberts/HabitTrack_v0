@@ -348,15 +348,23 @@ export function SupabaseSyncControl() {
   }
 
   async function copyDebugInfo() {
+    const live = getSupabaseSyncStatus()
     const info = {
       supabaseHost,
-      signedIn: status.signedIn,
-      email: status.email,
-      userId: status.userId,
-      lastPulledAt: status.lastPulledAt,
-      lastPushedAt: status.lastPushedAt,
-      lastError: status.lastError,
-      conflict: status.conflict,
+      signedIn: live.signedIn,
+      email: live.email,
+      userId: live.userId,
+      activeUserId: live.activeUserId,
+      localSavedAt: live.localSavedAt,
+      preferRemoteOnLogin: live.preferRemoteOnLogin,
+      readyToPush: live.readyToPush,
+      suppressNextPush: live.suppressNextPush,
+      lastPushedSavedAt: live.lastPushedSavedAt,
+      lastPulledAt: live.lastPulledAt,
+      lastPushedAt: live.lastPushedAt,
+      lastError: live.lastError,
+      conflict: live.conflict,
+      debugEvents: live.debugEvents,
       conflictPolicy,
       page: window.location.href,
     }
@@ -413,10 +421,42 @@ export function SupabaseSyncControl() {
                 ) : null}
                 User id: {status.userId ?? '—'}
                 <br />
+                Local savedAt: {formatTime(status.localSavedAt)}
+                <br />
                 Last pulled: {formatTime(status.lastPulledAt)}
                 <br />
                 Last pushed: {formatTime(status.lastPushedAt)}
+                <br />
+                Ready to push: {status.readyToPush ? 'yes' : 'no'}
+                <br />
+                Suppress next push: {status.suppressNextPush ? 'yes' : 'no'}
+                <br />
+                Prefer remote on login: {status.preferRemoteOnLogin ? 'yes' : 'no'}
               </div>
+
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: 'pointer', fontSize: 12 }}>Debug log</summary>
+                <pre
+                  style={{
+                    marginTop: 8,
+                    fontSize: 11,
+                    opacity: 0.9,
+                    whiteSpace: 'pre-wrap',
+                    maxHeight: 160,
+                    overflow: 'auto',
+                    background: 'rgba(0,0,0,0.06)',
+                    padding: 8,
+                    borderRadius: 6,
+                  }}
+                >
+                  {status.debugEvents.length
+                    ? status.debugEvents
+                        .slice(-12)
+                        .map((e) => `${e.at}  ${e.event}${e.data ? `  ${JSON.stringify(e.data)}` : ''}`)
+                        .join('\n')
+                    : '—'}
+                </pre>
+              </details>
 
               {status.lastError ? (
                 <div style={{ marginTop: 8, color: 'var(--danger)' }}>Last sync error: {status.lastError}</div>
