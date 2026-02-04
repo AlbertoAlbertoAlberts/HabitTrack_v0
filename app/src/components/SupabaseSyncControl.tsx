@@ -360,6 +360,7 @@ export function SupabaseSyncControl() {
       readyToPush: live.readyToPush,
       suppressNextPush: live.suppressNextPush,
       lastPushedSavedAt: live.lastPushedSavedAt,
+      knownRemoteSavedAt: live.knownRemoteSavedAt,
       lastPulledAt: live.lastPulledAt,
       lastPushedAt: live.lastPushedAt,
       lastError: live.lastError,
@@ -423,6 +424,8 @@ export function SupabaseSyncControl() {
                 <br />
                 Local savedAt: {formatTime(status.localSavedAt)}
                 <br />
+                Known remote savedAt: {formatTime(status.knownRemoteSavedAt)}
+                <br />
                 Last pulled: {formatTime(status.lastPulledAt)}
                 <br />
                 Last pushed: {formatTime(status.lastPushedAt)}
@@ -485,7 +488,11 @@ export function SupabaseSyncControl() {
                 <div style={{ marginTop: 10 }}>
                   <div style={{ color: 'var(--danger)' }}>Sync needs a decision.</div>
                   <div style={{ marginTop: 6, fontSize: 12, opacity: 0.9 }}>
-                    This device’s local data looks newer than what’s in Supabase.
+                    {status.conflict.kind === 'local-newer-than-remote'
+                      ? 'This device’s local data looks newer than what’s in Supabase.'
+                      : status.conflict.kind === 'remote-newer-than-local'
+                        ? 'Supabase looks newer than this device’s local data.'
+                        : 'Supabase changed since this device last synced.'}
                     <br />
                     Local savedAt: {formatTime(status.conflict.localSavedAt)}
                     <br />

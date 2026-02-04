@@ -56,10 +56,11 @@ type SyncStatus = {
   readyToPush: boolean
   suppressNextPush: boolean
   lastPushedSavedAt: string | null
+  knownRemoteSavedAt: string | null
   activeUserId: string | null
   debugEvents: Array<{ at: string; event: string; data?: Record<string, unknown> }>
   conflict: {
-    kind: 'local-newer-than-remote'
+    kind: 'local-newer-than-remote' | 'remote-newer-than-local' | 'remote-changed-since-last-sync'
     localSavedAt: string
     remoteSavedAt: string
   } | null
@@ -94,6 +95,7 @@ let status: SyncStatus = {
   readyToPush: false,
   suppressNextPush: false,
   lastPushedSavedAt: null,
+  knownRemoteSavedAt: null,
   activeUserId: null,
   debugEvents: [],
   conflict: null,
@@ -127,6 +129,7 @@ export function getSupabaseSyncStatus(): SyncStatus {
     readyToPush,
     suppressNextPush,
     lastPushedSavedAt,
+    knownRemoteSavedAt,
     activeUserId,
     debugEvents: [...debugEvents],
   }
@@ -151,7 +154,7 @@ export async function forceSupabasePush(): Promise<void> {
   }
 
   pushDebugEvent('forcePush:start', { userId: s.userId })
-  await upsertRemoteState(s.userId, appStore.getState())
+  await upsertRemoteState(s.userId, appStore.getState(), { force: true, reason: 'forcePush' })
   readyToPush = true
 }
 
@@ -176,6 +179,9 @@ export async function forceSupabasePull(): Promise<void> {
     return
   }
 
+  const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
+  noteRemoteSavedAt(remoteSavedAt, 'forcePull')
+
   suppressNextPush = true
   appStore.hydrate(repairState(remoteRow.state))
   setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
@@ -183,7 +189,7 @@ export async function forceSupabasePull(): Promise<void> {
   setPreferRemoteOnLogin(true)
   pushDebugEvent('forcePull:hydrated', {
     userId: s.userId,
-    remoteSavedAt: remoteRow.state.savedAt || remoteRow.saved_at,
+    remoteSavedAt,
   })
 }
 
@@ -191,6 +197,7 @@ let started = false
 let suppressNextPush = false
 let pushTimer: number | null = null
 let lastPushedSavedAt: string | null = null
+let knownRemoteSavedAt: string | null = null
 let readyToPush = false
 let activeUserId: string | null = null
 
@@ -245,6 +252,17 @@ async function withTimeout<T>(promiseLike: PromiseLike<T>, ms: number, label: st
   }
 }
 
+function safeParseMs(value: string | null | undefined): number {
+  if (!value) return 0
+  const ms = Date.parse(value)
+  return Number.isFinite(ms) ? ms : 0
+}
+
+function noteRemoteSavedAt(remoteSavedAt: string, reason: string) {
+  knownRemoteSavedAt = remoteSavedAt
+  pushDebugEvent('remote:observed', { remoteSavedAt, reason })
+}
+
 async function pullRemoteRow(userId: string): Promise<AppStatesRow | null> {
   const supabase = getSupabaseClient()
   if (!supabase) return null
@@ -278,10 +296,8 @@ async function pullRemoteRow(userId: string): Promise<AppStatesRow | null> {
 
 function shouldHydrateFromRemote(remoteSavedAt: string): boolean {
   const localSavedAt = appStore.getState().savedAt
-  const localMs = Date.parse(localSavedAt)
-  const remoteMs = Date.parse(remoteSavedAt)
-  const safeLocalMs = Number.isFinite(localMs) ? localMs : 0
-  const safeRemoteMs = Number.isFinite(remoteMs) ? remoteMs : 0
+  const safeLocalMs = safeParseMs(localSavedAt)
+  const safeRemoteMs = safeParseMs(remoteSavedAt)
   return safeRemoteMs > safeLocalMs
 }
 
@@ -299,6 +315,7 @@ async function pullAndHydrateIfNewer(userId: string, reason: string): Promise<vo
   if (!remoteRow?.state) return
 
   const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
+  noteRemoteSavedAt(remoteSavedAt, `pull:${reason}`)
   if (lastPushedSavedAt && remoteSavedAt === lastPushedSavedAt) {
     // Likely our own write echoed back.
     return
@@ -401,7 +418,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   if (!remoteRow?.state) {
     // First-time migration: push local state to Supabase.
     pushDebugEvent('reconcile:first-push', { userId, localSavedAt: local.savedAt })
-    await upsertRemoteState(userId, local)
+    await upsertRemoteState(userId, local, { force: true, reason: 'reconcile:first-push' })
     readyToPush = true
     return
   }
@@ -409,6 +426,8 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   // If this browser started from an empty localStorage (new device/incognito),
   // prefer remote to avoid treating a freshly-created default state as authoritative.
   if (wasBootstrappedFromEmptyState()) {
+    const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
+    noteRemoteSavedAt(remoteSavedAt, 'reconcile:bootstrapped-empty')
     suppressNextPush = true
     appStore.hydrate(repairState(remoteRow.state))
     setStatus({ lastPulledAt: new Date().toISOString(), lastError: null })
@@ -416,7 +435,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
     setPreferRemoteOnLogin(true)
     pushDebugEvent('reconcile:bootstrapped-empty->pull', {
       userId,
-      remoteSavedAt: remoteRow.state.savedAt || remoteRow.saved_at,
+      remoteSavedAt,
     })
     return
   }
@@ -425,10 +444,10 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
   const localSavedAt = local.savedAt
 
-  const localMs = Date.parse(localSavedAt)
-  const remoteMs = Date.parse(remoteSavedAt)
-  const safeLocalMs = Number.isFinite(localMs) ? localMs : 0
-  const safeRemoteMs = Number.isFinite(remoteMs) ? remoteMs : 0
+  noteRemoteSavedAt(remoteSavedAt, 'reconcile')
+
+  const safeLocalMs = safeParseMs(localSavedAt)
+  const safeRemoteMs = safeParseMs(remoteSavedAt)
 
   // If local is newer than remote, DO NOT silently overwrite Supabase.
   // This situation often happens in dev (dummy seed updates local savedAt) or on a device
@@ -448,16 +467,6 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
         localSavedAt,
         remoteSavedAt,
       })
-      return
-    }
-
-    // Auto-resolve conflicts for a single-user app: last write wins.
-    // This prevents multi-tab/device edits from getting stuck requiring manual pull/push.
-    if (getConflictPolicy() === 'last-write-wins') {
-      pushDebugEvent('reconcile:local-newer->push', { userId, localSavedAt, remoteSavedAt })
-      await upsertRemoteState(userId, local)
-      readyToPush = true
-      setStatus({ conflict: null })
       return
     }
 
@@ -489,9 +498,15 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   pushDebugEvent('reconcile:remote-newer->pull', { userId, localSavedAt, remoteSavedAt })
 }
 
-async function upsertRemoteState(userId: string, state: AppStateV1): Promise<void> {
+async function upsertRemoteState(
+  userId: string,
+  state: AppStateV1,
+  options?: { force?: boolean; reason?: string },
+): Promise<void> {
   const supabase = getSupabaseClient()
   if (!supabase) return
+
+  const reason = options?.reason || (options?.force ? 'force' : 'auto')
 
   const payload: AppStatesRow = {
     user_id: userId,
@@ -500,25 +515,151 @@ async function upsertRemoteState(userId: string, state: AppStateV1): Promise<voi
     saved_at: state.savedAt,
   }
 
+  // Force pushes are explicit user intent: overwrite remote.
+  if (options?.force) {
+    try {
+      const result = await withTimeout(
+        supabase.from('app_states').upsert(payload, { onConflict: 'user_id' }),
+        REQUEST_TIMEOUT_MS,
+        'Supabase push',
+      )
+      const error = (result as { error?: { message: string } | null }).error
+      if (error) {
+        setStatus({ lastError: error.message })
+        pushDebugEvent('push:error', { userId, reason, message: error.message })
+        return
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Supabase push failed.'
+      setStatus({ lastError: message })
+      pushDebugEvent('push:error', { userId, reason, message })
+      return
+    }
+
+    lastPushedSavedAt = state.savedAt
+    knownRemoteSavedAt = state.savedAt
+    setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
+    pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'force' })
+    return
+  }
+
+  // Safety: before any automatic push, preflight pull to avoid overwriting newer Supabase state.
+  let remoteRow: AppStatesRow | null = null
   try {
-    const result = await withTimeout(
-      supabase.from('app_states').upsert(payload, { onConflict: 'user_id' }),
+    remoteRow = await pullRemoteRow(userId)
+  } catch {
+    pushDebugEvent('push:preflight:pull-failed', { userId, reason })
+    return
+  }
+
+  if (!remoteRow?.state) {
+    // No remote state yet → safe to create/update.
+    try {
+      const result = await withTimeout(
+        supabase.from('app_states').upsert(payload, { onConflict: 'user_id' }),
+        REQUEST_TIMEOUT_MS,
+        'Supabase push',
+      )
+      const error = (result as { error?: { message: string } | null }).error
+      if (error) {
+        setStatus({ lastError: error.message })
+        pushDebugEvent('push:error', { userId, reason, message: error.message })
+        return
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Supabase push failed.'
+      setStatus({ lastError: message })
+      pushDebugEvent('push:error', { userId, reason, message })
+      return
+    }
+
+    lastPushedSavedAt = state.savedAt
+    knownRemoteSavedAt = state.savedAt
+    setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
+    pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'create' })
+    return
+  }
+
+  const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
+  noteRemoteSavedAt(remoteSavedAt, `push:preflight:${reason}`)
+
+  const localSavedAt = state.savedAt
+  const safeLocalMs = safeParseMs(localSavedAt)
+  const safeRemoteMs = safeParseMs(remoteSavedAt)
+  if (safeRemoteMs > safeLocalMs) {
+    // Supabase is newer; don't clobber it with an automatic push.
+    setStatus({
+      conflict: {
+        kind: 'remote-newer-than-local',
+        localSavedAt,
+        remoteSavedAt,
+      },
+      lastError: null,
+    })
+    readyToPush = false
+    pushDebugEvent('push:blocked:remote-newer', { userId, reason, localSavedAt, remoteSavedAt })
+    return
+  }
+
+  // Conditional update: only update if the row is still at the remoteSavedAt we just observed.
+  try {
+    const { data, error } = await withTimeout(
+      supabase
+        .from('app_states')
+        .update({ schema_version: state.schemaVersion, state, saved_at: state.savedAt })
+        .eq('user_id', userId)
+        .eq('saved_at', remoteSavedAt)
+        .select('saved_at')
+        .maybeSingle<{ saved_at: string }>(),
       REQUEST_TIMEOUT_MS,
       'Supabase push',
     )
-    const error = (result as { error?: { message: string } | null }).error
+
     if (error) {
       setStatus({ lastError: error.message })
+      pushDebugEvent('push:error', { userId, reason, message: error.message })
+      return
+    }
+
+    if (!data?.saved_at) {
+      // Remote changed between preflight and update.
+      let latest: AppStatesRow | null = null
+      try {
+        latest = await pullRemoteRow(userId)
+      } catch {
+        latest = null
+      }
+      const latestSavedAt = latest?.state ? latest.state.savedAt || latest.saved_at : remoteSavedAt
+      if (latestSavedAt) noteRemoteSavedAt(latestSavedAt, 'push:remote-changed')
+
+      setStatus({
+        conflict: {
+          kind: 'remote-changed-since-last-sync',
+          localSavedAt,
+          remoteSavedAt: latestSavedAt || remoteSavedAt,
+        },
+        lastError: null,
+      })
+      readyToPush = false
+      pushDebugEvent('push:blocked:remote-changed', {
+        userId,
+        reason,
+        expectedRemoteSavedAt: remoteSavedAt,
+        latestSavedAt,
+      })
       return
     }
   } catch (e) {
-    setStatus({ lastError: e instanceof Error ? e.message : 'Supabase push failed.' })
+    const message = e instanceof Error ? e.message : 'Supabase push failed.'
+    setStatus({ lastError: message })
+    pushDebugEvent('push:error', { userId, reason, message })
     return
   }
 
   lastPushedSavedAt = state.savedAt
+  knownRemoteSavedAt = state.savedAt
   setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
-  pushDebugEvent('push:ok', { userId, savedAt: state.savedAt })
+  pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'conditional' })
 }
 
 function schedulePush(userId: string) {
@@ -534,7 +675,7 @@ function schedulePush(userId: string) {
     const current = appStore.getState()
     if (lastPushedSavedAt && current.savedAt === lastPushedSavedAt) return
 
-    await upsertRemoteState(userId, current)
+    await upsertRemoteState(userId, current, { reason: 'autoPush' })
   }, PUSH_DEBOUNCE_MS)
 }
 
