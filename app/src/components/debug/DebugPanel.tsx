@@ -10,6 +10,43 @@ export function DebugPanel() {
   const selectedDate = state.uiState.selectedDate
   const locked = Boolean(state.dayLocks[selectedDate])
 
+  const lab = state.lab
+  const labSummary = useMemo(() => {
+    if (!lab) {
+      return {
+        enabled: false,
+        projectsCount: 0,
+        dailyLogsCount: 0,
+        eventLogsCount: 0,
+        tagsCount: 0,
+        activeProjectId: null as string | null,
+      }
+    }
+
+    const projectsCount = Object.keys(lab.projects || {}).length
+    const dailyLogsCount = Object.values(lab.dailyLogsByProject || {}).reduce(
+      (sum, byDate) => sum + Object.keys(byDate || {}).length,
+      0,
+    )
+    const eventLogsCount = Object.values(lab.eventLogsByProject || {}).reduce(
+      (sum, byId) => sum + Object.keys(byId || {}).length,
+      0,
+    )
+    const tagsCount = Object.values(lab.tagsByProject || {}).reduce(
+      (sum, byTag) => sum + Object.keys(byTag || {}).length,
+      0,
+    )
+
+    return {
+      enabled: true,
+      projectsCount,
+      dailyLogsCount,
+      eventLogsCount,
+      tagsCount,
+      activeProjectId: lab.ui?.activeProjectId ?? null,
+    }
+  }, [lab])
+
   const categoryIds = useMemo(
     () => Object.values(state.categories).sort((a, b) => a.sortIndex - b.sortIndex).map((c) => c.id),
     [state.categories],
@@ -130,6 +167,7 @@ export function DebugPanel() {
               .sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0))
               .map((t) => ({ id: t.id, text: t.text, sortIndex: t.sortIndex ?? null })),
             todoArchiveCount: Object.keys(state.todoArchive).length,
+            labSummary,
           },
           null,
           2,

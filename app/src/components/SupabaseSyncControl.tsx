@@ -356,6 +356,7 @@ export function SupabaseSyncControl() {
       userId: live.userId,
       activeUserId: live.activeUserId,
       localSavedAt: live.localSavedAt,
+      localStateSummary: live.localStateSummary,
       preferRemoteOnLogin: live.preferRemoteOnLogin,
       readyToPush: live.readyToPush,
       suppressNextPush: live.suppressNextPush,

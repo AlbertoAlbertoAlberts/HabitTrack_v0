@@ -52,6 +52,23 @@ type SyncStatus = {
   lastError: string | null
   // Debug/diagnostics fields (helpful for Phase 1 sync investigations).
   localSavedAt: string | null
+  localStateSummary: {
+    schemaVersion: number
+    savedAt: string | null
+    selectedDate: string | null
+    locked: boolean
+    categoriesCount: number
+    habitsCount: number
+    todosCount: number
+    todoArchiveCount: number
+    weeklyTasksCount: number
+    dailyScoresDaysCount: number
+    labProjectsCount: number
+    labDailyLogsCount: number
+    labEventLogsCount: number
+    labTagsCount: number
+    labActiveProjectId: string | null
+  } | null
   preferRemoteOnLogin: boolean
   readyToPush: boolean
   suppressNextPush: boolean
@@ -91,6 +108,7 @@ let status: SyncStatus = {
   lastPushedAt: null,
   lastError: null,
   localSavedAt: null,
+  localStateSummary: null,
   preferRemoteOnLogin: false,
   readyToPush: false,
   suppressNextPush: false,
@@ -116,15 +134,55 @@ export function getSupabaseSyncStatus(): SyncStatus {
   // Return a snapshot with derived runtime flags so the UI can reliably capture
   // what the sync engine is currently doing (without needing extra emits).
   let localSavedAt: string | null = null
+  let localStateSummary: SyncStatus['localStateSummary'] = null
   try {
-    localSavedAt = appStore.getState().savedAt
+    const state = appStore.getState()
+    localSavedAt = state.savedAt
+
+    const selectedDate = state.uiState?.selectedDate ?? null
+    const locked = Boolean(selectedDate && state.dayLocks?.[selectedDate])
+
+    const lab = state.lab
+    const labProjectsCount = lab?.projects ? Object.keys(lab.projects).length : 0
+
+    const labDailyLogsCount = lab?.dailyLogsByProject
+      ? Object.values(lab.dailyLogsByProject).reduce((sum, byDate) => sum + Object.keys(byDate || {}).length, 0)
+      : 0
+
+    const labEventLogsCount = lab?.eventLogsByProject
+      ? Object.values(lab.eventLogsByProject).reduce((sum, byId) => sum + Object.keys(byId || {}).length, 0)
+      : 0
+
+    const labTagsCount = lab?.tagsByProject
+      ? Object.values(lab.tagsByProject).reduce((sum, byTag) => sum + Object.keys(byTag || {}).length, 0)
+      : 0
+
+    localStateSummary = {
+      schemaVersion: state.schemaVersion,
+      savedAt: state.savedAt,
+      selectedDate,
+      locked,
+      categoriesCount: Object.keys(state.categories || {}).length,
+      habitsCount: Object.keys(state.habits || {}).length,
+      todosCount: Object.keys(state.todos || {}).length,
+      todoArchiveCount: Object.keys(state.todoArchive || {}).length,
+      weeklyTasksCount: Object.keys(state.weeklyTasks || {}).length,
+      dailyScoresDaysCount: Object.keys(state.dailyScores || {}).length,
+      labProjectsCount,
+      labDailyLogsCount,
+      labEventLogsCount,
+      labTagsCount,
+      labActiveProjectId: lab?.ui?.activeProjectId ?? null,
+    }
   } catch {
     localSavedAt = null
+    localStateSummary = null
   }
 
   return {
     ...status,
     localSavedAt,
+    localStateSummary,
     preferRemoteOnLogin: getPreferRemoteOnLogin(),
     readyToPush,
     suppressNextPush,
