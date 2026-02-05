@@ -348,6 +348,16 @@ let knownRemoteSavedAt: string | null = null
 let readyToPush = false
 let activeUserId: string | null = null
 
+let pushInFlight = false
+let queuedPush:
+  | {
+      userId: string
+      state: AppStateV1
+      force: boolean
+      queuedAt: string
+    }
+  | null = null
+
 let realtimeCleanup: (() => void) | null = null
 let pollCleanup: (() => void) | null = null
 
@@ -667,151 +677,202 @@ async function upsertRemoteState(
     saved_at: state.savedAt,
   }
 
-  // Force pushes are explicit user intent: overwrite remote.
-  if (options?.force) {
-    try {
-      const result = await withTimeout(
-        supabase.from('app_states').upsert(payload, { onConflict: 'user_id' }),
-        REQUEST_TIMEOUT_MS,
-        'Supabase push',
-      )
-      const error = (result as { error?: { message: string } | null }).error
-      if (error) {
-        setStatus({ lastError: error.message })
-        pushDebugEvent('push:error', { userId, reason, message: error.message })
-        return
-      }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Supabase push failed.'
-      setStatus({ lastError: message })
-      pushDebugEvent('push:error', { userId, reason, message })
-      return
+  // Prevent concurrent pushes from racing and creating self-conflicts.
+  // If a push is already in flight, queue the latest request and flush it after.
+  if (pushInFlight) {
+    queuedPush = {
+      userId,
+      state,
+      force: Boolean(options?.force),
+      queuedAt: new Date().toISOString(),
     }
-
-    lastPushedSavedAt = state.savedAt
-    knownRemoteSavedAt = state.savedAt
-    setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
-    pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'force' })
+    pushDebugEvent('push:queued', {
+      userId,
+      savedAt: state.savedAt,
+      reason,
+      force: Boolean(options?.force),
+    })
     return
   }
+
+  pushInFlight = true
+  try {
+
+    // Force pushes are explicit user intent: overwrite remote.
+    if (options?.force) {
+      try {
+        const result = await withTimeout(
+          supabase.from('app_states').upsert(payload, { onConflict: 'user_id' }),
+          REQUEST_TIMEOUT_MS,
+          'Supabase push',
+        )
+        const error = (result as { error?: { message: string } | null }).error
+        if (error) {
+          setStatus({ lastError: error.message })
+          pushDebugEvent('push:error', { userId, reason, message: error.message })
+          return
+        }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Supabase push failed.'
+        setStatus({ lastError: message })
+        pushDebugEvent('push:error', { userId, reason, message })
+        return
+      }
+
+      lastPushedSavedAt = state.savedAt
+      knownRemoteSavedAt = state.savedAt
+      setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
+      pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'force' })
+      return
+    }
 
   // Safety: before any automatic push, preflight pull to avoid overwriting newer Supabase state.
   let remoteRow: AppStatesRow | null = null
-  try {
-    remoteRow = await pullRemoteRow(userId)
-  } catch {
-    pushDebugEvent('push:preflight:pull-failed', { userId, reason })
-    return
-  }
-
-  if (!remoteRow?.state) {
-    // No remote state yet → safe to create/update.
     try {
-      const result = await withTimeout(
-        supabase.from('app_states').upsert(payload, { onConflict: 'user_id' }),
-        REQUEST_TIMEOUT_MS,
-        'Supabase push',
-      )
-      const error = (result as { error?: { message: string } | null }).error
-      if (error) {
-        setStatus({ lastError: error.message })
-        pushDebugEvent('push:error', { userId, reason, message: error.message })
+      remoteRow = await pullRemoteRow(userId)
+    } catch {
+      pushDebugEvent('push:preflight:pull-failed', { userId, reason })
+      return
+    }
+
+    if (!remoteRow?.state) {
+      // No remote state yet → safe to create/update.
+      try {
+        const result = await withTimeout(
+          supabase.from('app_states').upsert(payload, { onConflict: 'user_id' }),
+          REQUEST_TIMEOUT_MS,
+          'Supabase push',
+        )
+        const error = (result as { error?: { message: string } | null }).error
+        if (error) {
+          setStatus({ lastError: error.message })
+          pushDebugEvent('push:error', { userId, reason, message: error.message })
+          return
+        }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Supabase push failed.'
+        setStatus({ lastError: message })
+        pushDebugEvent('push:error', { userId, reason, message })
         return
       }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Supabase push failed.'
-      setStatus({ lastError: message })
-      pushDebugEvent('push:error', { userId, reason, message })
+
+      lastPushedSavedAt = state.savedAt
+      knownRemoteSavedAt = state.savedAt
+      setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
+      pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'create' })
       return
     }
 
-    lastPushedSavedAt = state.savedAt
-    knownRemoteSavedAt = state.savedAt
-    setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
-    pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'create' })
-    return
-  }
+    const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
+    noteRemoteSavedAt(remoteSavedAt, `push:preflight:${reason}`)
 
-  const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
-  noteRemoteSavedAt(remoteSavedAt, `push:preflight:${reason}`)
-
-  const localSavedAt = state.savedAt
-  const safeLocalMs = safeParseMs(localSavedAt)
-  const safeRemoteMs = safeParseMs(remoteSavedAt)
-  if (safeRemoteMs > safeLocalMs) {
-    // Supabase is newer; don't clobber it with an automatic push.
-    setStatus({
-      conflict: {
-        kind: 'remote-newer-than-local',
-        localSavedAt,
-        remoteSavedAt,
-      },
-      lastError: null,
-    })
-    readyToPush = false
-    pushDebugEvent('push:blocked:remote-newer', { userId, reason, localSavedAt, remoteSavedAt })
-    return
-  }
-
-  // Conditional update: only update if the row is still at the remoteSavedAt we just observed.
-  try {
-    const { data, error } = await withTimeout(
-      supabase
-        .from('app_states')
-        .update({ schema_version: state.schemaVersion, state, saved_at: state.savedAt })
-        .eq('user_id', userId)
-        .eq('saved_at', remoteSavedAt)
-        .select('saved_at')
-        .maybeSingle<{ saved_at: string }>(),
-      REQUEST_TIMEOUT_MS,
-      'Supabase push',
-    )
-
-    if (error) {
-      setStatus({ lastError: error.message })
-      pushDebugEvent('push:error', { userId, reason, message: error.message })
-      return
-    }
-
-    if (!data?.saved_at) {
-      // Remote changed between preflight and update.
-      let latest: AppStatesRow | null = null
-      try {
-        latest = await pullRemoteRow(userId)
-      } catch {
-        latest = null
-      }
-      const latestSavedAt = latest?.state ? latest.state.savedAt || latest.saved_at : remoteSavedAt
-      if (latestSavedAt) noteRemoteSavedAt(latestSavedAt, 'push:remote-changed')
-
+    const localSavedAt = state.savedAt
+    const safeLocalMs = safeParseMs(localSavedAt)
+    const safeRemoteMs = safeParseMs(remoteSavedAt)
+    if (safeRemoteMs > safeLocalMs) {
+      // Supabase is newer; don't clobber it with an automatic push.
       setStatus({
         conflict: {
-          kind: 'remote-changed-since-last-sync',
+          kind: 'remote-newer-than-local',
           localSavedAt,
-          remoteSavedAt: latestSavedAt || remoteSavedAt,
+          remoteSavedAt,
         },
         lastError: null,
       })
       readyToPush = false
-      pushDebugEvent('push:blocked:remote-changed', {
-        userId,
-        reason,
-        expectedRemoteSavedAt: remoteSavedAt,
-        latestSavedAt,
-      })
+      pushDebugEvent('push:blocked:remote-newer', { userId, reason, localSavedAt, remoteSavedAt })
       return
     }
-  } catch (e) {
-    const message = e instanceof Error ? e.message : 'Supabase push failed.'
-    setStatus({ lastError: message })
-    pushDebugEvent('push:error', { userId, reason, message })
-    return
-  }
 
-  lastPushedSavedAt = state.savedAt
-  knownRemoteSavedAt = state.savedAt
-  setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
-  pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'conditional' })
+    // Conditional update: only update if the row is still at the remoteSavedAt we just observed.
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from('app_states')
+          .update({ schema_version: state.schemaVersion, state, saved_at: state.savedAt })
+          .eq('user_id', userId)
+          .eq('saved_at', remoteSavedAt)
+          .select('saved_at')
+          .maybeSingle<{ saved_at: string }>(),
+        REQUEST_TIMEOUT_MS,
+        'Supabase push',
+      )
+
+      if (error) {
+        setStatus({ lastError: error.message })
+        pushDebugEvent('push:error', { userId, reason, message: error.message })
+        return
+      }
+
+      if (!data?.saved_at) {
+        // Remote changed between preflight and update.
+        // If it changed *to exactly what we were trying to write*, treat this as success
+        // (most commonly: another in-flight push from this client completed first).
+        let latest: AppStatesRow | null = null
+        try {
+          latest = await pullRemoteRow(userId)
+        } catch {
+          latest = null
+        }
+        const latestSavedAt = latest?.state ? latest.state.savedAt || latest.saved_at : remoteSavedAt
+        if (latestSavedAt) noteRemoteSavedAt(latestSavedAt, 'push:remote-changed')
+
+        if (latestSavedAt && latestSavedAt === state.savedAt) {
+          lastPushedSavedAt = state.savedAt
+          knownRemoteSavedAt = state.savedAt
+          setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
+          pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'observed' })
+          return
+        }
+
+        setStatus({
+          conflict: {
+            kind: 'remote-changed-since-last-sync',
+            localSavedAt,
+            remoteSavedAt: latestSavedAt || remoteSavedAt,
+          },
+          lastError: null,
+        })
+        readyToPush = false
+        pushDebugEvent('push:blocked:remote-changed', {
+          userId,
+          reason,
+          expectedRemoteSavedAt: remoteSavedAt,
+          latestSavedAt,
+        })
+        return
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Supabase push failed.'
+      setStatus({ lastError: message })
+      pushDebugEvent('push:error', { userId, reason, message })
+      return
+    }
+
+    lastPushedSavedAt = state.savedAt
+    knownRemoteSavedAt = state.savedAt
+    setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
+    pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'conditional' })
+  } finally {
+    pushInFlight = false
+    const queued = queuedPush
+    queuedPush = null
+    const shouldFlush = queued
+      ? queued.force
+        ? true
+        : !status.autoSyncPausedReason && !status.conflict && readyToPush
+      : false
+
+    if (queued && shouldFlush) {
+      const current = appStore.getState()
+      // If the queued snapshot is no longer current, prefer the latest state.
+      const nextState = current.savedAt === queued.state.savedAt ? queued.state : current
+      void upsertRemoteState(queued.userId, nextState, {
+        reason: queued.force ? 'forcePush:queued' : 'autoPush:queued',
+        force: queued.force,
+      })
+    }
+  }
 }
 
 function schedulePush(userId: string) {
