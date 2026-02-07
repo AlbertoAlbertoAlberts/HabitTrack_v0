@@ -212,6 +212,18 @@ a {
     transform var(--t-fast) var(--ease-out);
 }
 
+/*
+  iOS Safari auto-zooms focused inputs when font-size < 16px.
+  Force all form controls to 16px on mobile to prevent unwanted zoom.
+*/
+@media (max-width: 560px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
