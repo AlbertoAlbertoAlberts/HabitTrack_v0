@@ -358,6 +358,11 @@ let queuedPush:
     }
   | null = null
 
+/** True once the first reconcile completes successfully for the current session. */
+let hasReconciledThisSession = false
+/** How many consecutive reconcile pull failures have occurred (for retry backoff). */
+let reconcilePullFailures = 0
+
 let realtimeCleanup: (() => void) | null = null
 let pollCleanup: (() => void) | null = null
 
@@ -568,16 +573,39 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   try {
     remoteRow = await pullRemoteRow(userId)
   } catch {
-    // If we can't reach Supabase right now, do NOT push local (would overwrite remote).
+    reconcilePullFailures++
+    // If we already had a successful sync session, don't kill readyToPush.
+    // The pull failure is transient (timeout/network) and shouldn't lock out pushes.
+    if (hasReconciledThisSession) {
+      pushDebugEvent('reconcile:pull-failed:keep-session', {
+        userId,
+        consecutiveFailures: reconcilePullFailures,
+      })
+      // Schedule a retry with exponential backoff (2s, 4s, 8s, max 30s)
+      const delay = Math.min(2000 * Math.pow(2, reconcilePullFailures - 1), 30_000)
+      setTimeout(() => void reconcileRemoteLocal(userId), delay)
+      return
+    }
+    // First-time reconcile failed: can't risk blindly pushing.
     readyToPush = false
-    pushDebugEvent('reconcile:pull-failed', { userId })
+    pushDebugEvent('reconcile:pull-failed', {
+      userId,
+      consecutiveFailures: reconcilePullFailures,
+    })
+    // Retry the initial reconcile too (backoff: 3s, 6s, 12s, max 30s)
+    const delay = Math.min(3000 * Math.pow(2, reconcilePullFailures - 1), 30_000)
+    setTimeout(() => void reconcileRemoteLocal(userId), delay)
     return
   }
+
+  // Pull succeeded: reset failure counter.
+  reconcilePullFailures = 0
 
   if (!remoteRow?.state) {
     // First-time migration: push local state to Supabase.
     pushDebugEvent('reconcile:first-push', { userId, localSavedAt: local.savedAt })
     await upsertRemoteState(userId, local, { force: true, reason: 'reconcile:first-push' })
+    hasReconciledThisSession = true
     readyToPush = paused ? false : true
     return
   }
@@ -591,6 +619,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
     appStore.hydrate(repairState(remoteRow.state))
     lastHydratedRemoteSavedAt = remoteSavedAt
     setStatus({ lastPulledAt: new Date().toISOString(), lastError: null })
+    hasReconciledThisSession = true
     readyToPush = paused ? false : true
     setPreferRemoteOnLogin(true)
     pushDebugEvent('reconcile:bootstrapped-empty->pull', {
@@ -621,6 +650,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
       appStore.hydrate(repairState(remoteRow.state))
       lastHydratedRemoteSavedAt = remoteSavedAt
       setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
+      hasReconciledThisSession = true
       readyToPush = paused ? false : true
       setPreferRemoteOnLogin(true)
       pushDebugEvent('reconcile:local-newer-but-prefer-remote->pull', {
@@ -646,6 +676,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   // Equal timestamps: treat as in sync.
   if (safeLocalMs === safeRemoteMs) {
     setStatus({ conflict: null })
+    hasReconciledThisSession = true
     readyToPush = paused ? false : true
     pushDebugEvent('reconcile:in-sync', { userId, savedAt: localSavedAt })
     return
@@ -656,6 +687,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   appStore.hydrate(repairState(remoteRow.state))
   lastHydratedRemoteSavedAt = remoteSavedAt
   setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
+  hasReconciledThisSession = true
   readyToPush = paused ? false : true
   pushDebugEvent('reconcile:remote-newer->pull', { userId, localSavedAt, remoteSavedAt })
 }
@@ -904,6 +936,8 @@ export function startSupabaseSync(): void {
 
   readyToPush = false
   activeUserId = null
+  hasReconciledThisSession = false
+  reconcilePullFailures = 0
 
   ;(async () => {
     try {
@@ -942,6 +976,8 @@ export function startSupabaseSync(): void {
       setStatus({ authChecked: true, signedIn: false, userId: null, email: null, conflict: null })
       readyToPush = false
       activeUserId = null
+      hasReconciledThisSession = false
+      reconcilePullFailures = 0
       pushDebugEvent('auth:signed-out', { event })
       realtimeCleanup?.()
       realtimeCleanup = null
@@ -953,9 +989,23 @@ export function startSupabaseSync(): void {
     setStatus({ authChecked: true, signedIn: true, userId: session.user.id, email: session.user.email ?? null })
 
     // Avoid re-pulling and overwriting local edits on token refresh.
-    if (event === 'TOKEN_REFRESHED') return
+    if (event === 'TOKEN_REFRESHED') {
+      pushDebugEvent('auth:TOKEN_REFRESHED', { userId: session.user.id })
+      return
+    }
 
     if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+      // Skip re-reconcile if we already have an active session for the same user.
+      // Supabase fires SIGNED_IN during token refresh in addition to TOKEN_REFRESHED.
+      // Re-reconciling mid-session risks overwriting local edits or, if the pull times out,
+      // permanently killing readyToPush and freezing sync.
+      if (activeUserId === session.user.id && hasReconciledThisSession) {
+        pushDebugEvent('auth:' + event + ':skip-already-active', {
+          userId: session.user.id,
+        })
+        return
+      }
+
       pushDebugEvent('auth:' + event, { userId: session.user.id, email: session.user.email ?? null })
       await reconcileRemoteLocal(session.user.id)
 
