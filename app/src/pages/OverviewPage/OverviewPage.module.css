@@ -1,5 +1,14 @@
 /* OverviewPage-specific styles */
 
+/* ── Phase 1: smooth transitions ── */
+.pageEntrance {
+  animation: fadeInUp var(--t-med) var(--ease-out) both;
+}
+
+.chartArea {
+  animation: fadeIn var(--t-fast) var(--ease-out) both;
+}
+
 .topBar {
   display: flex;
   align-items: center;
@@ -169,6 +178,7 @@
   width: 0;
   background: var(--accent);
   border-radius: 999px;
+  transition: width var(--t-med) var(--ease-out);
 }
 
 .pointsText {

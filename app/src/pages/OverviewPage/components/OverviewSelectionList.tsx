@@ -32,7 +32,7 @@ export function OverviewSelectionList({
           <p className={styles.muted} style={{ marginTop: 0 }}>
             Izvēlies kategoriju
           </p>
-          <div className={styles.list}>
+          <div className={styles.list} key="categories">
             {categories.map((c) => {
               const active = selectedCategoryId === c.id
               return (
@@ -57,7 +57,7 @@ export function OverviewSelectionList({
           <p className={styles.muted} style={{ marginTop: 0 }}>
             Izvēlies ieradumu
           </p>
-          <div className={styles.list}>
+          <div className={styles.list} key="habits">
             {habits.map((h) => {
               const active = selectedHabitId === h.id
               const catName = categoryNameById.get(h.categoryId) ?? '—'

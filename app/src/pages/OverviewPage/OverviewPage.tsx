@@ -56,12 +56,16 @@ export function OverviewPage() {
     activeHabitsEnd,
   } = useOverviewData()
 
+  // Composite key: when any data-driving value changes, the chart area re-mounts
+  // and plays its fadeIn animation for a smooth crossfade.
+  const chartKey = `${startDate}-${rangeDays}-${mode}-${selectedCategoryId ?? ''}-${selectedHabitId ?? ''}`
+
   return (
-    <div className={sharedStyles.page}>
+    <div className={`${sharedStyles.page} ${styles.pageEntrance}`}>
       <div className={styles.overviewLayout}>
         <main className={styles.mainCol}>
-          <section className={sharedStyles.panel}>
-          <div className={styles.overviewHeader}>
+          <section className={sharedStyles.panel} key={chartKey}>
+          <div className={`${styles.overviewHeader} ${styles.chartArea}`}>
             <h2 className={styles.panelTitle} style={{ margin: 0 }}>
               PĀRSKATS
             </h2>
