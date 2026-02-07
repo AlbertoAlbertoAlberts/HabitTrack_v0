@@ -16,7 +16,14 @@ export function DailyLabWidget({ date }: DailyLabWidgetProps) {
   const state = useAppState()
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null)
 
-  const projects = Object.values(state.lab?.projects || {}).filter((p) => !p.archived)
+  // Respect the user-defined project order from Lab
+  const projectOrder = state.lab?.projectOrder ?? []
+  const projectsById = state.lab?.projects ?? {}
+  const orderedSet = new Set(projectOrder)
+  const missingIds = Object.keys(projectsById).filter((id) => !orderedSet.has(id))
+  const projects = [...projectOrder, ...missingIds]
+    .map((id) => projectsById[id])
+    .filter((p) => p && !p.archived)
 
   if (projects.length === 0) return null
 

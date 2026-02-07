@@ -478,6 +478,33 @@ async function pullAndHydrateIfNewer(userId: string, reason: string): Promise<vo
 
   const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
   noteRemoteSavedAt(remoteSavedAt, `pull:${reason}`)
+
+  // If the initial reconcile never succeeded (e.g. pull kept timing out) but a
+  // regular poll pull just succeeded, treat this as a successful reconcile so
+  // readyToPush can recover.  Without this, a single timeout at startup
+  // permanently blocks pushes even though the network is fine now.
+  if (!hasReconciledThisSession) {
+    hasReconciledThisSession = true
+    reconcilePullFailures = 0
+    if (!readyToPush && !status.autoSyncPausedReason) {
+      // Check if local is newer — if so, we're safe to push.
+      const localSavedAt = appStore.getState().savedAt
+      const safeLocalMs = safeParseMs(localSavedAt)
+      const safeRemoteMs = safeParseMs(remoteSavedAt)
+      if (safeLocalMs >= safeRemoteMs) {
+        readyToPush = true
+        pushDebugEvent('pull:recovered-readyToPush', {
+          userId,
+          reason,
+          localSavedAt,
+          remoteSavedAt,
+        })
+        // Trigger a push for the pending local changes
+        schedulePush(userId)
+      }
+    }
+  }
+
   if (lastPushedSavedAt && remoteSavedAt === lastPushedSavedAt) {
     // Likely our own write echoed back.
     return
@@ -586,6 +613,23 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
       setTimeout(() => void reconcileRemoteLocal(userId), delay)
       return
     }
+
+    // After enough consecutive failures, stop blocking pushes.  The poll loop
+    // will keep attempting pulls every 5s and the pullAndHydrateIfNewer recovery
+    // above will set hasReconciledThisSession once a pull succeeds.
+    // 5 failures ≈ 3s + 6s + 12s + 24s + 30s = ~75s of retries.
+    if (reconcilePullFailures >= 5) {
+      readyToPush = true
+      hasReconciledThisSession = true
+      pushDebugEvent('reconcile:pull-failed:giving-up-blocking', {
+        userId,
+        consecutiveFailures: reconcilePullFailures,
+      })
+      // Still fire one more retry so we can get the remote state eventually.
+      setTimeout(() => void reconcileRemoteLocal(userId), 30_000)
+      return
+    }
+
     // First-time reconcile failed: can't risk blindly pushing.
     readyToPush = false
     pushDebugEvent('reconcile:pull-failed', {

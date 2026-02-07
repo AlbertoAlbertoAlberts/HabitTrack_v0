@@ -14,7 +14,6 @@
 .list {
   display: grid;
   gap: 6px;
-  animation: fadeIn var(--t-fast) var(--ease-out) both;
 }
 
 .listItem {
@@ -24,9 +23,8 @@
   border: 1px solid var(--border);
   cursor: pointer;
   transition:
-    background var(--t-fast) var(--ease-out),
-    border-color var(--t-fast) var(--ease-out),
-    box-shadow var(--t-fast) var(--ease-out);
+    background 150ms,
+    border-color 150ms;
   user-select: none;
 }
 
@@ -39,7 +37,6 @@
   background: var(--active-bg);
   border-color: var(--active-border);
   font-weight: 600;
-  box-shadow: var(--focus-ring);
 }
 
 .itemTitle {
