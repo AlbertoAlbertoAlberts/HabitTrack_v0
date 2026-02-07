@@ -682,14 +682,12 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   const safeLocalMs = safeParseMs(localSavedAt)
   const safeRemoteMs = safeParseMs(remoteSavedAt)
 
-  // If local is newer than remote, DO NOT silently overwrite Supabase.
-  // This situation often happens in dev (dummy seed updates local savedAt) or on a device
-  // with edits that haven't been migrated intentionally.
-  // Instead, keep local and require an explicit user choice to push or pull.
+  // If local is newer than remote, local likely has unpushed changes
+  // (e.g. the push mechanism was blocked, or the page was reloaded before the push fired).
+  // The correct behavior depends on the conflict policy.
   if (safeLocalMs > safeRemoteMs) {
-    // Common case: local is just an empty cache state (or the user previously chose remote).
-    // In these cases we can safely auto-hydrate remote to achieve the expected "log in and see data" UX.
-    if (getPreferRemoteOnLogin() || isEffectivelyEmptyState(local)) {
+    // If local is effectively empty (new install, seed data), pull remote.
+    if (isEffectivelyEmptyState(local)) {
       suppressNextPush = true
       appStore.hydrate(repairState(remoteRow.state))
       lastHydratedRemoteSavedAt = remoteSavedAt
@@ -697,7 +695,7 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
       hasReconciledThisSession = true
       readyToPush = paused ? false : true
       setPreferRemoteOnLogin(true)
-      pushDebugEvent('reconcile:local-newer-but-prefer-remote->pull', {
+      pushDebugEvent('reconcile:local-newer-but-empty->pull', {
         userId,
         localSavedAt,
         remoteSavedAt,
@@ -705,6 +703,17 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
       return
     }
 
+    // Local has real data that's newer than remote.
+    // With last-write-wins: push local to preserve unpushed changes.
+    if (getConflictPolicy() === 'last-write-wins') {
+      pushDebugEvent('reconcile:local-newer->push', { userId, localSavedAt, remoteSavedAt })
+      await upsertRemoteState(userId, local, { force: true, reason: 'reconcile:local-newer' })
+      hasReconciledThisSession = true
+      readyToPush = paused ? false : true
+      return
+    }
+
+    // Manual policy: surface the conflict for the user to decide.
     setStatus({
       conflict: {
         kind: 'local-newer-than-remote',
