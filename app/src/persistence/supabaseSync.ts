@@ -187,7 +187,7 @@ export function getSupabaseSyncStatus(): SyncStatus {
     localStateSummary,
     preferRemoteOnLogin: getPreferRemoteOnLogin(),
     readyToPush,
-    suppressNextPush,
+    suppressNextPush: false,
     lastPushedSavedAt,
     knownRemoteSavedAt,
     activeUserId,
@@ -242,7 +242,6 @@ export async function forceSupabasePull(): Promise<void> {
   const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
   noteRemoteSavedAt(remoteSavedAt, 'forcePull')
 
-  suppressNextPush = true
   appStore.hydrate(repairState(remoteRow.state))
   lastHydratedRemoteSavedAt = remoteSavedAt
   setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
@@ -313,7 +312,6 @@ export async function restoreSupabasePullOnly(): Promise<void> {
   noteRemoteSavedAt(remoteSavedAt, 'pullOnlyRestore')
 
   // Hydrate local from remote, but explicitly pause auto-push so the user can verify.
-  suppressNextPush = true
   readyToPush = false
   appStore.hydrate(repairState(remoteRow.state))
   lastHydratedRemoteSavedAt = remoteSavedAt
@@ -331,8 +329,8 @@ export async function restoreSupabasePullOnly(): Promise<void> {
 export function resumeSupabaseAutoSync(): void {
   const s = status
   setStatus({ autoSyncPausedReason: null })
-  // Don't immediately push the restored snapshot; resume on next local change.
-  suppressNextPush = true
+  // The lastHydratedRemoteSavedAt check in schedulePush prevents pushing back
+  // the restored snapshot; only genuinely new local changes will trigger a push.
   if (s.configured && s.signedIn && s.userId && !s.conflict) {
     readyToPush = true
   }
@@ -340,7 +338,6 @@ export function resumeSupabaseAutoSync(): void {
 }
 
 let started = false
-let suppressNextPush = false
 let pushTimer: number | null = null
 let lastPushedSavedAt: string | null = null
 let lastHydratedRemoteSavedAt: string | null = null
@@ -512,7 +509,6 @@ async function pullAndHydrateIfNewer(userId: string, reason: string): Promise<vo
 
   if (!shouldHydrateFromRemote(remoteSavedAt)) return
 
-  suppressNextPush = true
   appStore.hydrate(repairState(remoteRow.state))
   lastHydratedRemoteSavedAt = remoteSavedAt
   setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
@@ -659,7 +655,6 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   if (wasBootstrappedFromEmptyState()) {
     const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
     noteRemoteSavedAt(remoteSavedAt, 'reconcile:bootstrapped-empty')
-    suppressNextPush = true
     appStore.hydrate(repairState(remoteRow.state))
     lastHydratedRemoteSavedAt = remoteSavedAt
     setStatus({ lastPulledAt: new Date().toISOString(), lastError: null })
@@ -688,7 +683,6 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   if (safeLocalMs > safeRemoteMs) {
     // If local is effectively empty (new install, seed data), pull remote.
     if (isEffectivelyEmptyState(local)) {
-      suppressNextPush = true
       appStore.hydrate(repairState(remoteRow.state))
       lastHydratedRemoteSavedAt = remoteSavedAt
       setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
@@ -736,7 +730,6 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   }
 
   // Remote is newer → hydrate local from remote.
-  suppressNextPush = true
   appStore.hydrate(repairState(remoteRow.state))
   lastHydratedRemoteSavedAt = remoteSavedAt
   setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
@@ -854,8 +847,18 @@ async function upsertRemoteState(
     const localSavedAt = state.savedAt
     const safeLocalMs = safeParseMs(localSavedAt)
     const safeRemoteMs = safeParseMs(remoteSavedAt)
+
     if (safeRemoteMs > safeLocalMs) {
-      // Supabase is newer; don't clobber it with an automatic push.
+      // Supabase is newer than local.
+      if (getConflictPolicy() === 'last-write-wins') {
+        // LWW: hydrate from remote instead of pushing stale local data.
+        appStore.hydrate(repairState(remoteRow.state))
+        lastHydratedRemoteSavedAt = remoteSavedAt
+        setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
+        pushDebugEvent('push:lww:remote-newer:hydrated', { userId, reason, localSavedAt, remoteSavedAt })
+        return
+      }
+      // Manual policy: surface the conflict for the user.
       setStatus({
         conflict: {
           kind: 'remote-newer-than-local',
@@ -869,7 +872,37 @@ async function upsertRemoteState(
       return
     }
 
-    // Conditional update: only update if the row is still at the remoteSavedAt we just observed.
+    // Local is newer or equal → push.  With LWW, use a simple upsert (the preflight
+    // already confirmed remote isn't newer, and the tiny race window is acceptable).
+    // With manual policy, use a conditional update to detect mid-flight changes.
+    if (getConflictPolicy() === 'last-write-wins') {
+      try {
+        const result = await withTimeout(
+          supabase.from('app_states').upsert(payload, { onConflict: 'user_id' }),
+          REQUEST_TIMEOUT_MS,
+          'Supabase push',
+        )
+        const error = (result as { error?: { message: string } | null }).error
+        if (error) {
+          setStatus({ lastError: error.message })
+          pushDebugEvent('push:error', { userId, reason, message: error.message })
+          return
+        }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Supabase push failed.'
+        setStatus({ lastError: message })
+        pushDebugEvent('push:error', { userId, reason, message })
+        return
+      }
+
+      lastPushedSavedAt = state.savedAt
+      knownRemoteSavedAt = state.savedAt
+      setStatus({ lastPushedAt: new Date().toISOString(), lastError: null, conflict: null })
+      pushDebugEvent('push:ok', { userId, savedAt: state.savedAt, reason, mode: 'lww-upsert' })
+      return
+    }
+
+    // Manual policy: conditional update to detect concurrent writes.
     try {
       const { data, error } = await withTimeout(
         supabase
@@ -891,8 +924,6 @@ async function upsertRemoteState(
 
       if (!data?.saved_at) {
         // Remote changed between preflight and update.
-        // If it changed *to exactly what we were trying to write*, treat this as success
-        // (most commonly: another in-flight push from this client completed first).
         let latest: AppStatesRow | null = null
         try {
           latest = await pullRemoteRow(userId)
@@ -964,19 +995,21 @@ function schedulePush(userId: string) {
   if (pushTimer) window.clearTimeout(pushTimer)
   pushTimer = window.setTimeout(async () => {
     pushTimer = null
-    if (status.autoSyncPausedReason) return
-    if (suppressNextPush) {
-      suppressNextPush = false
-      pushDebugEvent('push:suppressed', { userId })
-      return
-    }
-
-    const current = appStore.getState()
-    if (lastPushedSavedAt && current.savedAt === lastPushedSavedAt) return
-    if (lastHydratedRemoteSavedAt && current.savedAt === lastHydratedRemoteSavedAt) return
-
-    await upsertRemoteState(userId, current, { reason: 'autoPush' })
+    flushPushNow(userId)
   }, PUSH_DEBOUNCE_MS)
+}
+
+/** Immediately attempt to push if there are pending changes.  Called by the
+ *  debounce timer AND by the visibility-change handler so that switching apps
+ *  on mobile doesn't silently drop the pending push. */
+async function flushPushNow(userId: string) {
+  if (status.autoSyncPausedReason) return
+
+  const current = appStore.getState()
+  if (lastPushedSavedAt && current.savedAt === lastPushedSavedAt) return
+  if (lastHydratedRemoteSavedAt && current.savedAt === lastHydratedRemoteSavedAt) return
+
+  await upsertRemoteState(userId, current, { reason: 'autoPush' })
 }
 
 export function startSupabaseSync(): void {
@@ -1080,5 +1113,34 @@ export function startSupabaseSync(): void {
     if (!readyToPush) return
     if (s.conflict) return
     schedulePush(s.userId)
+  })
+
+  // ---------- Flush pending pushes when the page becomes hidden ----------
+  // On mobile, switching apps fires visibilitychange→hidden but NOT beforeunload.
+  // Without this, a user's change saved to localStorage might never reach Supabase
+  // if they lock the phone or switch apps within the 150ms debounce window.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden') return
+    if (!activeUserId || !readyToPush || status.conflict || status.autoSyncPausedReason) return
+
+    // Cancel the debounce timer and push immediately.
+    if (pushTimer) {
+      window.clearTimeout(pushTimer)
+      pushTimer = null
+    }
+    void flushPushNow(activeUserId)
+  })
+
+  // pagehide fires when the tab/page is being discarded (close tab, navigate away).
+  // We duplicate the flush here for browsers/scenarios where visibilitychange
+  // doesn't fire before unload.
+  window.addEventListener('pagehide', () => {
+    if (!activeUserId || !readyToPush || status.conflict || status.autoSyncPausedReason) return
+
+    if (pushTimer) {
+      window.clearTimeout(pushTimer)
+      pushTimer = null
+    }
+    void flushPushNow(activeUserId)
   })
 }
