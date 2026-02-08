@@ -462,17 +462,36 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
             />
           ))}
         </g>
-        {mainSeries.points.map((p) => (
-          <circle
-            key={p.date}
-            cx={p.x}
-            cy={p.y}
-            r={primaryPointRadius}
-            fill={scoreToColor(p.value, yMax)}
-            stroke={zeroAxisStroke}
-            strokeWidth={0.8}
-          />
-        ))}
+        {mainSeries.points.map((p) => {
+          const weekday = formatWeekdayShort(p.date).toUpperCase()
+          const dateStr = formatDateShort(p.date)
+          const pct = `${Math.round(p.value * 100)}%`
+          const tooltip = `${weekday} ${dateStr} — ${pct}`
+          return (
+            <g key={p.date}>
+              {/* Visible dot */}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={primaryPointRadius}
+                fill={scoreToColor(p.value, yMax)}
+                stroke={zeroAxisStroke}
+                strokeWidth={0.8}
+                pointerEvents="none"
+              />
+              {/* Larger invisible hit area for hover tooltip */}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={primaryPointRadius + 6}
+                fill="transparent"
+                stroke="none"
+              >
+                <title>{tooltip}</title>
+              </circle>
+            </g>
+          )
+        })}
       </svg>
     )
   }, [isMobile, series, yMax])
