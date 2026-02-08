@@ -209,10 +209,20 @@ function buildGradientSegments(
 
 function formatWeekdayShort(date: LocalDateString): string {
   const d = parseLocalDateString(date)
-  // JS getDay(): 0..6 (Sun..Sat). Convert to Monday-first index: 0..6 (Mon..Sun).
   const names = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
   const idx = (d.getDay() + 6) % 7
   return names[idx] ?? ''
+}
+
+function formatDateShort(date: LocalDateString): string {
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(date)
+  if (!m) return date
+  return `${m[3]}.${m[2]}`
+}
+
+/** True if this date is a Monday. */
+function isMonday(date: LocalDateString): boolean {
+  return parseLocalDateString(date).getDay() === 1
 }
 
 function niceTickStep(maxValue: number): number {
@@ -362,8 +372,29 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
 
         {/* x labels */}
         {allPoints.map((p, i) => {
-          if (i % xLabelEvery !== 0 && i !== allPoints.length - 1) return null
-          const label = formatWeekdayShort(p.date).toUpperCase()
+          // Short range (≤10 days): show weekday names, evenly spaced
+          // Longer range: show DD.MM date on every Monday (+ first & last point)
+          if (series.length <= 10) {
+            if (i % xLabelEvery !== 0 && i !== allPoints.length - 1) return null
+            const label = formatWeekdayShort(p.date).toUpperCase()
+            return (
+              <text
+                key={p.date}
+                x={p.x}
+                y={height - 8}
+                fontSize={axisFontSize}
+                fontWeight={700}
+                textAnchor="middle"
+                fill={axisTextFill}
+              >
+                {label}
+              </text>
+            )
+          }
+
+          // 30-day+ view: label Mondays (and first/last point)
+          const showLabel = i === 0 || i === allPoints.length - 1 || isMonday(p.date)
+          if (!showLabel) return null
           return (
             <text
               key={p.date}
@@ -374,7 +405,7 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
               textAnchor="middle"
               fill={axisTextFill}
             >
-              {label}
+              {formatDateShort(p.date)}
             </text>
           )
         })}
@@ -389,8 +420,9 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
               y2={avgY}
               stroke="var(--chart-axis)"
               strokeWidth={1}
-              strokeDasharray="4 4"
-              shapeRendering="crispEdges"
+              strokeDasharray="1.5 3.5"
+              strokeLinecap="round"
+              shapeRendering="auto"
             />
             <text
               x={width - paddingRight + 2}
