@@ -300,6 +300,12 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
     const samplesPerBezier = clampInt(Math.floor(maxGradientSegments / daySegments), 6, 18)
     const mainGradientSegments = buildGradientSegments(mainSeries.points, samplesPerBezier, yMax)
 
+    // Average line
+    const avgValue = validPoints.length > 0
+      ? validPoints.reduce((sum, p) => sum + p.value, 0) / validPoints.length
+      : 0
+    const avgY = plotTop + (innerH - avgValue * stepY)
+
     const xLabelEvery = Math.max(1, Math.round(series.length / 6))
 
     const plotClipId = 'overviewPlotClip'
@@ -372,6 +378,32 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
             </text>
           )
         })}
+
+        {/* Average line — subtle dashed horizontal */}
+        {validPoints.length >= 2 && (
+          <g opacity={0.32}>
+            <line
+              x1={paddingLeft}
+              x2={width - paddingRight}
+              y1={avgY}
+              y2={avgY}
+              stroke="var(--chart-axis)"
+              strokeWidth={1}
+              strokeDasharray="4 4"
+              shapeRendering="crispEdges"
+            />
+            <text
+              x={width - paddingRight + 2}
+              y={avgY + 3.5}
+              fontSize={9}
+              fill="var(--chart-label)"
+              textAnchor="start"
+              opacity={0.8}
+            >
+              {`${Math.round(avgValue * 100)}%`}
+            </text>
+          </g>
+        )}
 
         {/* series */}
         {/* Main series — Option B (gradient-by-segment). */}
