@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useRef, useCallback } from 'react'
 import type { LocalDateString } from '../../../domain/types'
 import { parseLocalDateString } from '../../../domain/utils/localDate'
 import styles from './OverviewChart.module.css'
@@ -244,10 +244,72 @@ type OverviewChartProps = {
 }
 
 export function OverviewChart({ series, yMax }: OverviewChartProps) {
+  const [tooltip, setTooltip] = useState<{ text: string; left: number; top: number } | null>(null)
+  const frameRef = useRef<HTMLDivElement>(null)
+
   const isMobile =
     typeof window !== 'undefined' &&
     typeof window.matchMedia === 'function' &&
     window.matchMedia('(max-width: 520px)').matches
+
+  // Point coordinates for hover detection (light replica of layout math)
+  const pointCoords = useMemo(() => {
+    const paddingLeft = 44
+    const paddingRight = 10
+    const innerW = CHART_VIEWBOX_WIDTH - paddingLeft - paddingRight
+    const plotTop = 10 + 10 // paddingTop + plotInsetTop
+    const innerH = CHART_VIEWBOX_HEIGHT - 10 - 28 - 10 - 10
+    const stepX = series.length > 1 ? innerW / (series.length - 1) : innerW
+    const stepY = yMax > 0 ? innerH / yMax : innerH
+
+    return series
+      .map((p, i) => ({
+        svgX: paddingLeft + i * stepX,
+        svgY: plotTop + (innerH - p.value * stepY),
+        date: p.date,
+        value: p.value,
+      }))
+      .filter((p) => Number.isFinite(p.value))
+  }, [series, yMax])
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      const frame = frameRef.current
+      if (!frame) return
+      const svg = frame.querySelector('svg')
+      if (!svg) return
+      const rect = svg.getBoundingClientRect()
+      const scaleX = CHART_VIEWBOX_WIDTH / rect.width
+      const scaleY = CHART_VIEWBOX_HEIGHT / rect.height
+      const svgX = (e.clientX - rect.left) * scaleX
+      const svgY = (e.clientY - rect.top) * scaleY
+
+      let nearest: (typeof pointCoords)[number] | null = null
+      let minDist = Infinity
+      for (const p of pointCoords) {
+        const d = Math.hypot(p.svgX - svgX, p.svgY - svgY)
+        if (d < minDist) {
+          minDist = d
+          nearest = p
+        }
+      }
+
+      if (nearest && minDist < 24) {
+        const pxX = nearest.svgX / scaleX
+        const pxY = nearest.svgY / scaleY
+        setTooltip({
+          text: `${formatWeekdayShort(nearest.date).toUpperCase()} ${formatDateShort(nearest.date)} — ${Math.round(nearest.value * 100)}%`,
+          left: pxX,
+          top: pxY,
+        })
+      } else {
+        setTooltip(null)
+      }
+    },
+    [pointCoords],
+  )
+
+  const handlePointerLeave = useCallback(() => setTooltip(null), [])
 
   const chart = useMemo(() => {
     const width = CHART_VIEWBOX_WIDTH
@@ -462,41 +524,29 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
             />
           ))}
         </g>
-        {mainSeries.points.map((p) => {
-          const weekday = formatWeekdayShort(p.date).toUpperCase()
-          const dateStr = formatDateShort(p.date)
-          const pct = `${Math.round(p.value * 100)}%`
-          const tooltip = `${weekday} ${dateStr} — ${pct}`
-          return (
-            <g key={p.date} style={{ cursor: 'default' }}>
-              <title>{tooltip}</title>
-              {/* Visible dot */}
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={primaryPointRadius}
-                fill={scoreToColor(p.value, yMax)}
-                stroke={zeroAxisStroke}
-                strokeWidth={0.8}
-              />
-              {/* Larger invisible hit area */}
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={primaryPointRadius + 8}
-                fill="black"
-                fillOpacity={0}
-              />
-            </g>
-          )
-        })}
+        {mainSeries.points.map((p) => (
+          <circle
+            key={p.date}
+            cx={p.x}
+            cy={p.y}
+            r={primaryPointRadius}
+            fill={scoreToColor(p.value, yMax)}
+            stroke={zeroAxisStroke}
+            strokeWidth={0.8}
+          />
+        ))}
       </svg>
     )
   }, [isMobile, series, yMax])
 
   return (
     <div className={styles.chartWrap}>
-      <div className={styles.chartFrame}>
+      <div
+        className={styles.chartFrame}
+        ref={frameRef}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+      >
         <div className={styles.chartInlineLegend} aria-hidden>
           <span className={styles.chartLegendItem}>
             <span className={styles.chartLegendSwatchPrimary} />
@@ -508,6 +558,14 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
           </span>
         </div>
         {chart}
+        {tooltip && (
+          <div
+            className={styles.chartTooltip}
+            style={{ left: tooltip.left, top: tooltip.top }}
+          >
+            {tooltip.text}
+          </div>
+        )}
       </div>
     </div>
   )

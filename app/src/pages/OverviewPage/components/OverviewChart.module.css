@@ -89,3 +89,21 @@
     font-size: 12px !important;
   }
 }
+
+.chartTooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  margin-top: -12px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: var(--popover-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
