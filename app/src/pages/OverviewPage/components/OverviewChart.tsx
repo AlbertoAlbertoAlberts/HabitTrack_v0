@@ -468,7 +468,8 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
           const pct = `${Math.round(p.value * 100)}%`
           const tooltip = `${weekday} ${dateStr} — ${pct}`
           return (
-            <g key={p.date}>
+            <g key={p.date} style={{ cursor: 'default' }}>
+              <title>{tooltip}</title>
               {/* Visible dot */}
               <circle
                 cx={p.x}
@@ -477,18 +478,15 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
                 fill={scoreToColor(p.value, yMax)}
                 stroke={zeroAxisStroke}
                 strokeWidth={0.8}
-                pointerEvents="none"
               />
-              {/* Larger invisible hit area for hover tooltip */}
+              {/* Larger invisible hit area */}
               <circle
                 cx={p.x}
                 cy={p.y}
-                r={primaryPointRadius + 6}
-                fill="transparent"
-                stroke="none"
-              >
-                <title>{tooltip}</title>
-              </circle>
+                r={primaryPointRadius + 8}
+                fill="black"
+                fillOpacity={0}
+              />
             </g>
           )
         })}
