@@ -373,7 +373,6 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
         {/* x labels */}
         {allPoints.map((p, i) => {
           // Short range (≤10 days): show weekday names, evenly spaced
-          // Longer range: show DD.MM date on every Monday (+ first & last point)
           if (series.length <= 10) {
             if (i % xLabelEvery !== 0 && i !== allPoints.length - 1) return null
             const label = formatWeekdayShort(p.date).toUpperCase()
@@ -392,9 +391,10 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
             )
           }
 
-          // 30-day+ view: label Mondays (and first/last point)
-          const showLabel = i === 0 || i === allPoints.length - 1 || isMonday(p.date)
-          if (!showLabel) return null
+          // 30-day+ view: show DD.MM dates every ~5 days, evenly spaced
+          // Target ~6 labels total for a clean look
+          const labelStep = Math.max(1, Math.round(allPoints.length / 6))
+          if (i % labelStep !== 0 && i !== allPoints.length - 1) return null
           return (
             <text
               key={p.date}
