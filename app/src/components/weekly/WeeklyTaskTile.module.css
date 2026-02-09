@@ -15,10 +15,10 @@
     border-color var(--t-fast) var(--ease-out);
 }
 
-/* Ring pinned to a fixed position — independent of text length */
+/* Ring locked in place — text length cannot move it */
 .ringArea {
   position: absolute;
-  top: 43%;
+  top: 38%;
   left: 50%;
   transform: translate(-50%, -50%);
 }
@@ -49,10 +49,10 @@
   color: #b91c1c;
 }
 
-/* Text anchored at tile bottom — independent of ring */
+/* Text pinned to bottom — independent of ring */
 .text {
   position: absolute;
-  bottom: 8px;
+  bottom: 10px;
   left: 6px;
   right: 6px;
   display: flex;
