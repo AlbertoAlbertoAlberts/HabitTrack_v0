@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import type { WeeklyTask } from '../../../domain/types'
 import { WeeklyTaskTile } from '../../../components/weekly/WeeklyTaskTile'
 import uiStyles from '../DailyShared.module.css'
@@ -46,6 +46,17 @@ export function WeekPanel({
   onCloseWeeklyMenu,
 }: WeekPanelProps) {
   const weeklyMenuRef = useRef<HTMLDetailsElement | null>(null)
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (weeklyMenuRef.current?.open && !weeklyMenuRef.current.contains(e.target as Node)) {
+        weeklyMenuRef.current.open = false
+      }
+    }
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [])
 
   const reorderIds = <T extends string>(ids: T[], idToMove: T, targetIndex: number): T[] => {
     const currentIndex = ids.indexOf(idToMove)
