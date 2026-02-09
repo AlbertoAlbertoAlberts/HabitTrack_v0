@@ -220,11 +220,6 @@ function formatDateShort(date: LocalDateString): string {
   return `${m[3]}.${m[2]}`
 }
 
-/** True if this date is a Monday. */
-function isMonday(date: LocalDateString): boolean {
-  return parseLocalDateString(date).getDay() === 1
-}
-
 function niceTickStep(maxValue: number): number {
   const raw = maxValue / 5
   const pow10 = Math.pow(10, Math.floor(Math.log10(raw || 1)))
