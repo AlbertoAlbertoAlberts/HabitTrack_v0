@@ -250,7 +250,7 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
   // Point coordinates for hover detection (light replica of layout math)
   const pointCoords = useMemo(() => {
     const paddingLeft = 44
-    const paddingRight = 10
+    const paddingRight = 30
     const innerW = CHART_VIEWBOX_WIDTH - paddingLeft - paddingRight
     const plotTop = 10 + 10 // paddingTop + plotInsetTop
     const innerH = CHART_VIEWBOX_HEIGHT - 10 - 28 - 10 - 10
@@ -310,7 +310,7 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
     const width = CHART_VIEWBOX_WIDTH
     const height = CHART_VIEWBOX_HEIGHT
     const paddingLeft = 44
-    const paddingRight = 10
+    const paddingRight = 30
     const paddingTop = 10
     const paddingBottom = 28
 
