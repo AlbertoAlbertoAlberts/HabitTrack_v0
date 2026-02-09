@@ -69,8 +69,8 @@ export function OverviewSelectionList({
                   role="button"
                   tabIndex={0}
                 >
-                  <span className={styles.itemTitle}>{h.name}</span>
-                  <span className={styles.muted}> - {catName}</span>
+                  <span className={styles.muted}>{catName}</span>
+                  <span className={styles.itemTitle}> - {h.name}</span>
                 </div>
               )
             })}
