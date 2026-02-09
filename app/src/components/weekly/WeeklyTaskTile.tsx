@@ -77,13 +77,15 @@ export function WeeklyTaskTile({
         ) : null}
       </div>
 
-      <WeeklyProgressRing
-        value={count}
-        max={typeof max === 'number' ? max : task.targetPerWeek}
-        title={title}
-        disabled={progressDisabled}
-        onAdjust={onAdjust}
-      />
+      <div className={styles.ringArea}>
+        <WeeklyProgressRing
+          value={count}
+          max={typeof max === 'number' ? max : task.targetPerWeek}
+          title={title}
+          disabled={progressDisabled}
+          onAdjust={onAdjust}
+        />
+      </div>
       <div className={styles.text}>
         <div className={styles.name} title={task.name}>
           {task.name}
