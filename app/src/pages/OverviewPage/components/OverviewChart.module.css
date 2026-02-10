@@ -90,6 +90,20 @@
   }
 }
 
+/* Phone landscape: make chart fill viewport height */
+@media (orientation: landscape) and (max-height: 520px) {
+  .chartWrap {
+    padding: 8px;
+  }
+
+  .chartSvg {
+    width: auto;
+    height: calc(100vh - 120px);
+    min-height: 240px;
+    max-width: 100%;
+  }
+}
+
 .chartHoverLine {
   position: absolute;
   width: 1px;
