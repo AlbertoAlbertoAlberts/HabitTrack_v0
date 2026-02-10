@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useAppState } from '../../../domain/store/useAppStore'
-import type { LocalDateString } from '../../../domain/types'
+import type { LocalDateString, Score } from '../../../domain/types'
 import { appStore } from '../../../domain/store/appStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../../domain/utils/localDate'
 
@@ -49,7 +49,7 @@ export function useDailyData(selectedDate: LocalDateString) {
   const scoresForSelectedDate = useMemo(() => {
     const sameDayScores = state.dailyScores[selectedDate] ?? {}
     const prevDayScores = state.dailyScores[addDays(selectedDate, -1)] ?? {}
-    const merged: Record<string, number> = { ...sameDayScores }
+    const merged: Record<string, Score> = { ...sameDayScores }
     for (const habit of Object.values(state.habits)) {
       if (habit.scoreDay === 'previous') {
         // 'previous' habits store scores at selectedDate - 1
