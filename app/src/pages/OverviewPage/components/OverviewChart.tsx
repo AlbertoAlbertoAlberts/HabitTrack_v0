@@ -239,7 +239,7 @@ type OverviewChartProps = {
 }
 
 export function OverviewChart({ series, yMax }: OverviewChartProps) {
-  const [tooltip, setTooltip] = useState<{ text: string; left: number; top: number } | null>(null)
+  const [tooltip, setTooltip] = useState<{ text: string; left: number; top: number; lineX: number; lineTop: number; lineBottom: number } | null>(null)
   const frameRef = useRef<HTMLDivElement>(null)
 
   const isMobile =
@@ -277,25 +277,36 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
       const scaleX = CHART_VIEWBOX_WIDTH / rect.width
       const scaleY = CHART_VIEWBOX_HEIGHT / rect.height
       const svgX = (e.clientX - rect.left) * scaleX
-      const svgY = (e.clientY - rect.top) * scaleY
 
+      // Find nearest point by X distance only (vertical column hover)
       let nearest: (typeof pointCoords)[number] | null = null
-      let minDist = Infinity
+      let minDistX = Infinity
       for (const p of pointCoords) {
-        const d = Math.hypot(p.svgX - svgX, p.svgY - svgY)
-        if (d < minDist) {
-          minDist = d
+        const dx = Math.abs(p.svgX - svgX)
+        if (dx < minDistX) {
+          minDistX = dx
           nearest = p
         }
       }
 
-      if (nearest && minDist < 24) {
+      // Padding/layout constants matching the chart memo
+      const paddingLeft = 44
+      const paddingRight = 30
+      const plotTop = 20 // paddingTop(10) + plotInsetTop(10)
+      const innerH = CHART_VIEWBOX_HEIGHT - 10 - 28 - 10 - 10
+
+      if (nearest && svgX >= paddingLeft - 10 && svgX <= CHART_VIEWBOX_WIDTH - paddingRight + 10) {
         const pxX = nearest.svgX / scaleX
         const pxY = nearest.svgY / scaleY
+        const lineTopPx = plotTop / scaleY
+        const lineBottomPx = (plotTop + innerH) / scaleY
         setTooltip({
           text: `${formatWeekdayShort(nearest.date).toUpperCase()} ${formatDateShort(nearest.date)} — ${Math.round(nearest.value * 100)}%`,
           left: pxX,
           top: pxY,
+          lineX: pxX,
+          lineTop: lineTopPx,
+          lineBottom: lineBottomPx,
         })
       } else {
         setTooltip(null)
@@ -366,6 +377,26 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
     const daySegments = Math.max(1, mainSeries.points.length - 1)
     const samplesPerBezier = clampInt(Math.floor(maxGradientSegments / daySegments), 6, 18)
     const mainGradientSegments = buildGradientSegments(mainSeries.points, samplesPerBezier, yMax)
+
+    // 7-day moving average trendline (only for 30-day+ views)
+    const trendLineD = series.length > 10 ? (() => {
+      const window = 7
+      const trendPoints: SvgPoint[] = []
+      for (let i = 0; i < validPoints.length; i++) {
+        // Compute average of surrounding points within the window
+        const halfW = Math.floor(window / 2)
+        let sum = 0
+        let count = 0
+        for (let j = Math.max(0, i - halfW); j <= Math.min(validPoints.length - 1, i + halfW); j++) {
+          sum += validPoints[j].value
+          count++
+        }
+        const avg = count > 0 ? sum / count : validPoints[i].value
+        const y = plotTop + (innerH - avg * stepY)
+        trendPoints.push({ x: validPoints[i].x, y, date: validPoints[i].date, value: avg })
+      }
+      return buildSmoothPathD(trendPoints)
+    })() : null
 
     // Average line
     const avgValue = validPoints.length > 0
@@ -494,6 +525,21 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
           </g>
         )}
 
+        {/* Trendline (7-day moving average, 30-day view only) */}
+        {trendLineD && (
+          <g clipPath={`url(#${plotClipId})`}>
+            <path
+              d={trendLineD}
+              fill="none"
+              stroke="#2a3a5c"
+              strokeWidth={primaryStrokeWidth}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={0.35}
+            />
+          </g>
+        )}
+
         {/* series */}
         {/* Main series — Option B (gradient-by-segment). */}
         <g clipPath={`url(#${plotClipId})`}>
@@ -554,12 +600,22 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
         </div>
         {chart}
         {tooltip && (
-          <div
-            className={styles.chartTooltip}
-            style={{ left: tooltip.left, top: tooltip.top }}
-          >
-            {tooltip.text}
-          </div>
+          <>
+            <div
+              className={styles.chartHoverLine}
+              style={{
+                left: tooltip.lineX,
+                top: tooltip.lineTop,
+                height: tooltip.lineBottom - tooltip.lineTop,
+              }}
+            />
+            <div
+              className={styles.chartTooltip}
+              style={{ left: tooltip.left, top: tooltip.top }}
+            >
+              {tooltip.text}
+            </div>
+          </>
         )}
       </div>
     </div>

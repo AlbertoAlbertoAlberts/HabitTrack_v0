@@ -90,6 +90,15 @@
   }
 }
 
+.chartHoverLine {
+  position: absolute;
+  width: 1px;
+  background: var(--chart-axis);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 5;
+}
+
 .chartTooltip {
   position: absolute;
   transform: translate(-50%, -100%);
