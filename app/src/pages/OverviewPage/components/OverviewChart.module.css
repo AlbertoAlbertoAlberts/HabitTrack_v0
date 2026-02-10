@@ -90,17 +90,16 @@
   }
 }
 
-/* Phone landscape: make chart fill viewport height */
+/* Phone landscape: make chart fill viewport width */
 @media (orientation: landscape) and (max-height: 520px) {
   .chartWrap {
     padding: 8px;
   }
 
   .chartSvg {
-    width: auto;
-    height: calc(100vh - 120px);
-    min-height: 240px;
-    max-width: 100%;
+    width: 100%;
+    height: auto;
+    min-height: 50vh;
   }
 }
 
