@@ -80,10 +80,12 @@
 @media (max-width: 980px) {
   .overviewLayout {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .mainCol {
     order: 1;
+    width: 100%;
   }
 
   .leftCol {
@@ -97,10 +99,12 @@
 @media (orientation: landscape) and (max-height: 520px) {
   .overviewLayout {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .mainCol {
     order: 1;
+    width: 100%;
   }
 
   .leftCol {
