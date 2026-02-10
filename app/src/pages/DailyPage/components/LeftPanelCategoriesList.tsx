@@ -9,7 +9,6 @@ interface LeftPanelCategoriesListProps {
   habitsByCategory: Map<string, Habit[]>
   isReorderMode: boolean
   isDeleteMode: boolean
-  isPriorityEdit: boolean
   isRenameMode: boolean
   dragOverKey: string | null
   onAddCategoryClick: () => void
@@ -22,7 +21,6 @@ interface LeftPanelCategoriesListProps {
   onCategoryDeleteClick: (categoryId: string, name: string, anchor: { left: number; top: number; right: number; bottom: number }) => void
   onHabitEditClick: (habitId: string, name: string, categoryId: string) => void
   onHabitDeleteClick: (habitId: string) => void
-  onHabitPriorityChange: (habitId: string, delta: number, currentPriority: number) => void
 }
 
 function FolderIcon({ className }: { className?: string }) {
@@ -71,7 +69,6 @@ export function LeftPanelCategoriesList({
   habitsByCategory,
   isReorderMode,
   isDeleteMode,
-  isPriorityEdit,
   isRenameMode,
   dragOverKey,
   onAddCategoryClick,
@@ -84,7 +81,6 @@ export function LeftPanelCategoriesList({
   onCategoryDeleteClick,
   onHabitEditClick,
   onHabitDeleteClick,
-  onHabitPriorityChange,
 }: LeftPanelCategoriesListProps) {
   if (categories.length === 0) {
     return (
@@ -184,6 +180,7 @@ export function LeftPanelCategoriesList({
                 draggable={isReorderMode}
                 onDragStart={(e) => {
                   if (!isReorderMode) return
+                  e.stopPropagation()
                   e.dataTransfer.effectAllowed = 'move'
                   onHabitDragStart(h.id, cat.id)
                   e.dataTransfer.setData(
@@ -193,15 +190,18 @@ export function LeftPanelCategoriesList({
                 }}
                 onDragOver={(e) => {
                   if (!isReorderMode) return
+                  e.stopPropagation()
                   e.preventDefault()
                   onSetDragOverKey(`habit:${h.id}`)
                 }}
-                onDragLeave={() => {
+                onDragLeave={(e) => {
                   if (!isReorderMode) return
+                  e.stopPropagation()
                   onSetDragOverKey(null)
                 }}
                 onDrop={(e) => {
                   if (!isReorderMode) return
+                  e.stopPropagation()
                   e.preventDefault()
                   onSetDragOverKey(null)
 
@@ -214,7 +214,7 @@ export function LeftPanelCategoriesList({
                 <div className={`${habitStyles.habitLeft} ${habitStyles.habitLeftIndented}`}>
                   <TargetIcon className={habitStyles.habitIcon} />
                   <span className={habitStyles.habitName} title={h.name}>
-                    {h.name}
+                    {h.name}{h.scoreDay === 'previous' ? ' (vakar)' : ''}
                   </span>
                 </div>
 
@@ -236,36 +236,12 @@ export function LeftPanelCategoriesList({
                     onClick={() => {
                       onHabitEditClick(h.id, h.name, h.categoryId)
                     }}
-                    aria-label={`Rediģēt ieraduma nosaukumu: ${h.name}`}
+                    aria-label={`Rediģēt ieradumu: ${h.name}`}
                   >
                     ✎
                   </button>
-                ) : isPriorityEdit ? (
-                  <span className={styles.priorityStepper}>
-                    <button
-                      type="button"
-                      className={sharedStyles.smallBtn}
-                      onClick={() => {
-                        onHabitPriorityChange(h.id, -1, h.priority)
-                      }}
-                      disabled={h.priority === 1}
-                      aria-label={`Samazināt prioritāti: ${h.name}`}
-                    >
-                      &lt;
-                    </button>
-                      <span className={uiStyles.muted}>{h.priority}</span>
-                    <button
-                      type="button"
-                      className={sharedStyles.smallBtn}
-                      onClick={() => {
-                        onHabitPriorityChange(h.id, 1, h.priority)
-                      }}
-                      disabled={h.priority === 3}
-                      aria-label={`Palielināt prioritāti: ${h.name}`}
-                    >
-                      &gt;
-                    </button>
-                  </span>
+                ) : isReorderMode ? (
+                  <span className={uiStyles.dragHandle} title="Velc, lai pārkārtotu">⠿</span>
                 ) : (
                   <span className={uiStyles.muted}>P{h.priority}</span>
                 )}

@@ -5,11 +5,9 @@ import uiStyles from '../DailyShared.module.css'
 interface LeftPanelMenuProps {
   isReorderMode: boolean
   isDeleteMode: boolean
-  isPriorityEdit: boolean
   isRenameMode: boolean
   onToggleReorder: () => void
   onToggleDelete: () => void
-  onTogglePriorityEdit: () => void
   onToggleRename: () => void
   onAddHabit: () => void
   onAddCategory: () => void
@@ -23,11 +21,9 @@ export const LeftPanelMenu = forwardRef<HTMLDetailsElement, LeftPanelMenuProps>(
     {
       isReorderMode,
       isDeleteMode,
-      isPriorityEdit,
       isRenameMode,
       onToggleReorder,
       onToggleDelete,
-      onTogglePriorityEdit,
       onToggleRename,
       onAddHabit,
       onAddCategory,
@@ -71,23 +67,11 @@ export const LeftPanelMenu = forwardRef<HTMLDetailsElement, LeftPanelMenuProps>(
             className={uiStyles.menuItem}
             onClick={() => {
               onClose()
-              onTogglePriorityEdit()
-            }}
-            disabled={!isPriorityEdit && (isDeleteMode || isReorderMode)}
-          >
-            Rediģēt prioritātes
-          </button>
-
-          <button
-            type="button"
-            className={uiStyles.menuItem}
-            onClick={() => {
-              onClose()
               onToggleRename()
             }}
-            disabled={!isRenameMode && (isDeleteMode || isReorderMode || isPriorityEdit)}
+            disabled={!isRenameMode && (isDeleteMode || isReorderMode)}
           >
-            Rediģēt paradumus
+            Rediģēt
           </button>
 
           <hr className={uiStyles.menuDivider} />

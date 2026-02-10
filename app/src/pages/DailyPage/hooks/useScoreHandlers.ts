@@ -41,7 +41,9 @@ export function useScoreHandlers(
 
   const setScore = useCallback(
     (habitId: HabitId, score: Score) => {
-      appStore.actions.setScore(selectedDate, habitId, score)
+      const habit = appStore.getState().habits[habitId]
+      const targetDate = habit?.scoreDay === 'previous' ? addDays(selectedDate, -1) : selectedDate
+      appStore.actions.setScore(targetDate, habitId, score)
     },
     [selectedDate],
   )

@@ -40,6 +40,7 @@ export function DailyPage() {
   const [addHabitName, setAddHabitName] = useState('')
   const [addHabitCategoryId, setAddHabitCategoryId] = useState('')
   const [addHabitPriority, setAddHabitPriority] = useState<1 | 2 | 3>(1)
+  const [addHabitScoreDay, setAddHabitScoreDay] = useState<'same' | 'previous'>('same')
 
   const [addWeeklyTaskOpen, setAddWeeklyTaskOpen] = useState(false)
   const [addWeeklyTaskName, setAddWeeklyTaskName] = useState('')
@@ -51,6 +52,8 @@ export function DailyPage() {
   const [renameTarget, setRenameTarget] = useState<RenameTarget>(null)
   const [renameValue, setRenameValue] = useState('')
   const [renameHabitCategoryId, setRenameHabitCategoryId] = useState('')
+  const [renameHabitPriority, setRenameHabitPriority] = useState<1 | 2 | 3>(1)
+  const [renameHabitScoreDay, setRenameHabitScoreDay] = useState<'same' | 'previous'>('same')
   const [renameWeeklyTarget, setRenameWeeklyTarget] = useState(2)
 
   const [pendingImport, setPendingImport] = useState<{ filename: string; text: string } | null>(null)
@@ -249,7 +252,7 @@ export function DailyPage() {
           <h2 className={styles.panelTitle}>Izaicinājumi</h2>
 
           <div className={styles.panelHeaderActions}>
-            {isReorderMode || isDeleteMode || isPriorityEdit || isRenameMode ? (
+            {isReorderMode || isDeleteMode || isRenameMode ? (
               <button
                 type="button"
                 className={styles.exitModeBtn}
@@ -268,16 +271,12 @@ export function DailyPage() {
               ref={leftMenuRef}
               isReorderMode={isReorderMode}
               isDeleteMode={isDeleteMode}
-              isPriorityEdit={isPriorityEdit}
               isRenameMode={isRenameMode}
               onToggleReorder={() => {
                 setLeftMode(isReorderMode ? 'normal' : 'reorder')
               }}
               onToggleDelete={() => {
                 setLeftMode(isDeleteMode ? 'normal' : 'delete')
-              }}
-              onTogglePriorityEdit={() => {
-                setLeftMode(isPriorityEdit ? 'normal' : 'priorityEdit')
               }}
               onToggleRename={() => {
                 setLeftMode(isRenameMode ? 'normal' : 'rename')
@@ -291,6 +290,7 @@ export function DailyPage() {
                 setAddHabitName('')
                 setAddHabitCategoryId(categories[0]?.id ?? '')
                 setAddHabitPriority(1)
+                setAddHabitScoreDay('same')
                 setAddHabitOpen(true)
               }}
               onAddCategory={() => {
@@ -316,7 +316,6 @@ export function DailyPage() {
           habitsByCategory={habitsByCategory}
           isReorderMode={isReorderMode}
           isDeleteMode={isDeleteMode}
-          isPriorityEdit={isPriorityEdit}
           isRenameMode={isRenameMode}
           dragOverKey={dragOverKey}
           onAddCategoryClick={() => {
@@ -376,17 +375,15 @@ export function DailyPage() {
             setPendingCategoryDelete({ id, name, anchor })
           }}
           onHabitEditClick={(id, name, categoryId) => {
+            const habit = state.habits[id]
             setRenameTarget({ kind: 'habit', id, name })
             setRenameValue(name)
             setRenameHabitCategoryId(categoryId)
+            setRenameHabitPriority(habit?.priority ?? 1)
+            setRenameHabitScoreDay(habit?.scoreDay ?? 'same')
           }}
           onHabitDeleteClick={(id) => {
             appStore.actions.deleteHabit(id)
-          }}
-          onHabitPriorityChange={(id, delta, currentPriority) => {
-            const next = Math.max(1, Math.min(3, currentPriority + delta)) as 1 | 2 | 3
-            appStore.actions.setHabitPriorityValue(id, next)
-            pendingPriorityChangedRef.current.add(id)
           }}
         />
 
@@ -447,7 +444,7 @@ export function DailyPage() {
               const name = addHabitName.trim()
               if (!name) return
               if (!addHabitCategoryId) return
-              appStore.actions.addHabit(addHabitCategoryId, name, addHabitPriority)
+              appStore.actions.addHabit(addHabitCategoryId, name, addHabitPriority, addHabitScoreDay)
               setAddHabitOpen(false)
             }}
           >
@@ -507,6 +504,20 @@ export function DailyPage() {
                   </div>
                 </label>
               </div>
+
+              <div className={dialogStyles.row}>
+                <label className={dialogStyles.label}>
+                  Vērtēšanas diena
+                  <select
+                    className={dialogStyles.input}
+                    value={addHabitScoreDay}
+                    onChange={(e) => setAddHabitScoreDay(e.target.value as 'same' | 'previous')}
+                  >
+                    <option value="same">Šodiena</option>
+                    <option value="previous">Iepriekšējā diena</option>
+                  </select>
+                </label>
+              </div>
             </DialogBody>
             <DialogFooter>
               <button type="button" className={dialogStyles.btn} onClick={() => setAddHabitOpen(false)}>
@@ -519,7 +530,7 @@ export function DailyPage() {
                   const name = addHabitName.trim()
                   if (!name) return
                   if (!addHabitCategoryId) return
-                  appStore.actions.addHabit(addHabitCategoryId, name, addHabitPriority)
+                  appStore.actions.addHabit(addHabitCategoryId, name, addHabitPriority, addHabitScoreDay)
                   setAddHabitOpen(false)
                 }}
               >
@@ -628,6 +639,8 @@ export function DailyPage() {
             setRenameTarget(null)
             setRenameValue('')
             setRenameHabitCategoryId('')
+            setRenameHabitPriority(1)
+            setRenameHabitScoreDay('same')
             setRenameWeeklyTarget(2)
           }}
         >
@@ -642,6 +655,8 @@ export function DailyPage() {
                 renameTarget,
                 renameValue,
                 renameHabitCategoryId,
+                renameHabitPriority,
+                renameHabitScoreDay,
                 renameWeeklyTarget,
                 habitsById: state.habits,
               })
@@ -650,6 +665,8 @@ export function DailyPage() {
               setRenameTarget(null)
               setRenameValue('')
               setRenameHabitCategoryId('')
+              setRenameHabitPriority(1)
+              setRenameHabitScoreDay('same')
               setRenameWeeklyTarget(2)
             }}
           >
@@ -683,6 +700,51 @@ export function DailyPage() {
                   />
                 </label>
               </div>
+
+              {renameTarget?.kind === 'habit' ? (
+                <>
+                  <div className={dialogStyles.row}>
+                    <label className={dialogStyles.label}>
+                      Prioritāte
+                      <div className={styles.priorityStepper} style={{ marginTop: 6 }}>
+                        <button
+                          type="button"
+                          className={sharedStyles.smallBtn}
+                          onClick={() => setRenameHabitPriority((p) => (Math.max(1, p - 1) as 1 | 2 | 3))}
+                          disabled={renameHabitPriority === 1}
+                          aria-label="Samazināt prioritāti"
+                        >
+                          &lt;
+                        </button>
+                        <span className={styles.muted}>{renameHabitPriority}</span>
+                        <button
+                          type="button"
+                          className={sharedStyles.smallBtn}
+                          onClick={() => setRenameHabitPriority((p) => (Math.min(3, p + 1) as 1 | 2 | 3))}
+                          disabled={renameHabitPriority === 3}
+                          aria-label="Palielināt prioritāti"
+                        >
+                          &gt;
+                        </button>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className={dialogStyles.row}>
+                    <label className={dialogStyles.label}>
+                      Rezultāta diena
+                      <select
+                        className={dialogStyles.input}
+                        value={renameHabitScoreDay}
+                        onChange={(e) => setRenameHabitScoreDay(e.target.value as 'same' | 'previous')}
+                      >
+                        <option value="same">Šodiena (noklusējums)</option>
+                        <option value="previous">Iepriekšējā diena</option>
+                      </select>
+                    </label>
+                  </div>
+                </>
+              ) : null}
 
               {renameTarget?.kind === 'weeklyTask' ? (
                 <div className={dialogStyles.row}>
@@ -721,6 +783,8 @@ export function DailyPage() {
                   setRenameTarget(null)
                   setRenameValue('')
                   setRenameHabitCategoryId('')
+                  setRenameHabitPriority(1)
+                  setRenameHabitScoreDay('same')
                 }}
               >
                 Atcelt
@@ -733,6 +797,8 @@ export function DailyPage() {
                     renameTarget,
                     renameValue,
                     renameHabitCategoryId,
+                    renameHabitPriority,
+                    renameHabitScoreDay,
                     renameWeeklyTarget,
                     habitsById: state.habits,
                   })
@@ -741,6 +807,8 @@ export function DailyPage() {
                   setRenameTarget(null)
                   setRenameValue('')
                   setRenameHabitCategoryId('')
+                  setRenameHabitPriority(1)
+                  setRenameHabitScoreDay('same')
                   setRenameWeeklyTarget(2)
                 }}
               >

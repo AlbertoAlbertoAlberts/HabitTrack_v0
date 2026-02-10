@@ -15,10 +15,12 @@ export function applyRename(args: {
   renameTarget: RenameTarget
   renameValue: string
   renameHabitCategoryId: string
+  renameHabitPriority: 1 | 2 | 3
+  renameHabitScoreDay: 'same' | 'previous'
   renameWeeklyTarget: number
   habitsById: Record<string, Habit>
 }): boolean {
-  const {renameTarget, renameValue, renameHabitCategoryId, renameWeeklyTarget, habitsById} = args
+  const {renameTarget, renameValue, renameHabitCategoryId, renameHabitPriority, renameHabitScoreDay, renameWeeklyTarget, habitsById} = args
 
   if (!renameTarget) return false
   const next = renameValue.trim()
@@ -35,6 +37,14 @@ export function applyRename(args: {
     const current = habitsById[renameTarget.id]
     if (current && renameHabitCategoryId && renameHabitCategoryId !== current.categoryId) {
       appStore.actions.moveHabit(renameTarget.id, renameHabitCategoryId)
+    }
+
+    if (current && renameHabitPriority !== current.priority) {
+      appStore.actions.setHabitPriority(renameTarget.id, renameHabitPriority)
+    }
+
+    if (current && (renameHabitScoreDay ?? 'same') !== (current.scoreDay ?? 'same')) {
+      appStore.actions.setHabitScoreDay(renameTarget.id, renameHabitScoreDay)
     }
 
     return true

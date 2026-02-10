@@ -198,6 +198,8 @@ export interface Habit {
   categoryId: CategoryId
   priority: Priority
   sortIndex: number
+  /** When 'previous', scores entered on a given day are recorded for the previous day. */
+  scoreDay?: 'same' | 'previous'
   // Effective start date (YYYY-MM-DD, local). If absent, it is derived from createdAt.
   startDate?: LocalDateString
   createdAt: IsoTimestamp

@@ -59,10 +59,20 @@
 .habitRowCompact {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  padding: 6px 0;
+  height: 36px;
+  padding: 0 0;
   border-bottom: 1px solid var(--border);
+}
+
+.habitRowCompact > :first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.habitRowCompact > :last-child {
+  flex: 0 0 auto;
 }
 
 .priorityStepper {

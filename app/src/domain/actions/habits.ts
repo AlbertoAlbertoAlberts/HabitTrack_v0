@@ -83,6 +83,7 @@ export function addHabit(
   categoryId: CategoryId,
   name: string,
   priority: Priority = 1,
+  scoreDay: 'same' | 'previous' = 'same',
 ): AppStateV1 {
   if (!state.categories[categoryId]) return state
 
@@ -96,6 +97,7 @@ export function addHabit(
     categoryId,
     priority,
     sortIndex: nextSortIndex,
+    scoreDay,
     startDate: todayLocalDateString(),
     createdAt,
     updatedAt: createdAt,
@@ -263,6 +265,28 @@ export function renameHabit(state: AppStateV1, habitId: HabitId, name: string): 
       [habitId]: {
         ...habit,
         name: trimmed,
+        updatedAt: nowIso(),
+      },
+    },
+  }
+}
+
+export function setHabitScoreDay(
+  state: AppStateV1,
+  habitId: HabitId,
+  scoreDay: 'same' | 'previous',
+): AppStateV1 {
+  const habit = state.habits[habitId]
+  if (!habit) return state
+  if ((habit.scoreDay ?? 'same') === scoreDay) return state
+
+  return {
+    ...state,
+    habits: {
+      ...state.habits,
+      [habitId]: {
+        ...habit,
+        scoreDay,
         updatedAt: nowIso(),
       },
     },

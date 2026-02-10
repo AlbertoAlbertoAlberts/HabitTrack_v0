@@ -36,7 +36,8 @@ function buildSeries(
   const today = todayLocalDateString()
   
   return dates.map((date) => {
-    const scores = dailyScores[date] ?? {}
+    const sameDayScores = dailyScores[date] ?? {}
+    const prevDayScores = dailyScores[addDays(date, -1)] ?? {}
 
     const activeHabitIds = habitIds.filter((id) => {
       const h = habitsById[id]
@@ -47,7 +48,14 @@ function buildSeries(
 
     const maxPossible = activeHabitIds.length * 2
     let earned = 0
-    for (const id of activeHabitIds) earned += scores[id] ?? 0
+    for (const id of activeHabitIds) {
+      const h = habitsById[id]
+      if (h?.scoreDay === 'previous') {
+        earned += prevDayScores[id] ?? 0
+      } else {
+        earned += sameDayScores[id] ?? 0
+      }
+    }
 
     // For future dates, set value to NaN so chart can skip rendering
     const value = date > today ? NaN : (maxPossible > 0 ? earned / maxPossible : 0)

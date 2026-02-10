@@ -48,7 +48,7 @@ export function HabitRow({ habit, selectedDate, value, locked, onChange }: Habit
       <div className={`${styles.habitLeft} ${styles.habitLeftIndented}`}>
         <TargetIcon className={styles.habitIcon} />
         <span className={styles.habitName} title={habit.name}>
-          {habit.name}
+          {habit.name}{habit.scoreDay === 'previous' ? ' (vakar)' : ''}
         </span>
         {notStartedYet && habit.startDate ? (
           <span className={styles.habitStartHint} title={`Sākas: ${formatDateLabel(habit.startDate)}`}>

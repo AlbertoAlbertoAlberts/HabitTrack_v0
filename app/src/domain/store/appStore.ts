@@ -31,6 +31,7 @@ import {
   setHabitPriorityValue,
   repositionHabitAfterPriorityChange,
   renameHabit,
+  setHabitScoreDay,
 } from '../actions/habits'
 import { getScoresForDate, setScore } from '../actions/dailyScores'
 import { commitIfNeeded, isLocked } from '../actions/dayLocks'
@@ -141,8 +142,8 @@ export const appStore = {
     },
 
     // Habits
-    addHabit(categoryId: CategoryId, name: string, priority?: Priority) {
-      setState(addHabit(state, categoryId, name, priority))
+    addHabit(categoryId: CategoryId, name: string, priority?: Priority, scoreDay?: 'same' | 'previous') {
+      setState(addHabit(state, categoryId, name, priority, scoreDay))
     },
     deleteHabit(habitId: HabitId) {
       setState(deleteHabit(state, habitId))
@@ -164,6 +165,9 @@ export const appStore = {
     },
     renameHabit(habitId: HabitId, name: string) {
       setState(renameHabit(state, habitId, name))
+    },
+    setHabitScoreDay(habitId: HabitId, scoreDay: 'same' | 'previous') {
+      setState(setHabitScoreDay(state, habitId, scoreDay))
     },
 
     // Daily scores

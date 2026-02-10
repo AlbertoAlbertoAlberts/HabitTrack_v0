@@ -46,7 +46,18 @@ export function useDailyData(selectedDate: LocalDateString) {
     return map
   }, [state.categories])
 
-  const scoresForSelectedDate = state.dailyScores[selectedDate] ?? {}
+  const scoresForSelectedDate = useMemo(() => {
+    const sameDayScores = state.dailyScores[selectedDate] ?? {}
+    const prevDayScores = state.dailyScores[addDays(selectedDate, -1)] ?? {}
+    const merged: Record<string, number> = { ...sameDayScores }
+    for (const habit of Object.values(state.habits)) {
+      if (habit.scoreDay === 'previous') {
+        // 'previous' habits store scores at selectedDate - 1
+        merged[habit.id] = prevDayScores[habit.id] ?? 0
+      }
+    }
+    return merged
+  }, [state.dailyScores, state.habits, selectedDate])
 
   const allHabitsSorted = useMemo(
     () =>
