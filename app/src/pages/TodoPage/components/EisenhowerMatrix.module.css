@@ -1,0 +1,141 @@
+/* Eisenhower Matrix — 2×2 grid with axis labels */
+.matrix {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  grid-template-rows: auto 1fr 1fr;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Column headers (Steidzams / Nav steidzams) */
+.colHeader {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 0 4px 2px;
+  user-select: none;
+}
+
+/* Row headers (Svarīgs / Nav svarīgs) */
+.rowHeader {
+  writing-mode: vertical-lr;
+  transform: rotate(180deg);
+  text-align: center;
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 4px 2px;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Top-left corner cell (empty) */
+.cornerCell {
+  /* intentionally empty */
+}
+
+/* Quadrant cells */
+.quadrant {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  min-height: 100px;
+  background: var(--btn-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) var(--ease-out);
+}
+
+.quadrantDragOver {
+  border-color: var(--accent);
+  background: rgba(79, 70, 229, 0.06);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.quadrantLabel {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  opacity: 0.85;
+  user-select: none;
+}
+
+.quadrantEmpty {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Draggable items inside quadrants */
+.matrixItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: grab;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.matrixItem:hover {
+  background: var(--btn-bg-hover);
+}
+
+.matrixItemFolder {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .matrix {
+    min-height: 300px;
+  }
+
+  .quadrant {
+    min-height: 70px;
+    padding: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .matrix {
+    min-height: 250px;
+    gap: 4px;
+  }
+
+  .colHeader,
+  .rowHeader {
+    font-size: 11px;
+  }
+
+  .quadrant {
+    min-height: 60px;
+    padding: 6px;
+  }
+
+  .quadrantLabel {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+
+  .matrixItem {
+    font-size: 12px;
+    padding: 3px 4px;
+  }
+}

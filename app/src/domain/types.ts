@@ -179,7 +179,10 @@ export type CategoryId = string
 export type HabitId = string
 export type TodoId = string
 export type TodoArchiveId = string
+export type TodoFolderId = string
 export type WeeklyTaskId = string
+
+export type TodoQuadrant = 'asap' | 'schedule' | 'later' | 'fun'
 
 export type Score = 0 | 1 | 2
 export type Priority = 1 | 2 | 3
@@ -206,10 +209,20 @@ export interface Habit {
   updatedAt: IsoTimestamp
 }
 
+export interface TodoFolder {
+  id: TodoFolderId
+  name: string
+  sortIndex: number
+  createdAt: IsoTimestamp
+  updatedAt: IsoTimestamp
+}
+
 export interface TodoItem {
   id: TodoId
   text: string
   sortIndex?: number
+  folderId?: TodoFolderId   // undefined → "Bez mapes"
+  quadrant?: TodoQuadrant   // undefined → uncategorised in matrix
   createdAt: IsoTimestamp
   updatedAt: IsoTimestamp
 }
@@ -217,6 +230,7 @@ export interface TodoItem {
 export interface TodoArchiveItem {
   id: TodoArchiveId
   text: string
+  folderId?: TodoFolderId
   completedAt: IsoTimestamp
   restoredAt: IsoTimestamp | null
 }
@@ -303,6 +317,7 @@ export interface AppStateV1 {
   weeklyProgress: WeeklyProgressByWeekStartV1
   weeklyCompletionDays: WeeklyCompletionDaysByWeekStartV1
 
+  todoFolders: Record<TodoFolderId, TodoFolder>
   todos: Record<TodoId, TodoItem>
   todoArchive: Record<TodoArchiveId, TodoArchiveItem>
 

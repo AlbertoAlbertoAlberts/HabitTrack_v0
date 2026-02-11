@@ -3,8 +3,10 @@ import type {
   IsoTimestamp,
   TodoArchiveId,
   TodoArchiveItem,
+  TodoFolderId,
   TodoId,
   TodoItem,
+  TodoQuadrant,
 } from '../types'
 
 function nowIso(): IsoTimestamp {
@@ -27,7 +29,7 @@ function normalizeTodoSortIndex(todos: Record<TodoId, TodoItem>): Record<TodoId,
   return normalized
 }
 
-export function addTodo(state: AppStateV1, text: string): AppStateV1 {
+export function addTodo(state: AppStateV1, text: string, folderId?: TodoFolderId): AppStateV1 {
   const createdAt = nowIso()
   const id = newId()
 
@@ -35,6 +37,7 @@ export function addTodo(state: AppStateV1, text: string): AppStateV1 {
     id,
     text,
     sortIndex: Object.keys(state.todos).length,
+    folderId,
     createdAt,
     updatedAt: createdAt,
   }
@@ -69,6 +72,7 @@ export function completeTodo(state: AppStateV1, todoId: TodoId): AppStateV1 {
   const archive: TodoArchiveItem = {
     id: archiveId,
     text: todo.text,
+    folderId: todo.folderId,
     completedAt,
     restoredAt: null,
   }
@@ -95,10 +99,15 @@ export function restoreTodo(state: AppStateV1, archiveId: TodoArchiveId): AppSta
   const newTodoId = newId() as TodoId
 
   const createdAt = restoredAt
+  // Restore to original folder if it still exists, otherwise "Bez mapes"
+  const restoredFolderId = archived.folderId && state.todoFolders[archived.folderId]
+    ? archived.folderId
+    : undefined
   const todo: TodoItem = {
     id: newTodoId,
     text: archived.text,
     sortIndex: Object.keys(state.todos).length,
+    folderId: restoredFolderId,
     createdAt,
     updatedAt: createdAt,
   }
@@ -158,5 +167,47 @@ export function reorderTodos(state: AppStateV1, orderedTodoIds: TodoId[]): AppSt
   return {
     ...state,
     todos: normalizeTodoSortIndex(nextTodos),
+  }
+}
+
+export function setTodoFolder(
+  state: AppStateV1,
+  todoId: TodoId,
+  folderId: TodoFolderId | undefined,
+): AppStateV1 {
+  const todo = state.todos[todoId]
+  if (!todo) return state
+
+  return {
+    ...state,
+    todos: {
+      ...state.todos,
+      [todoId]: {
+        ...todo,
+        folderId,
+        updatedAt: nowIso(),
+      },
+    },
+  }
+}
+
+export function setTodoQuadrant(
+  state: AppStateV1,
+  todoId: TodoId,
+  quadrant: TodoQuadrant | undefined,
+): AppStateV1 {
+  const todo = state.todos[todoId]
+  if (!todo) return state
+
+  return {
+    ...state,
+    todos: {
+      ...state.todos,
+      [todoId]: {
+        ...todo,
+        quadrant,
+        updatedAt: nowIso(),
+      },
+    },
   }
 }

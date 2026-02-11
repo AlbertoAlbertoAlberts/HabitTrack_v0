@@ -7,6 +7,7 @@ import AuthCallbackPage from './pages/AuthCallbackPage/AuthCallbackPage'
 import DailyPage from './pages/DailyPage/DailyPage'
 import LabPage from './pages/LabPage/LabPage'
 import OverviewPage from './pages/OverviewPage/OverviewPage'
+import TodoPage from './pages/TodoPage/TodoPage'
 
 import { useAppState } from './domain/store/useAppStore'
 import { getSupabaseSyncStatus, subscribeSupabaseSync } from './persistence/supabaseSync'
@@ -65,6 +66,7 @@ export default function App() {
               <Routes>
                 <Route path="/auth/callback" element={<AuthCallbackPage />} />
                 <Route path="/" element={<DailyPage />} />
+                <Route path="/todo" element={<TodoPage />} />
                 <Route path="/lab" element={<LabPage />} />
                 <Route path="/overview" element={<OverviewPage />} />
                 <Route path="/archive" element={<ArchivePage />} />
@@ -87,6 +89,7 @@ export default function App() {
           <Routes>
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="/" element={<DailyPage />} />
+            <Route path="/todo" element={<TodoPage />} />
             <Route path="/lab" element={<LabPage />} />
             <Route path="/overview" element={<OverviewPage />} />
             <Route path="/archive" element={<ArchivePage />} />

@@ -1,7 +1,8 @@
 import type { RefObject } from 'react'
 import { Link } from 'react-router-dom'
 
-import type { TodoItem, TodoMode } from '../../../domain/types'
+import type { TodoItem, TodoMode, TodoFolder, TodoFolderId } from '../../../domain/types'
+import type { TodoGroup } from '../hooks/useDailyData'
 
 import sharedStyles from '../../../components/ui/shared.module.css'
 import layoutStyles from '../DailyPage.module.css'
@@ -10,6 +11,8 @@ import styles from './RightTodosPanel.module.css'
 
 interface RightTodosPanelProps {
   todos: TodoItem[]
+  groupedTodos: TodoGroup[]
+  todoFolders: Record<TodoFolderId, TodoFolder>
   todoMode: TodoMode
   todoDragOverId: string | null
   todoMenuRef: RefObject<HTMLDetailsElement | null>
@@ -38,6 +41,8 @@ function reorderIds(orderedIds: string[], draggedId: string, targetIndex: number
 
 export function RightTodosPanel({
   todos,
+  groupedTodos,
+  todoFolders,
   todoMode,
   todoDragOverId,
   todoMenuRef,
@@ -50,6 +55,93 @@ export function RightTodosPanel({
   onReorderTodos,
   onBeginRenameTodo,
 }: RightTodosPanelProps) {
+
+  function folderLabel(t: TodoItem): string | null {
+    if (!t.folderId) return null
+    const folder = todoFolders[t.folderId]
+    return folder ? folder.name : null
+  }
+
+  function renderTodoRow(t: TodoItem) {
+    const canDrag = todoMode === 'reorder'
+    const fLabel = folderLabel(t)
+    return (
+      <div
+        key={t.id}
+        className={`${styles.todoRow} ${canDrag ? styles.todoRowReorder : ''} ${todoDragOverId === t.id ? styles.todoRowDragOver : ''}`}
+        draggable={canDrag}
+        onDragStart={(e) => {
+          if (!canDrag) return
+          e.dataTransfer.effectAllowed = 'move'
+          e.dataTransfer.setData('text/plain', t.id)
+        }}
+        onDragOver={(e) => {
+          if (!canDrag) return
+          e.preventDefault()
+          onSetTodoDragOverId(t.id)
+        }}
+        onDragLeave={() => {
+          if (!canDrag) return
+          onSetTodoDragOverId((v) => (v === t.id ? null : v))
+        }}
+        onDrop={(e) => {
+          if (!canDrag) return
+          e.preventDefault()
+          onSetTodoDragOverId(null)
+
+          const draggedId = e.dataTransfer.getData('text/plain')
+          if (!draggedId) return
+          if (draggedId === t.id) return
+
+          const ordered = todos.map((x) => x.id)
+          const fromIndex = ordered.indexOf(draggedId)
+          const toIndex = ordered.indexOf(t.id)
+          if (fromIndex === -1 || toIndex === -1) return
+
+          const next = reorderIds(ordered, draggedId, toIndex)
+          onReorderTodos(next)
+        }}
+      >
+        <input
+          type="checkbox"
+          onChange={() => {
+            onCompleteTodo(t.id)
+          }}
+          aria-label={`Pabeigt uzdevumu: ${t.text}`}
+        />
+        <span className={styles.todoText} title={t.text}>
+          {t.text}{fLabel ? <span className={styles.todoFolderLabel}> ({fLabel})</span> : null}
+        </span>
+
+        {todoMode === 'rename' ? (
+          <button
+            type="button"
+            className={sharedStyles.smallBtn}
+            onClick={() => {
+              onBeginRenameTodo(t.id, t.text)
+            }}
+            aria-label={`Pārdēvēt uzdevumu: ${t.text}`}
+          >
+            Mainīt
+          </button>
+        ) : null}
+
+        {todoMode === 'delete' ? (
+          <button
+            type="button"
+            className={`${sharedStyles.smallBtn} ${uiStyles.dangerBtn}`}
+            onClick={() => onDeleteTodo(t.id)}
+            aria-label={`Dzēst uzdevumu: ${t.text}`}
+          >
+            Dzēst
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
+  // Use grouped view when there are any quadrant-assigned todos, otherwise flat list
+  const hasGroups = groupedTodos.length > 1 || (groupedTodos.length === 1 && groupedTodos[0].quadrant !== 'uncategorized')
   return (
     <section className={`${uiStyles.panel} ${layoutStyles.todoPanel}`}>
       <div className={styles.todoHeaderRow}>
@@ -68,7 +160,7 @@ export function RightTodosPanel({
             +
           </button>
         </div>
-        <h2 className={styles.todoTitle}>Uzdevumi</h2>
+        <h2 className={styles.todoTitle}>To-Do</h2>
 
         <div className={`${uiStyles.panelHeaderActions} ${styles.todoHeaderActions}`}>
           {todoMode !== 'normal' ? (
@@ -142,82 +234,14 @@ export function RightTodosPanel({
       <div className={uiStyles.scrollArea}>
         {todos.length === 0 ? <p className={uiStyles.muted}>Nav uzdevumu.</p> : null}
 
-        {todos.map((t) => {
-          const canDrag = todoMode === 'reorder'
-          return (
-            <div
-              key={t.id}
-              className={`${styles.todoRow} ${canDrag ? styles.todoRowReorder : ''} ${todoDragOverId === t.id ? styles.todoRowDragOver : ''}`}
-              draggable={canDrag}
-              onDragStart={(e) => {
-                if (!canDrag) return
-                e.dataTransfer.effectAllowed = 'move'
-                e.dataTransfer.setData('text/plain', t.id)
-              }}
-              onDragOver={(e) => {
-                if (!canDrag) return
-                e.preventDefault()
-                onSetTodoDragOverId(t.id)
-              }}
-              onDragLeave={() => {
-                if (!canDrag) return
-                onSetTodoDragOverId((v) => (v === t.id ? null : v))
-              }}
-              onDrop={(e) => {
-                if (!canDrag) return
-                e.preventDefault()
-                onSetTodoDragOverId(null)
-
-                const draggedId = e.dataTransfer.getData('text/plain')
-                if (!draggedId) return
-                if (draggedId === t.id) return
-
-                const ordered = todos.map((x) => x.id)
-                const fromIndex = ordered.indexOf(draggedId)
-                const toIndex = ordered.indexOf(t.id)
-                if (fromIndex === -1 || toIndex === -1) return
-
-                const next = reorderIds(ordered, draggedId, toIndex)
-                onReorderTodos(next)
-              }}
-            >
-              <input
-                type="checkbox"
-                onChange={() => {
-                  onCompleteTodo(t.id)
-                }}
-                aria-label={`Pabeigt uzdevumu: ${t.text}`}
-              />
-              <span className={styles.todoText} title={t.text}>
-                {t.text}
-              </span>
-
-              {todoMode === 'rename' ? (
-                <button
-                  type="button"
-                  className={sharedStyles.smallBtn}
-                  onClick={() => {
-                    onBeginRenameTodo(t.id, t.text)
-                  }}
-                  aria-label={`Pārdēvēt uzdevumu: ${t.text}`}
-                >
-                  Mainīt
-                </button>
-              ) : null}
-
-              {todoMode === 'delete' ? (
-                <button
-                  type="button"
-                  className={`${sharedStyles.smallBtn} ${uiStyles.dangerBtn}`}
-                  onClick={() => onDeleteTodo(t.id)}
-                  aria-label={`Dzēst uzdevumu: ${t.text}`}
-                >
-                  Dzēst
-                </button>
-              ) : null}
-            </div>
-          )
-        })}
+        {todos.length > 0 && hasGroups
+          ? groupedTodos.map((group) => (
+              <div key={group.quadrant} className={styles.todoGroup}>
+                <div className={styles.todoGroupHeader}>{group.label}</div>
+                {group.items.map((t) => renderTodoRow(t))}
+              </div>
+            ))
+          : todos.map((t) => renderTodoRow(t))}
       </div>
 
       <div className={styles.todoFooter}>

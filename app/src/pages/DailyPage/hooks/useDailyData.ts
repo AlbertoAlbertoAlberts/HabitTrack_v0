@@ -1,8 +1,14 @@
 import { useMemo } from 'react'
 import { useAppState } from '../../../domain/store/useAppStore'
-import type { LocalDateString, Score } from '../../../domain/types'
+import type { LocalDateString, Score, TodoItem, TodoQuadrant, TodoFolder, TodoFolderId } from '../../../domain/types'
 import { appStore } from '../../../domain/store/appStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../../domain/utils/localDate'
+
+export interface TodoGroup {
+  label: string
+  quadrant: TodoQuadrant | 'uncategorized'
+  items: TodoItem[]
+}
 
 export function useDailyData(selectedDate: LocalDateString) {
   const state = useAppState()
@@ -94,6 +100,31 @@ export function useDailyData(selectedDate: LocalDateString) {
     [state.todos],
   )
 
+  const todoFolders = state.todoFolders
+
+  const groupedTodos = useMemo((): TodoGroup[] => {
+    const quadrantOrder: (TodoQuadrant | 'uncategorized')[] = ['asap', 'later', 'schedule', 'fun', 'uncategorized']
+    const labels: Record<TodoQuadrant | 'uncategorized', string> = {
+      asap: 'ASAP',
+      later: 'Vēlāk',
+      schedule: 'Ieplānot',
+      fun: 'Fun',
+      uncategorized: 'Nekategorizēts',
+    }
+
+    const buckets = new Map<TodoQuadrant | 'uncategorized', TodoItem[]>()
+    for (const q of quadrantOrder) buckets.set(q, [])
+
+    for (const t of todos) {
+      const key: TodoQuadrant | 'uncategorized' = t.quadrant ?? 'uncategorized'
+      buckets.get(key)!.push(t)
+    }
+
+    return quadrantOrder
+      .filter((q) => buckets.get(q)!.length > 0)
+      .map((q) => ({ label: labels[q], quadrant: q, items: buckets.get(q)! }))
+  }, [todos])
+
   const weeklyTasks = useMemo(
     () => Object.values(state.weeklyTasks).slice().sort((a, b) => a.sortIndex - b.sortIndex),
     [state.weeklyTasks],
@@ -116,6 +147,8 @@ export function useDailyData(selectedDate: LocalDateString) {
     allHabitsSorted,
     habitsByPriority,
     todos,
+    groupedTodos,
+    todoFolders,
     weeklyTasks,
     weekStartDate,
     weekEndDate,

@@ -93,3 +93,28 @@
   justify-content: flex-end;
   padding-top: 10px;
 }
+
+/* --- Grouped todo sections --- */
+
+.todoGroup {
+  margin-bottom: 8px;
+  background: var(--btn-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 4px 4px;
+}
+
+.todoGroupHeader {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.5;
+  padding: 2px 8px 4px;
+  user-select: none;
+}
+
+.todoFolderLabel {
+  opacity: 0.45;
+  font-size: 0.9em;
+}

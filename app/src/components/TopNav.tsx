@@ -36,6 +36,14 @@ export function TopNav() {
           >
             Lab
           </NavLink>
+          <NavLink
+            to="/todo"
+            className={({ isActive }) =>
+              [styles.toggleBtn, isActive ? styles.toggleBtnActive : ''].filter(Boolean).join(' ')
+            }
+          >
+            To-Do
+          </NavLink>
         </nav>
       </div>
 

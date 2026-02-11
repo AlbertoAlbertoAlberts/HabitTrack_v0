@@ -7,8 +7,10 @@ import type {
   Score,
   ThemeMode,
   TodoArchiveId,
+  TodoFolderId,
   TodoId,
   TodoMode,
+  TodoQuadrant,
   WeeklyTaskId,
   LabProjectId,
   LabProjectConfig,
@@ -35,7 +37,13 @@ import {
 } from '../actions/habits'
 import { getScoresForDate, setScore } from '../actions/dailyScores'
 import { commitIfNeeded, isLocked } from '../actions/dayLocks'
-import { addTodo, completeTodo, deleteTodo, renameTodo, reorderTodos, restoreTodo } from '../actions/todos'
+import { addTodo, completeTodo, deleteTodo, renameTodo, reorderTodos, restoreTodo, setTodoFolder, setTodoQuadrant } from '../actions/todos'
+import {
+  addTodoFolder,
+  deleteTodoFolder,
+  renameTodoFolder,
+  reorderTodoFolders,
+} from '../actions/todoFolders'
 import {
   addWeeklyTask,
   adjustWeeklyCompletionForDate,
@@ -220,8 +228,8 @@ export const appStore = {
     },
 
     // Todos
-    addTodo(text: string) {
-      setState(addTodo(state, text))
+    addTodo(text: string, folderId?: TodoFolderId) {
+      setState(addTodo(state, text, folderId))
     },
     deleteTodo(todoId: TodoId) {
       setState(deleteTodo(state, todoId))
@@ -237,6 +245,26 @@ export const appStore = {
     },
     reorderTodos(orderedTodoIds: TodoId[]) {
       setState(reorderTodos(state, orderedTodoIds))
+    },
+    setTodoFolder(todoId: TodoId, folderId: TodoFolderId | undefined) {
+      setState(setTodoFolder(state, todoId, folderId))
+    },
+    setTodoQuadrant(todoId: TodoId, quadrant: TodoQuadrant | undefined) {
+      setState(setTodoQuadrant(state, todoId, quadrant))
+    },
+
+    // Todo Folders
+    addTodoFolder(name: string) {
+      setState(addTodoFolder(state, name))
+    },
+    renameTodoFolder(folderId: TodoFolderId, name: string) {
+      setState(renameTodoFolder(state, folderId, name))
+    },
+    deleteTodoFolder(folderId: TodoFolderId) {
+      setState(deleteTodoFolder(state, folderId))
+    },
+    reorderTodoFolders(orderedIds: TodoFolderId[]) {
+      setState(reorderTodoFolders(state, orderedIds))
     },
 
     // Weekly tasks (not locked)

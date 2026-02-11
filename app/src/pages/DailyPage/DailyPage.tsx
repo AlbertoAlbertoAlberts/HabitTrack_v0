@@ -199,6 +199,8 @@ export function DailyPage() {
     scoresForSelectedDate,
     habitsByPriority,
     todos,
+    groupedTodos,
+    todoFolders,
     weeklyTasks,
     weekStartDate,
     weekEndDate,
@@ -1098,6 +1100,8 @@ export function DailyPage() {
 
       <RightTodosPanel
         todos={todos}
+        groupedTodos={groupedTodos}
+        todoFolders={todoFolders}
         todoMode={todoMode}
         todoDragOverId={todoDragOverId}
         todoMenuRef={todoMenuRef}

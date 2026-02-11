@@ -475,6 +475,11 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
   // LAB Migration/Repair: ensure LAB containers exist and coerce new fields.
   const lab = repairLabState((state as Partial<AppStateV1>).lab)
 
+  // Todo folders: backfill for pre-folder states.
+  const todoFolders = isRecord((state as Partial<AppStateV1>).todoFolders)
+    ? ((state as Partial<AppStateV1>).todoFolders as AppStateV1['todoFolders'])
+    : {}
+
   return {
     ...state,
     categories,
@@ -484,6 +489,7 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     weeklyTasks,
     weeklyProgress,
     weeklyCompletionDays,
+    todoFolders,
     lab,
     uiState: {
       ...state.uiState,
@@ -527,6 +533,7 @@ export function createDefaultState(now: Date = new Date()): AppStateV1 {
 
     todos: {},
     todoArchive: {},
+    todoFolders: {},
 
     lab: createEmptyLabState(),
 

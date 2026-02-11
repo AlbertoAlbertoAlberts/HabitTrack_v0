@@ -36,11 +36,16 @@ export function ArchivePage() {
         {items.length === 0 ? <p className={styles.empty}>Arhīvs ir tukšs.</p> : null}
 
         <div className={styles.list}>
-          {items.map((it) => (
+          {items.map((it) => {
+            const folderName = it.folderId ? state.todoFolders[it.folderId]?.name : undefined
+            return (
             <div key={it.id} className={styles.item}>
               <div>
                 <div className={styles.itemTitle} title={it.text}>
                   {it.text}
+                  {folderName ? (
+                    <span className={styles.folderLabel}> ({folderName})</span>
+                  ) : null}
                 </div>
                 <div className={styles.meta}>Pabeigts: {formatCompletedAt(it.completedAt)}</div>
                 {it.restoredAt ? (
@@ -57,7 +62,8 @@ export function ArchivePage() {
                 Atjaunot
               </button>
             </div>
-          ))}
+            )
+          })}
         </div>
       </section>
     </div>
