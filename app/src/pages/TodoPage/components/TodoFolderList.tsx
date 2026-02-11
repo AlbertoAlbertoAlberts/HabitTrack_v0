@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import type { TodoFolder, TodoItem } from '../../../domain/types'
 import type { FolderMode } from '../TodoPage'
-import sharedStyles from '../../../components/ui/shared.module.css'
-import uiStyles from '../../DailyPage/DailyShared.module.css'
 import styles from './TodoFolderList.module.css'
 
 interface TodoFolderListProps {
@@ -181,21 +179,21 @@ function FolderSection({
         {folderId && isRenameMode ? (
           <button
             type="button"
-            className={sharedStyles.smallBtn}
+            className={styles.iconBtn}
             onClick={() => onBeginRenameFolder(folderId, folderName)}
             aria-label={`Pārdēvēt mapi: ${folderName}`}
           >
-            Mainīt
+            ✎
           </button>
         ) : null}
         {folderId && isDeleteMode ? (
           <button
             type="button"
-            className={`${sharedStyles.smallBtn} ${uiStyles.dangerBtn}`}
+            className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
             onClick={() => onBeginDeleteFolder(folderId, folderName)}
             aria-label={`Dzēst mapi: ${folderName}`}
           >
-            Dzēst
+            🗑
           </button>
         ) : null}
       </div>
@@ -227,21 +225,21 @@ function FolderSection({
           {isRenameMode ? (
             <button
               type="button"
-              className={sharedStyles.smallBtn}
+              className={styles.iconBtn}
               onClick={() => onBeginRenameTodo(t.id, t.text)}
               aria-label={`Pārdēvēt: ${t.text}`}
             >
-              Mainīt
+              ✎
             </button>
           ) : null}
           {isDeleteMode ? (
             <button
               type="button"
-              className={`${sharedStyles.smallBtn} ${uiStyles.dangerBtn}`}
+              className={`${styles.iconBtn} ${styles.iconBtnDanger}`}
               onClick={() => onDeleteTodo(t.id)}
               aria-label={`Dzēst: ${t.text}`}
             >
-              Dzēst
+              🗑
             </button>
           ) : null}
         </div>

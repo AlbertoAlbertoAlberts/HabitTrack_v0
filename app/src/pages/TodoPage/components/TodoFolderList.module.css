@@ -253,3 +253,36 @@
   outline-offset: -2px;
   border-radius: 10px;
 }
+
+/* ─── Icon buttons (edit / delete) ─── */
+.iconBtn {
+  border: 0;
+  background: transparent;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  padding: 0;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color var(--t-fast, 0.12s) var(--ease-out, ease-out),
+    transform var(--t-fast, 0.12s) var(--ease-out, ease-out);
+}
+.iconBtn:hover {
+  background: var(--btn-bg-hover, rgba(0, 0, 0, 0.06));
+}
+.iconBtn:active {
+  transform: scale(0.93);
+}
+.iconBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent, #4f46e5);
+}
+
+.iconBtnDanger:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
