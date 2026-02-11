@@ -16,6 +16,8 @@ interface TodoFolderListProps {
   onDropTodoOnFolder: (todoId: string, folderId: string | undefined) => void
   onBeginRenameFolder: (folderId: string, currentName: string) => void
   onBeginDeleteFolder: (folderId: string, folderName: string) => void
+  onBeginRenameTodo: (todoId: string, currentText: string) => void
+  onDeleteTodo: (todoId: string) => void
   onReorderFolders: (orderedIds: string[]) => void
   onAddTodoInFolder: (folderId: string) => void
 }
@@ -71,6 +73,8 @@ function FolderSection({
   onTodoDragEnd,
   onBeginRenameFolder,
   onBeginDeleteFolder,
+  onBeginRenameTodo,
+  onDeleteTodo,
   onFolderDragStart,
   onFolderDragOver,
   onFolderDragLeave,
@@ -90,6 +94,8 @@ function FolderSection({
   onTodoDragEnd: () => void
   onBeginRenameFolder: (folderId: string, currentName: string) => void
   onBeginDeleteFolder: (folderId: string, folderName: string) => void
+  onBeginRenameTodo: (todoId: string, currentText: string) => void
+  onDeleteTodo: (todoId: string) => void
   onFolderDragStart: (folderId: string) => void
   onFolderDragOver: (folderId: string) => void
   onFolderDragLeave: (folderId: string) => void
@@ -218,6 +224,26 @@ function FolderSection({
               {t.text}
             </span>
           </div>
+          {isRenameMode ? (
+            <button
+              type="button"
+              className={sharedStyles.smallBtn}
+              onClick={() => onBeginRenameTodo(t.id, t.text)}
+              aria-label={`Pārdēvēt: ${t.text}`}
+            >
+              Mainīt
+            </button>
+          ) : null}
+          {isDeleteMode ? (
+            <button
+              type="button"
+              className={`${sharedStyles.smallBtn} ${uiStyles.dangerBtn}`}
+              onClick={() => onDeleteTodo(t.id)}
+              aria-label={`Dzēst: ${t.text}`}
+            >
+              Dzēst
+            </button>
+          ) : null}
         </div>
       ))}
     </div>
@@ -235,6 +261,8 @@ export function TodoFolderList({
   onDropTodoOnFolder,
   onBeginRenameFolder,
   onBeginDeleteFolder,
+  onBeginRenameTodo,
+  onDeleteTodo,
   onReorderFolders,
   onAddTodoInFolder: _onAddTodoInFolder,
 }: TodoFolderListProps) {
@@ -319,6 +347,8 @@ export function TodoFolderList({
             onTodoDragEnd={onTodoDragEnd}
             onBeginRenameFolder={onBeginRenameFolder}
             onBeginDeleteFolder={onBeginDeleteFolder}
+            onBeginRenameTodo={onBeginRenameTodo}
+            onDeleteTodo={onDeleteTodo}
             onFolderDragStart={(id) => setDraggedFolderId(id)}
             onFolderDragOver={(id) => setFolderDragOverId(id)}
             onFolderDragLeave={(id) => setFolderDragOverId((v) => (v === id ? null : v))}
@@ -343,6 +373,8 @@ export function TodoFolderList({
         onTodoDragEnd={onTodoDragEnd}
         onBeginRenameFolder={onBeginRenameFolder}
         onBeginDeleteFolder={onBeginDeleteFolder}
+        onBeginRenameTodo={onBeginRenameTodo}
+        onDeleteTodo={onDeleteTodo}
         onFolderDragStart={() => {}}
         onFolderDragOver={() => {}}
         onFolderDragLeave={() => {}}

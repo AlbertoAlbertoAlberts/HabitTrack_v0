@@ -38,6 +38,11 @@ export function TodoPage() {
   const [deleteFolderId, setDeleteFolderId] = useState<string>('')
   const [deleteFolderName, setDeleteFolderName] = useState('')
 
+  // Rename todo dialog
+  const [renameTodoOpen, setRenameTodoOpen] = useState(false)
+  const [renameTodoId, setRenameTodoId] = useState<string>('')
+  const [renameTodoValue, setRenameTodoValue] = useState('')
+
   const [dragOverQuadrant, setDragOverQuadrant] = useState<TodoQuadrant | null>(null)
   const [dragSource, setDragSource] = useState<'list' | 'matrix' | null>(null)
 
@@ -98,6 +103,15 @@ export function TodoPage() {
     setDeleteFolderOpen(false)
     setDeleteFolderId('')
     setDeleteFolderName('')
+  }
+
+  function handleRenameTodo() {
+    const text = renameTodoValue.trim()
+    if (!text || !renameTodoId) return
+    appStore.actions.renameTodo(renameTodoId, text)
+    setRenameTodoOpen(false)
+    setRenameTodoId('')
+    setRenameTodoValue('')
   }
 
   // Auto-close folder menu on outside click
@@ -194,6 +208,12 @@ export function TodoPage() {
             setDeleteFolderName(folderName)
             setDeleteFolderOpen(true)
           }}
+          onBeginRenameTodo={(todoId, currentText) => {
+            setRenameTodoId(todoId)
+            setRenameTodoValue(currentText)
+            setRenameTodoOpen(true)
+          }}
+          onDeleteTodo={(todoId) => appStore.actions.deleteTodo(todoId)}
           onReorderFolders={(orderedIds) => appStore.actions.reorderTodoFolders(orderedIds)}
           onAddTodoInFolder={(folderId) => {
             setAddTodoText('')
@@ -338,6 +358,35 @@ export function TodoPage() {
             onClick={handleDeleteFolder}
           >
             Dzēst
+          </button>
+        </DialogFooter>
+      </Dialog>
+
+      {/* ── Rename todo dialog ── */}
+      <Dialog open={renameTodoOpen} title="Pārdēvēt uzdevumu" onClose={() => setRenameTodoOpen(false)}>
+        <DialogBody>
+          <label className={dialogStyles.label}>
+            Jauns nosaukums
+            <input
+              className={dialogStyles.input}
+              value={renameTodoValue}
+              onChange={(e) => setRenameTodoValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleRenameTodo() }}
+              autoFocus
+            />
+          </label>
+        </DialogBody>
+        <DialogFooter>
+          <button type="button" className={sharedStyles.smallBtn} onClick={() => setRenameTodoOpen(false)}>
+            Atcelt
+          </button>
+          <button
+            type="button"
+            className={sharedStyles.smallBtn}
+            disabled={!renameTodoValue.trim()}
+            onClick={handleRenameTodo}
+          >
+            Saglabāt
           </button>
         </DialogFooter>
       </Dialog>
