@@ -39,7 +39,7 @@ export function TopNav() {
           <NavLink
             to="/todo"
             className={({ isActive }) =>
-              [styles.toggleBtn, isActive ? styles.toggleBtnActive : ''].filter(Boolean).join(' ')
+              [styles.toggleBtn, styles.todoNavLink, isActive ? styles.toggleBtnActive : ''].filter(Boolean).join(' ')
             }
           >
             To-Do

@@ -198,6 +198,10 @@
     white-space: nowrap;
   }
 
+  .todoNavLink {
+    display: none;
+  }
+
   .syncToggle {
     grid-area: sync;
     justify-self: end;
