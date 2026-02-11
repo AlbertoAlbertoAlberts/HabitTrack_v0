@@ -34,6 +34,7 @@ export function createTestState(labState: Partial<LabState> = {}): AppStateV1 {
     dayLocks: {},
     todos: {},
     todoArchive: {},
+    todoFolders: {},
     uiState: {
       dailyViewMode: 'category',
       selectedDate,

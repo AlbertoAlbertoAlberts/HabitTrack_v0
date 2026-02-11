@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useAppState } from '../../../domain/store/useAppStore'
-import type { LocalDateString, Score, TodoItem, TodoQuadrant, TodoFolder, TodoFolderId } from '../../../domain/types'
+import type { LocalDateString, Score, TodoItem, TodoQuadrant } from '../../../domain/types'
 import { appStore } from '../../../domain/store/appStore'
 import { addDays, isToday, todayLocalDateString, weekStartMonday } from '../../../domain/utils/localDate'
 
