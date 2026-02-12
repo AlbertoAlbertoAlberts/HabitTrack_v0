@@ -66,11 +66,12 @@
 }
 
 .quadrantLabel {
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 700;
   margin-bottom: 6px;
   opacity: 0.85;
   user-select: none;
+  letter-spacing: 0.04em;
 }
 
 .quadrantEmpty {

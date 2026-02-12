@@ -14,10 +14,10 @@ interface EisenhowerMatrixProps {
 const QUADRANT_ORDER: TodoQuadrant[] = ['asap', 'schedule', 'later', 'fun']
 
 const QUADRANT_LABELS: Record<TodoQuadrant, string> = {
-  asap: 'ASAP',
-  schedule: 'Ieplānot',
-  later: 'Vēlāk',
-  fun: 'Fun',
+  asap: 'ASAP:',
+  schedule: 'IEPLĀNOT:',
+  later: 'VĒLĀK:',
+  fun: 'FUN:',
 }
 
 const QUADRANT_HINTS: Record<TodoQuadrant, string> = {
