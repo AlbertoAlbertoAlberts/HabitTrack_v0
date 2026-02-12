@@ -193,7 +193,7 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
 
     if (project.mode === 'daily' && project.config.kind === 'daily') {
       appStore.actions.setLabDailyLog(project.id, date, {
-        outcome: outcome ? Number(outcome) : undefined,
+        outcome: outcome !== '' ? Number(outcome) : undefined,
         tags,
         noTags: noTags && tags.length === 0,
         note: dailyNote.trim() ? dailyNote.trim() : undefined,
