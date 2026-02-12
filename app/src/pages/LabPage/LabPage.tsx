@@ -84,7 +84,8 @@ export function LabPage() {
     activeProject && activeProjectId
       ? (lab.tagOrderByProject[activeProjectId]
           ?.map((id: string) => lab.tagsByProject[activeProjectId][id])
-          .filter(Boolean) || [])
+          .filter(Boolean)
+          .sort((a, b) => a.name.localeCompare(b.name, 'lv')) || [])
       : []
 
   const handleAddProject = () => {

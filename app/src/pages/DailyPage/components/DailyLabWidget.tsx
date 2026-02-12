@@ -81,6 +81,7 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const projectTags = Object.values(state.lab?.tagsByProject[project.id] || {})
+    .sort((a, b) => a.name.localeCompare(b.name, 'lv'))
   const selectedIntensityTags = projectTags.filter((t) => selectedTags.has(t.id) && t.intensity?.enabled)
   const hasLog = !!existingLog
 
