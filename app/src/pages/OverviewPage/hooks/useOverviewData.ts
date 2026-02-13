@@ -41,7 +41,6 @@ function buildSeries(
   
   return dates.map((date) => {
     const sameDayScores = dailyScores[date] ?? {}
-    const prevDayScores = dailyScores[addDays(date, -1)] ?? {}
 
     const activeHabitIds = habitIds.filter((id) => {
       const h = habitsById[id]
@@ -57,10 +56,9 @@ function buildSeries(
       if (!h) continue
       const w = weighted ? (PRIORITY_WEIGHT[h.priority] ?? 1) : 1
       maxPossible += 2 * w
-      const raw = h.scoreDay === 'previous'
-        ? (prevDayScores[id] ?? 0)
-        : (sameDayScores[id] ?? 0)
-      earned += raw * w
+      // No special handling for scoreDay === 'previous' — the write path
+      // already stores the score at D-1, so sameDayScores is correct.
+      earned += (sameDayScores[id] ?? 0) * w
     }
 
     // For future dates, set value to NaN so chart can skip rendering
