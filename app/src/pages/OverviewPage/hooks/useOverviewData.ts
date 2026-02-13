@@ -6,6 +6,9 @@ import type { Habit, LocalDateString, OverviewMode, Score, WeeklyTask } from '..
 
 type ChartPoint = { date: LocalDateString; value: number; earned: number; maxPossible: number }
 
+/* Priority-based weight: P1 → 1, P2 → 0.66, P3 → 0.33 */
+const PRIORITY_WEIGHT: Record<number, number> = { 1: 1, 2: 0.66, 3: 0.33 }
+
 function getHabitIdsForMode(
   mode: OverviewMode,
   habits: Habit[],
@@ -32,6 +35,7 @@ function buildSeries(
   dailyScores: Record<LocalDateString, Record<string, Score>>,
   habitIds: string[],
   habitsById: Record<string, Habit>,
+  weighted: boolean,
 ): ChartPoint[] {
   const today = todayLocalDateString()
   
@@ -46,15 +50,17 @@ function buildSeries(
       return !start || date >= start
     })
 
-    const maxPossible = activeHabitIds.length * 2
+    let maxPossible = 0
     let earned = 0
     for (const id of activeHabitIds) {
       const h = habitsById[id]
-      if (h?.scoreDay === 'previous') {
-        earned += prevDayScores[id] ?? 0
-      } else {
-        earned += sameDayScores[id] ?? 0
-      }
+      if (!h) continue
+      const w = weighted ? (PRIORITY_WEIGHT[h.priority] ?? 1) : 1
+      maxPossible += 2 * w
+      const raw = h.scoreDay === 'previous'
+        ? (prevDayScores[id] ?? 0)
+        : (sameDayScores[id] ?? 0)
+      earned += raw * w
     }
 
     // For future dates, set value to NaN so chart can skip rendering
@@ -159,9 +165,11 @@ export function useOverviewData() {
     [habits, mode, state.uiState.overviewSelectedCategoryId, state.uiState.overviewSelectedHabitId],
   )
 
+  const weighted = mode === 'overall' || mode === 'category'
+
   const series = useMemo(
-    () => buildSeries(dates, state.dailyScores, habitIds, state.habits),
-    [dates, state.dailyScores, habitIds, state.habits],
+    () => buildSeries(dates, state.dailyScores, habitIds, state.habits, weighted),
+    [dates, state.dailyScores, habitIds, state.habits, weighted],
   )
 
   const yMax = useMemo(() => {
