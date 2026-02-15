@@ -17,6 +17,7 @@ import { useAppState } from '../../domain/store/useAppStore'
 import { getWeeklyTaskTargetPerWeekForWeekStart } from '../../domain/utils/weeklyTaskTarget'
 import { exportBackupJson, importBackupJson } from '../../persistence/storageService'
 import { applyRename, type RenameTarget } from './utils/applyRename'
+import type { TodoQuadrant } from '../../domain/types'
 
 import sharedStyles from '../../components/ui/shared.module.css'
 import layoutStyles from './DailyPage.module.css'
@@ -27,6 +28,8 @@ export function DailyPage() {
   const activeDateRef = useRef(state.uiState.selectedDate)
   const [newTodoText, setNewTodoText] = useState('')
   const [addTodoOpen, setAddTodoOpen] = useState(false)
+  const [newTodoFolderId, setNewTodoFolderId] = useState('')
+  const [newTodoQuadrant, setNewTodoQuadrant] = useState('')
   const [todoDragOverId, setTodoDragOverId] = useState<string | null>(null)
   const pendingPriorityChangedRef = useRef<Set<string>>(new Set())
 
@@ -826,6 +829,8 @@ export function DailyPage() {
           onClose={() => {
             setAddTodoOpen(false)
             setNewTodoText('')
+            setNewTodoFolderId('')
+            setNewTodoQuadrant('')
           }}
         >
           <div
@@ -837,9 +842,11 @@ export function DailyPage() {
 
               const text = newTodoText.trim()
               if (!text) return
-              appStore.actions.addTodo(text)
+              appStore.actions.addTodo(text, newTodoFolderId || undefined, (newTodoQuadrant || undefined) as TodoQuadrant | undefined)
               setAddTodoOpen(false)
               setNewTodoText('')
+              setNewTodoFolderId('')
+              setNewTodoQuadrant('')
             }}
           >
             <DialogBody>
@@ -854,6 +861,33 @@ export function DailyPage() {
                   />
                 </label>
               </div>
+              <label className={dialogStyles.label} style={{ marginTop: 10 }}>
+                Mape
+                <select
+                  className={dialogStyles.input}
+                  value={newTodoFolderId}
+                  onChange={(e) => setNewTodoFolderId(e.target.value)}
+                >
+                  <option value="">Bez mapes</option>
+                  {Object.values(state.todoFolders).sort((a, b) => a.sortIndex - b.sortIndex).map((f) => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className={dialogStyles.label} style={{ marginTop: 10 }}>
+                Matrica
+                <select
+                  className={dialogStyles.input}
+                  value={newTodoQuadrant}
+                  onChange={(e) => setNewTodoQuadrant(e.target.value)}
+                >
+                  <option value="">Nav matricā</option>
+                  <option value="asap">ASAP</option>
+                  <option value="schedule">IEPLĀNOT</option>
+                  <option value="later">VĒLĀK</option>
+                  <option value="fun">FUN</option>
+                </select>
+              </label>
             </DialogBody>
             <DialogFooter>
               <button
@@ -862,6 +896,8 @@ export function DailyPage() {
                 onClick={() => {
                   setAddTodoOpen(false)
                   setNewTodoText('')
+                  setNewTodoFolderId('')
+                  setNewTodoQuadrant('')
                 }}
               >
                 Atcelt
@@ -872,9 +908,11 @@ export function DailyPage() {
                 onClick={() => {
                   const text = newTodoText.trim()
                   if (!text) return
-                  appStore.actions.addTodo(text)
+                  appStore.actions.addTodo(text, newTodoFolderId || undefined, (newTodoQuadrant || undefined) as TodoQuadrant | undefined)
                   setAddTodoOpen(false)
                   setNewTodoText('')
+                  setNewTodoFolderId('')
+                  setNewTodoQuadrant('')
                 }}
               >
                 Pievienot
