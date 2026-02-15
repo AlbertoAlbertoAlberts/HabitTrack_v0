@@ -21,6 +21,7 @@ export function TodoPage() {
   const [addTodoOpen, setAddTodoOpen] = useState(false)
   const [addTodoText, setAddTodoText] = useState('')
   const [addTodoFolderId, setAddTodoFolderId] = useState<string>('')
+  const [addTodoQuadrant, setAddTodoQuadrant] = useState<string>('')
 
   const [addFolderOpen, setAddFolderOpen] = useState(false)
   const [addFolderName, setAddFolderName] = useState('')
@@ -70,9 +71,11 @@ export function TodoPage() {
     const text = addTodoText.trim()
     if (!text) return
     const folderId = addTodoFolderId || undefined
-    appStore.actions.addTodo(text, folderId)
+    const quadrant = (addTodoQuadrant || undefined) as TodoQuadrant | undefined
+    appStore.actions.addTodo(text, folderId, quadrant)
     setAddTodoText('')
     setAddTodoFolderId('')
+    setAddTodoQuadrant('')
     setAddTodoOpen(false)
   }
 
@@ -264,6 +267,20 @@ export function TodoPage() {
               {folders.map((f) => (
                 <option key={f.id} value={f.id}>{f.name}</option>
               ))}
+            </select>
+          </label>
+          <label className={dialogStyles.label} style={{ marginTop: 10 }}>
+            Matrica
+            <select
+              className={dialogStyles.input}
+              value={addTodoQuadrant}
+              onChange={(e) => setAddTodoQuadrant(e.target.value)}
+            >
+              <option value="">Nav matricā</option>
+              <option value="asap">ASAP</option>
+              <option value="schedule">IEPLĀNOT</option>
+              <option value="later">VĒLĀK</option>
+              <option value="fun">FUN</option>
             </select>
           </label>
         </DialogBody>

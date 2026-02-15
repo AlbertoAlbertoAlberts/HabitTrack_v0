@@ -228,8 +228,8 @@ export const appStore = {
     },
 
     // Todos
-    addTodo(text: string, folderId?: TodoFolderId) {
-      setState(addTodo(state, text, folderId))
+    addTodo(text: string, folderId?: TodoFolderId, quadrant?: TodoQuadrant) {
+      setState(addTodo(state, text, folderId, quadrant))
     },
     deleteTodo(todoId: TodoId) {
       setState(deleteTodo(state, todoId))

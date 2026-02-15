@@ -29,7 +29,7 @@ function normalizeTodoSortIndex(todos: Record<TodoId, TodoItem>): Record<TodoId,
   return normalized
 }
 
-export function addTodo(state: AppStateV1, text: string, folderId?: TodoFolderId): AppStateV1 {
+export function addTodo(state: AppStateV1, text: string, folderId?: TodoFolderId, quadrant?: TodoQuadrant): AppStateV1 {
   const createdAt = nowIso()
   const id = newId()
 
@@ -38,6 +38,7 @@ export function addTodo(state: AppStateV1, text: string, folderId?: TodoFolderId
     text,
     sortIndex: Object.keys(state.todos).length,
     folderId,
+    quadrant,
     createdAt,
     updatedAt: createdAt,
   }
