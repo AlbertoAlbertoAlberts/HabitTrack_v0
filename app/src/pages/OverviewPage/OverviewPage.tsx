@@ -40,6 +40,7 @@ export function OverviewPage() {
     mode,
     selectedCategoryId,
     selectedHabitId,
+    selectedLabProjectId,
     weeklyTasks,
     overviewWeekStart,
     overviewWeekEnd,
@@ -48,13 +49,22 @@ export function OverviewPage() {
     categories,
     habits,
     categoryNameById,
+    labProjects,
     series,
     yMax,
+    labEventBars,
+    weeklySegments,
+    multiSeries,
+    multiSelectCount,
+    multiSelections,
     totalPct,
     avgPct,
     maxPossibleEnd,
     activeHabitsEnd,
   } = useOverviewData()
+
+  const isMulti = multiSelectCount > 1 && multiSelections.length > 0
+  const SLOT_COLORS = ['#ffffff', '#06b6d4', '#d946ef'] as const
 
   return (
     <div className={sharedStyles.page}>
@@ -81,22 +91,62 @@ export function OverviewPage() {
             <div aria-hidden />
           </div>
 
-          <OverviewChart series={series} yMax={yMax} />
+          <OverviewChart
+            series={series}
+            yMax={yMax}
+            eventBars={labEventBars}
+            weeklySegments={weeklySegments}
+            multiSeries={isMulti ? multiSeries : undefined}
+          />
 
-          <div className={styles.legend}>
-            <span className={styles.kpi}>
-              <strong>Kopā</strong>: {Math.round(totalPct * 100)}%
-            </span>
-            <span className={styles.kpi}>
-              <strong>Vidēji</strong>: {Math.round(avgPct * 100)}%
-            </span>
-            <span className={styles.kpi}>
-              <strong>Maks.</strong>: {maxPossibleEnd}
-            </span>
-            <span className={styles.kpi}>
-              <strong>Ieradumi</strong>: {activeHabitsEnd}
-            </span>
-          </div>
+          {!isMulti && (
+            <div className={styles.legend}>
+              <span className={styles.kpi}>
+                <strong>Kopā</strong>: {Math.round(totalPct * 100)}%
+              </span>
+              <span className={styles.kpi}>
+                <strong>Vidēji</strong>: {Math.round(avgPct * 100)}%
+              </span>
+              <span className={styles.kpi}>
+                <strong>Maks.</strong>: {maxPossibleEnd}
+              </span>
+              <span className={styles.kpi}>
+                <strong>Ieradumi</strong>: {activeHabitsEnd}
+              </span>
+            </div>
+          )}
+
+          {isMulti && (
+            <div className={styles.chipsRow}>
+              {Array.from({ length: multiSelectCount }).map((_, idx) => {
+                const sel = multiSelections[idx]
+                if (!sel) {
+                  return (
+                    <span key={`empty-${idx}`} className={styles.chipEmpty}>
+                      —
+                    </span>
+                  )
+                }
+                const entry = multiSeries[idx]
+                const label = entry?.label ?? '?'
+                const color = SLOT_COLORS[idx]
+                return (
+                  <span key={`chip-${idx}`} className={styles.chip}>
+                    <span className={styles.chipSwatch} style={{ background: color }} />
+                    {label}
+                    <button
+                      type="button"
+                      className={styles.chipClose}
+                      onClick={() => appStore.actions.removeOverviewSelection(idx)}
+                      aria-label={`Noņemt ${label}`}
+                    >
+                      ✕
+                    </button>
+                  </span>
+                )
+              })}
+            </div>
+          )}
           </section>
 
           <OverviewSelectionList
@@ -106,6 +156,10 @@ export function OverviewPage() {
             categoryNameById={categoryNameById}
             selectedCategoryId={selectedCategoryId}
             selectedHabitId={selectedHabitId}
+            labProjects={labProjects}
+            selectedLabProjectId={selectedLabProjectId}
+            multiSelectCount={multiSelectCount}
+            multiSelections={multiSelections}
           />
         </main>
 
@@ -192,7 +246,7 @@ export function OverviewPage() {
 
               <hr className={styles.sidebarDivider} />
 
-              <OverviewFilters mode={mode} />
+              <OverviewFilters mode={mode} multiSelectCount={multiSelectCount} />
             </div>
           </section>
         </aside>

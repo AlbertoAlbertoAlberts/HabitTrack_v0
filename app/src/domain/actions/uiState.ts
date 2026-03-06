@@ -4,6 +4,7 @@ import type {
   DailyViewMode,
   OverviewMode,
   OverviewRangeDays,
+  OverviewSelection,
   LocalDateString,
   ThemeMode,
   TodoMode,
@@ -95,6 +96,14 @@ export function setOverviewMode(state: AppStateV1, mode: OverviewMode): AppState
   // Enforce exclusivity: only keep selections when relevant.
   if (mode !== 'category') nextUi.overviewSelectedCategoryId = null
   if (mode !== 'habit') nextUi.overviewSelectedHabitId = null
+  if (mode !== 'lab') nextUi.overviewSelectedLabProjectId = null
+
+  // Reset multi-select when switching to modes that don't support it
+  const multiSelectModes: OverviewMode[] = ['habit', 'lab', 'weekly']
+  if (!multiSelectModes.includes(mode)) {
+    nextUi.overviewMultiSelectCount = 1
+    nextUi.overviewMultiSelections = []
+  }
 
   return {
     ...state,
@@ -149,4 +158,104 @@ export function shiftOverviewWindow(state: AppStateV1, direction: -1 | 1): AppSt
   const delta = state.uiState.overviewRangeDays * direction
   const nextEnd = addDays(state.uiState.overviewWindowEndDate, delta)
   return setOverviewWindowEndDate(state, nextEnd)
+}
+
+// ── Lab project selection ──
+
+export function selectOverviewLabProject(state: AppStateV1, projectId: string | null): AppStateV1 {
+  const nextUi: UiStateV1 = {
+    ...state.uiState,
+    overviewMode: 'lab',
+    overviewSelectedLabProjectId: projectId,
+    overviewSelectedCategoryId: null,
+    overviewSelectedHabitId: null,
+  }
+
+  return {
+    ...state,
+    uiState: nextUi,
+  }
+}
+
+// ── Multi-select actions ──
+
+export function setOverviewMultiSelectCount(state: AppStateV1, count: 1 | 2 | 3): AppStateV1 {
+  const clamped: 1 | 2 | 3 = count === 2 ? 2 : count === 3 ? 3 : 1
+
+  // Trim excess selections when reducing count
+  const currentSelections = state.uiState.overviewMultiSelections
+  const trimmed = currentSelections.slice(0, clamped)
+
+  const nextUi: UiStateV1 = {
+    ...state.uiState,
+    overviewMultiSelectCount: clamped,
+    overviewMultiSelections: trimmed,
+  }
+
+  return {
+    ...state,
+    uiState: nextUi,
+  }
+}
+
+export function addOverviewSelection(state: AppStateV1, selection: OverviewSelection): AppStateV1 {
+  const max = state.uiState.overviewMultiSelectCount
+  const current = state.uiState.overviewMultiSelections
+
+  // Check if already selected — if so, remove it (toggle)
+  const existingIndex = current.findIndex(
+    (s) => s.kind === selection.kind && s.id === selection.id,
+  )
+  if (existingIndex >= 0) {
+    return removeOverviewSelection(state, existingIndex)
+  }
+
+  let next: OverviewSelection[]
+  if (current.length < max) {
+    // Fill next empty slot
+    next = [...current, selection]
+  } else {
+    // Replace the last slot
+    next = [...current.slice(0, max - 1), selection]
+  }
+
+  const nextUi: UiStateV1 = {
+    ...state.uiState,
+    overviewMultiSelections: next,
+  }
+
+  return {
+    ...state,
+    uiState: nextUi,
+  }
+}
+
+export function removeOverviewSelection(state: AppStateV1, index: number): AppStateV1 {
+  const current = state.uiState.overviewMultiSelections
+  if (index < 0 || index >= current.length) return state
+
+  const next = [...current]
+  next.splice(index, 1)
+
+  const nextUi: UiStateV1 = {
+    ...state.uiState,
+    overviewMultiSelections: next,
+  }
+
+  return {
+    ...state,
+    uiState: nextUi,
+  }
+}
+
+export function clearOverviewSelections(state: AppStateV1): AppStateV1 {
+  const nextUi: UiStateV1 = {
+    ...state.uiState,
+    overviewMultiSelections: [],
+  }
+
+  return {
+    ...state,
+    uiState: nextUi,
+  }
 }

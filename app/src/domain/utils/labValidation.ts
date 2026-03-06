@@ -15,6 +15,11 @@ export function isLabDailyLogComplete(log: LabDailyLog, project: LabProject): bo
     return false
   }
 
+  // If tags are disabled at the project level, skip tag checks entirely
+  if (project.config.tagsEnabled === false) {
+    return true
+  }
+
   // Check tag requirement
   if (requireAtLeastOneTag && log.tags.length === 0 && !log.noTags) {
     return false

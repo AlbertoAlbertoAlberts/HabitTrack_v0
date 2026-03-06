@@ -207,3 +207,55 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Multi-select chips row */
+.chipsRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chipSwatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.chipClose {
+  all: unset;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 120ms;
+  padding: 0 2px;
+}
+
+.chipClose:hover {
+  opacity: 1;
+}
+
+.chipEmpty {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px dashed var(--border);
+  font-size: 12px;
+  color: var(--muted);
+}

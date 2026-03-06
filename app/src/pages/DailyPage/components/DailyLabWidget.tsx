@@ -241,6 +241,7 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
 
   if (project.mode === 'daily' && project.config.kind === 'daily') {
     const { outcome: outcomeConfig } = project.config
+    const showTags = project.config.tagsEnabled !== false
 
     return (
       <div className={styles.projectExpanded}>
@@ -279,94 +280,98 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
             </div>
           </div>
 
-          <div className={styles.tagsSection}>
-            <div className={styles.label}>Tags</div>
-            <div className={styles.tagGrid}>
-              {projectTags.length === 0 && (
-                <div className={styles.tagEmptyHint}>No tags yet — add your first tag.</div>
+          {showTags && (
+            <>
+              <div className={styles.tagsSection}>
+                <div className={styles.label}>Tags</div>
+                <div className={styles.tagGrid}>
+                  {projectTags.length === 0 && (
+                    <div className={styles.tagEmptyHint}>No tags yet — add your first tag.</div>
+                  )}
+
+                  {projectTags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      className={[
+                        styles.tagButton,
+                        selectedTags.has(tag.id) && styles.tagButtonActive,
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={() => {
+                        const next = new Set(selectedTags)
+                        if (selectedTags.has(tag.id)) {
+                          next.delete(tag.id)
+                          setTagIntensities((prev) => {
+                            const copy = { ...prev }
+                            delete copy[tag.id]
+                            return copy
+                          })
+                        } else {
+                          next.add(tag.id)
+                          setNoTags(false)
+                        }
+                        setSelectedTags(next)
+                      }}
+                    >
+                      {formatTagNameDisplay(tag.name)}
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    className={styles.tagAddButton}
+                    onClick={() => setIsAddingTag(true)}
+                  >
+                    + Pievienot jaunu
+                  </button>
+                </div>
+              </div>
+
+              {selectedIntensityTags.length > 0 && (
+                <div className={styles.intensityList}>
+                  <div className={styles.label}>Intensity</div>
+                  {selectedIntensityTags.map((tag) => (
+                    <div key={tag.id} className={styles.intensityRow}>
+                      <div className={styles.intensityName}>{formatTagNameDisplay(tag.name)}</div>
+                      <IntensityPicker
+                        min={tag.intensity?.min ?? 1}
+                        max={tag.intensity?.max ?? 5}
+                        step={tag.intensity?.step ?? 1}
+                        value={tagIntensities[tag.id]}
+                        onChange={(next) =>
+                          setTagIntensities((prev) => ({
+                            ...prev,
+                            [tag.id]: next,
+                          }))
+                        }
+                        ariaLabel={`Intensity for ${formatTagNameDisplay(tag.name)}`}
+                      />
+                      {tag.intensity?.unitLabel && (
+                        <span className={styles.intensityUnit}>{tag.intensity.unitLabel}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
 
-              {projectTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  className={[
-                    styles.tagButton,
-                    selectedTags.has(tag.id) && styles.tagButtonActive,
-                  ]
-                    .filter(Boolean)
-                    .join(' ')}
-                  onClick={() => {
-                    const next = new Set(selectedTags)
-                    if (selectedTags.has(tag.id)) {
-                      next.delete(tag.id)
-                      setTagIntensities((prev) => {
-                        const copy = { ...prev }
-                        delete copy[tag.id]
-                        return copy
-                      })
-                    } else {
-                      next.add(tag.id)
-                      setNoTags(false)
-                    }
-                    setSelectedTags(next)
-                  }}
-                >
-                  {formatTagNameDisplay(tag.name)}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                className={styles.tagAddButton}
-                onClick={() => setIsAddingTag(true)}
-              >
-                + Pievienot jaunu
-              </button>
-            </div>
-          </div>
-
-          {selectedIntensityTags.length > 0 && (
-            <div className={styles.intensityList}>
-              <div className={styles.label}>Intensity</div>
-              {selectedIntensityTags.map((tag) => (
-                <div key={tag.id} className={styles.intensityRow}>
-                  <div className={styles.intensityName}>{formatTagNameDisplay(tag.name)}</div>
-                  <IntensityPicker
-                    min={tag.intensity?.min ?? 1}
-                    max={tag.intensity?.max ?? 5}
-                    step={tag.intensity?.step ?? 1}
-                    value={tagIntensities[tag.id]}
-                    onChange={(next) =>
-                      setTagIntensities((prev) => ({
-                        ...prev,
-                        [tag.id]: next,
-                      }))
-                    }
-                    ariaLabel={`Intensity for ${formatTagNameDisplay(tag.name)}`}
+              {project.config.allowExplicitNoTags && (
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={noTags}
+                    onChange={(e) => {
+                      setNoTags(e.target.checked)
+                      if (e.target.checked) {
+                        setSelectedTags(new Set())
+                      }
+                    }}
                   />
-                  {tag.intensity?.unitLabel && (
-                    <span className={styles.intensityUnit}>{tag.intensity.unitLabel}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {project.config.allowExplicitNoTags && (
-            <label className={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={noTags}
-                onChange={(e) => {
-                  setNoTags(e.target.checked)
-                  if (e.target.checked) {
-                    setSelectedTags(new Set())
-                  }
-                }}
-              />
-              No tags today
-            </label>
+                  No tags today
+                </label>
+              )}
+            </>
           )}
 
           <label className={styles.label}>

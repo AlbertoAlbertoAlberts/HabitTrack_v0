@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef, useCallback } from 'react'
 import type { LocalDateString } from '../../../domain/types'
+import type { EventBar, WeeklySegment, MultiSeriesEntry } from '../hooks/useOverviewData'
 import { parseLocalDateString } from '../../../domain/utils/localDate'
 import styles from './OverviewChart.module.css'
 
@@ -236,9 +237,15 @@ function clampInt(value: number, min: number, max: number): number {
 type OverviewChartProps = {
   series: ChartPoint[]
   yMax: number
+  eventBars?: EventBar[]
+  weeklySegments?: WeeklySegment[]
+  multiSeries?: MultiSeriesEntry[]
 }
 
-export function OverviewChart({ series, yMax }: OverviewChartProps) {
+const EVENT_BAR_COLOR = 'rgba(239, 68, 68, 0.5)'  // muted red at 50%
+const WEEKLY_LINE_COLOR = 'rgba(99, 102, 241, 0.6)' // indigo at 60%
+
+export function OverviewChart({ series, yMax, eventBars, weeklySegments, multiSeries }: OverviewChartProps) {
   const [tooltip, setTooltip] = useState<{ text: string; left: number; top: number; lineX: number; lineTop: number; lineBottom: number } | null>(null)
   const frameRef = useRef<HTMLDivElement>(null)
 
@@ -378,8 +385,11 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
     const samplesPerBezier = clampInt(Math.floor(maxGradientSegments / daySegments), 6, 18)
     const mainGradientSegments = buildGradientSegments(mainSeries.points, samplesPerBezier, yMax)
 
-    // 7-day moving average trendline (only for 30-day+ views)
-    const trendLineD = series.length > 10 ? (() => {
+    const isMulti = multiSeries && multiSeries.length > 0
+
+    // 7-day moving average trendline (only for 30-day+ views, habit-based modes only)
+    const showTrend = series.length > 10 && !eventBars?.length && !weeklySegments?.length && !isMulti
+    const trendLineD = showTrend ? (() => {
       const window = 7
       const trendPoints: SvgPoint[] = []
       for (let i = 0; i < validPoints.length; i++) {
@@ -499,7 +509,7 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
         })}
 
         {/* Average line — subtle dashed horizontal */}
-        {validPoints.length >= 2 && (
+        {validPoints.length >= 2 && !eventBars?.length && !weeklySegments?.length && !isMulti && (
           <g opacity={0.32}>
             <line
               x1={paddingLeft}
@@ -540,64 +550,268 @@ export function OverviewChart({ series, yMax }: OverviewChartProps) {
           </g>
         )}
 
+        {/* Event bars (lab event projects) — rendered behind line series */}
+        {eventBars && eventBars.length > 0 && (() => {
+          // Build a date-to-x map from allPoints
+          const dateToX = new Map<string, number>()
+          for (const p of allPoints) dateToX.set(p.date, p.x)
+          const barWidth = Math.max(6, Math.min(18, stepX * 0.6))
+          const barMaxHeight = innerH * 0.15
+
+          return (
+            <g>
+              {eventBars.map((bar) => {
+                const x = dateToX.get(bar.date)
+                if (x == null) return null
+                const barY = plotTop + innerH - barMaxHeight
+                return (
+                  <g key={`ev-${bar.date}`}>
+                    <rect
+                      x={x - barWidth / 2}
+                      y={barY}
+                      width={barWidth}
+                      height={barMaxHeight}
+                      rx={3}
+                      fill={EVENT_BAR_COLOR}
+                    />
+                    {bar.count > 1 && (
+                      <text
+                        x={x}
+                        y={barY - 4}
+                        fontSize={9}
+                        fontWeight={700}
+                        textAnchor="middle"
+                        fill="var(--text)"
+                        opacity={0.7}
+                      >
+                        {bar.count}
+                      </text>
+                    )}
+                  </g>
+                )
+              })}
+            </g>
+          )
+        })()}
+
+        {/* Weekly segments — dashed horizontal lines per week */}
+        {weeklySegments && weeklySegments.length > 0 && (() => {
+          // Build a date-to-x map from allPoints
+          const dateToX = new Map<string, number>()
+          for (const p of allPoints) dateToX.set(p.date, p.x)
+
+          return (
+            <g>
+              {weeklySegments.map((seg) => {
+                const xStart = dateToX.get(seg.startDate)
+                const xEnd = dateToX.get(seg.endDate)
+                if (xStart == null || xEnd == null) return null
+                const segY = plotTop + (innerH - seg.pct * stepY)
+                return (
+                  <g key={`ws-${seg.weekStart}`}>
+                    <line
+                      x1={xStart}
+                      x2={xEnd}
+                      y1={segY}
+                      y2={segY}
+                      stroke={WEEKLY_LINE_COLOR}
+                      strokeWidth={2.5}
+                      strokeDasharray="6 4"
+                      strokeLinecap="round"
+                    />
+                    <text
+                      x={xEnd + 4}
+                      y={segY + 3.5}
+                      fontSize={9}
+                      fontWeight={600}
+                      fill={WEEKLY_LINE_COLOR}
+                      textAnchor="start"
+                    >
+                      {`${Math.round(seg.pct * 100)}%`}
+                    </text>
+                  </g>
+                )
+              })}
+            </g>
+          )
+        })()}
+
         {/* series */}
-        {/* Main series — Option B (gradient-by-segment). */}
-        <g clipPath={`url(#${plotClipId})`}>
-          <path
-            d={mainSeries.lineD}
-            fill="none"
-            stroke={mainGlowStroke}
-            strokeWidth={glowStrokeWidth}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            opacity={glowOpacity}
-            filter="url(#overviewChartGlow)"
-          />
-          {mainGradientSegments.map((seg, idx) => (
-            <path
-              key={`main-${idx}`}
-              d={`M ${seg.x1.toFixed(1)} ${seg.y1.toFixed(1)} L ${seg.x2.toFixed(1)} ${seg.y2.toFixed(1)}`}
-              fill="none"
-              stroke={seg.color}
-              strokeWidth={primaryStrokeWidth}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ))}
-        </g>
-        {mainSeries.points.map((p) => (
-          <circle
-            key={p.date}
-            cx={p.x}
-            cy={p.y}
-            r={primaryPointRadius}
-            fill={scoreToColor(p.value, yMax)}
-            stroke={zeroAxisStroke}
-            strokeWidth={0.8}
-          />
-        ))}
+        {/* Main series — gradient-by-segment (single-select only) */}
+        {!isMulti && (
+          <>
+            <g clipPath={`url(#${plotClipId})`}>
+              <path
+                d={mainSeries.lineD}
+                fill="none"
+                stroke={mainGlowStroke}
+                strokeWidth={glowStrokeWidth}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                opacity={glowOpacity}
+                filter="url(#overviewChartGlow)"
+              />
+              {mainGradientSegments.map((seg, idx) => (
+                <path
+                  key={`main-${idx}`}
+                  d={`M ${seg.x1.toFixed(1)} ${seg.y1.toFixed(1)} L ${seg.x2.toFixed(1)} ${seg.y2.toFixed(1)}`}
+                  fill="none"
+                  stroke={seg.color}
+                  strokeWidth={primaryStrokeWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
+            </g>
+            {mainSeries.points.map((p) => (
+              <circle
+                key={p.date}
+                cx={p.x}
+                cy={p.y}
+                r={primaryPointRadius}
+                fill={scoreToColor(p.value, yMax)}
+                stroke={zeroAxisStroke}
+                strokeWidth={0.8}
+              />
+            ))}
+          </>
+        )}
+
+        {/* Multi-series — solid-color lines */}
+        {isMulti && multiSeries.map((entry, entryIdx) => {
+          // Skip event/weekly kinds — they use bars/segments, not lines
+          if (entry.kind === 'labEvent' || entry.kind === 'weekly') return null
+          if (entry.series.length === 0) return null
+
+          const linePoints: SvgPoint[] = entry.series
+            .map((p, i) => ({
+              x: paddingLeft + i * stepX,
+              y: plotTop + (innerH - p.value * stepY),
+              date: p.date,
+              value: p.value,
+            }))
+            .filter((p) => Number.isFinite(p.value))
+
+          if (linePoints.length === 0) return null
+          const lineD = buildSmoothPathD(linePoints)
+
+          return (
+            <g key={`multi-${entryIdx}`}>
+              <g clipPath={`url(#${plotClipId})`}>
+                <path
+                  d={lineD}
+                  fill="none"
+                  stroke={entry.color}
+                  strokeWidth={primaryStrokeWidth}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity={0.9}
+                />
+              </g>
+              {linePoints.map((p) => (
+                <circle
+                  key={`m${entryIdx}-${p.date}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r={primaryPointRadius}
+                  fill={entry.color}
+                  stroke={zeroAxisStroke}
+                  strokeWidth={0.8}
+                />
+              ))}
+            </g>
+          )
+        })}
+
+        {/* Multi-series event bars */}
+        {isMulti && multiSeries.map((entry, entryIdx) => {
+          if (entry.kind !== 'labEvent' || !entry.eventBars?.length) return null
+          const dateToX = new Map<string, number>()
+          for (const p of allPoints) dateToX.set(p.date, p.x)
+          const barWidth = Math.max(6, Math.min(18, stepX * 0.6))
+          const barMaxHeight = innerH * 0.15
+
+          return (
+            <g key={`multi-ev-${entryIdx}`}>
+              {entry.eventBars.map((bar) => {
+                const x = dateToX.get(bar.date)
+                if (x == null) return null
+                const barY = plotTop + innerH - barMaxHeight
+                return (
+                  <g key={`mev-${entryIdx}-${bar.date}`}>
+                    <rect
+                      x={x - barWidth / 2}
+                      y={barY}
+                      width={barWidth}
+                      height={barMaxHeight}
+                      rx={3}
+                      fill={entry.color}
+                      opacity={0.5}
+                    />
+                    {bar.count > 1 && (
+                      <text x={x} y={barY - 4} fontSize={9} fontWeight={700} textAnchor="middle" fill={entry.color} opacity={0.8}>
+                        {bar.count}
+                      </text>
+                    )}
+                  </g>
+                )
+              })}
+            </g>
+          )
+        })}
+
+        {/* Multi-series weekly segments */}
+        {isMulti && multiSeries.map((entry, entryIdx) => {
+          if (entry.kind !== 'weekly' || !entry.weeklySegments?.length) return null
+          const dateToX = new Map<string, number>()
+          for (const p of allPoints) dateToX.set(p.date, p.x)
+
+          return (
+            <g key={`multi-ws-${entryIdx}`}>
+              {entry.weeklySegments.map((seg) => {
+                const xStart = dateToX.get(seg.startDate)
+                const xEnd = dateToX.get(seg.endDate)
+                if (xStart == null || xEnd == null) return null
+                const segY = plotTop + (innerH - seg.pct * stepY)
+                return (
+                  <g key={`mws-${entryIdx}-${seg.weekStart}`}>
+                    <line
+                      x1={xStart} x2={xEnd} y1={segY} y2={segY}
+                      stroke={entry.color} strokeWidth={2.5} strokeDasharray="6 4" strokeLinecap="round"
+                    />
+                    <text x={xEnd + 4} y={segY + 3.5} fontSize={9} fontWeight={600} fill={entry.color} textAnchor="start">
+                      {`${Math.round(seg.pct * 100)}%`}
+                    </text>
+                  </g>
+                )
+              })}
+            </g>
+          )
+        })}
       </svg>
     )
-  }, [isMobile, series, yMax])
+  }, [isMobile, series, yMax, eventBars, weeklySegments, multiSeries])
 
   return (
     <div className={styles.chartWrap}>
       <div
         className={styles.chartFrame}
         ref={frameRef}
-        onPointerMove={handlePointerMove}
-        onPointerLeave={handlePointerLeave}
+        onPointerMove={multiSeries && multiSeries.length > 0 ? undefined : handlePointerMove}
+        onPointerLeave={multiSeries && multiSeries.length > 0 ? undefined : handlePointerLeave}
       >
-        <div className={styles.chartInlineLegend} aria-hidden>
-          <span className={styles.chartLegendItem}>
-            <span className={styles.chartLegendSwatchPrimary} />
-            Rezultāts
-          </span>
-          <span className={styles.chartLegendItem}>
-            <span className={styles.chartLegendSwatchMax} />
-            Maks.
-          </span>
-        </div>
+        {!(multiSeries && multiSeries.length > 0) && (
+          <div className={styles.chartInlineLegend} aria-hidden>
+            <span className={styles.chartLegendItem}>
+              <span className={styles.chartLegendSwatchPrimary} />
+              Rezultāts
+            </span>
+            <span className={styles.chartLegendItem}>
+              <span className={styles.chartLegendSwatchMax} />
+              Maks.
+            </span>
+          </div>
+        )}
         {chart}
         {tooltip && (
           <>

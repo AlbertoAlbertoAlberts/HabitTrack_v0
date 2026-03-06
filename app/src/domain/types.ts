@@ -45,6 +45,7 @@ export interface LabDailyProjectConfig {
   alignment: {
     exposureWindow: 'sameDay' | 'previousEvening'
   }
+  tagsEnabled?: boolean  // default true for backward compat; false = no tag UI
   completion: {
     requireOutcome: boolean
     requireAtLeastOneTag: boolean
@@ -265,6 +266,15 @@ export type OverviewMode =
   | 'priority3'
   | 'category'
   | 'habit'
+  | 'lab'
+  | 'weekly'
+
+export type OverviewSelectionKind = 'habit' | 'labDaily' | 'labEvent' | 'weekly' | 'category' | 'priority' | 'overall'
+
+export interface OverviewSelection {
+  kind: OverviewSelectionKind
+  id?: string   // habitId or labProjectId — omitted for weekly/overall/priority
+}
 
 export type DailyLeftMode = 'normal' | 'reorder' | 'delete' | 'priorityEdit' | 'rename'
 export type TodoMode = 'normal' | 'delete' | 'rename' | 'reorder'
@@ -281,7 +291,11 @@ export interface UiStateV1 {
   overviewMode: OverviewMode
   overviewSelectedCategoryId: CategoryId | null
   overviewSelectedHabitId: HabitId | null
+  overviewSelectedLabProjectId: LabProjectId | null
   overviewWindowEndDate: LocalDateString
+
+  overviewMultiSelectCount: 1 | 2 | 3
+  overviewMultiSelections: OverviewSelection[]
 
   dailyLeftMode: DailyLeftMode
   todoMode: TodoMode

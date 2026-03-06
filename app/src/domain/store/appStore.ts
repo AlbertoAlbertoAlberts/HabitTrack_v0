@@ -3,6 +3,7 @@ import type {
   CategoryId,
   HabitId,
   LocalDateString,
+  OverviewSelection,
   Priority,
   Score,
   ThemeMode,
@@ -55,6 +56,7 @@ import {
 import {
   selectOverviewCategory,
   selectOverviewHabit,
+  selectOverviewLabProject,
   setDailyLeftMode,
   setDailyViewMode,
   setOverviewMode,
@@ -64,6 +66,10 @@ import {
   setThemeMode,
   setTodoMode,
   shiftOverviewWindow,
+  setOverviewMultiSelectCount,
+  addOverviewSelection,
+  removeOverviewSelection,
+  clearOverviewSelections,
 } from '../actions/uiState'
 import {
   addLabProject,
@@ -223,8 +229,25 @@ export const appStore = {
     selectOverviewHabit(habitId: HabitId | null) {
       setUiState(selectOverviewHabit(state, habitId))
     },
+    selectOverviewLabProject(projectId: LabProjectId | null) {
+      setUiState(selectOverviewLabProject(state, projectId))
+    },
     setOverviewWindowEndDate(date: LocalDateString) {
       setUiState(setOverviewWindowEndDate(state, date))
+    },
+
+    // Multi-select
+    setOverviewMultiSelectCount(count: 1 | 2 | 3) {
+      setUiState(setOverviewMultiSelectCount(state, count))
+    },
+    addOverviewSelection(selection: OverviewSelection) {
+      setUiState(addOverviewSelection(state, selection))
+    },
+    removeOverviewSelection(index: number) {
+      setUiState(removeOverviewSelection(state, index))
+    },
+    clearOverviewSelections() {
+      setUiState(clearOverviewSelections(state))
     },
 
     // Todos

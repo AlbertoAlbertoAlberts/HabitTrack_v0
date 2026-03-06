@@ -292,7 +292,18 @@ export function LabPage() {
           )}
         </div>
 
-        {activeProject && (
+        {activeProject && activeProject.config.kind === 'daily' && activeProject.config.tagsEnabled === false ? (
+          <div className={styles.tagsArea}>
+            <section className={sharedStyles.panel}>
+              <div className={styles.headerRow}>
+                <h2 className={styles.subtitle}>Tags</h2>
+              </div>
+              <div className={styles.emptyState}>
+                <div className={styles.emptyBody}>Tags are disabled for this project.</div>
+              </div>
+            </section>
+          </div>
+        ) : activeProject && (
           <div className={styles.tagsArea}>
             <section className={sharedStyles.panel}>
               <div className={styles.headerRow}>

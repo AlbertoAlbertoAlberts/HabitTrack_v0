@@ -13,3 +13,41 @@
   font-weight: 700;
   opacity: 0.9;
 }
+
+.toggleRow {
+  display: inline-flex;
+  gap: 0;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.toggleBtn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--btn-bg);
+  color: var(--text);
+  border-right: 1px solid var(--border);
+  transition: background 120ms, color 120ms;
+}
+
+.toggleBtn:last-child {
+  border-right: none;
+}
+
+.toggleBtn:hover {
+  background: var(--hover-bg);
+}
+
+.toggleBtnActive {
+  background: var(--active-bg);
+  color: var(--accent);
+}

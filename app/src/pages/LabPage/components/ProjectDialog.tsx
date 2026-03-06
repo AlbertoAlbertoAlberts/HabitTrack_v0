@@ -31,6 +31,9 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
   const [exposureWindow, setExposureWindow] = useState<'sameDay' | 'previousEvening'>(
     existingProject?.config.kind === 'daily' ? existingProject.config.alignment.exposureWindow : 'previousEvening'
   )
+  const [tagsEnabled, setTagsEnabled] = useState(
+    existingProject?.config.kind === 'daily' ? (existingProject.config.tagsEnabled !== false) : true
+  )
 
   // Event config
   const [eventName, setEventName] = useState(
@@ -78,6 +81,7 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
     const config: LabProjectConfig = mode === 'daily' 
       ? {
           kind: 'daily',
+          tagsEnabled,
           outcome: {
             id: 'outcome',
             name: outcomeName,
@@ -89,9 +93,9 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
           },
           completion: {
             requireOutcome: true,
-            requireAtLeastOneTag: false,
+            requireAtLeastOneTag: tagsEnabled ? false : false,
           },
-          allowExplicitNoTags: true,
+          allowExplicitNoTags: !tagsEnabled ? true : true,
         }
       : {
           kind: 'event',
@@ -225,30 +229,43 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
               </div>
 
               <div className={styles.formGroup}>
-                <label className={styles.label}>Tag Window</label>
-                <div className={styles.radioGroup}>
-                  <label className={styles.radioLabel}>
-                    <input
-                      type="radio"
-                      name="window"
-                      value="sameDay"
-                      checked={exposureWindow === 'sameDay'}
-                      onChange={() => setExposureWindow('sameDay')}
-                    />
-                    <span>Same day</span>
-                  </label>
-                  <label className={styles.radioLabel}>
-                    <input
-                      type="radio"
-                      name="window"
-                      value="previousEvening"
-                      checked={exposureWindow === 'previousEvening'}
-                      onChange={() => setExposureWindow('previousEvening')}
-                    />
-                    <span>Previous evening</span>
-                  </label>
-                </div>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="checkbox"
+                    checked={tagsEnabled}
+                    onChange={(e) => setTagsEnabled(e.target.checked)}
+                  />
+                  <span>With tags</span>
+                </label>
               </div>
+
+              {tagsEnabled && (
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Tag Window</label>
+                  <div className={styles.radioGroup}>
+                    <label className={styles.radioLabel}>
+                      <input
+                        type="radio"
+                        name="window"
+                        value="sameDay"
+                        checked={exposureWindow === 'sameDay'}
+                        onChange={() => setExposureWindow('sameDay')}
+                      />
+                      <span>Same day</span>
+                    </label>
+                    <label className={styles.radioLabel}>
+                      <input
+                        type="radio"
+                        name="window"
+                        value="previousEvening"
+                        checked={exposureWindow === 'previousEvening'}
+                        onChange={() => setExposureWindow('previousEvening')}
+                      />
+                      <span>Previous evening</span>
+                    </label>
+                  </div>
+                </div>
+              )}
             </>
           )}
 

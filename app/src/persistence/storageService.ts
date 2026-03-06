@@ -316,6 +316,8 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     'priority3',
     'category',
     'habit',
+    'lab',
+    'weekly',
   ]
   const overviewMode = validOverviewModes.includes(state.uiState.overviewMode)
     ? state.uiState.overviewMode
@@ -328,9 +330,11 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
 
   let overviewSelectedCategoryId = state.uiState.overviewSelectedCategoryId
   let overviewSelectedHabitId = state.uiState.overviewSelectedHabitId
+  let overviewSelectedLabProjectId = (state.uiState as Record<string, unknown>).overviewSelectedLabProjectId ?? null
 
   if (overviewMode !== 'category') overviewSelectedCategoryId = null
   if (overviewMode !== 'habit') overviewSelectedHabitId = null
+  if (overviewMode !== 'lab') overviewSelectedLabProjectId = null
 
   if (overviewMode === 'category') {
     if (overviewSelectedCategoryId && !categoryIds.has(overviewSelectedCategoryId)) {
@@ -343,6 +347,30 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
       overviewSelectedHabitId = null
     }
   }
+
+  if (overviewMode === 'lab') {
+    // Validate the selected lab project ID still exists
+    if (typeof overviewSelectedLabProjectId === 'string' && overviewSelectedLabProjectId) {
+      const labProjects = lab.projects ?? {}
+      if (!labProjects[overviewSelectedLabProjectId]) {
+        overviewSelectedLabProjectId = null
+      }
+    }
+  }
+
+  // Multi-select: repair / default
+  const rawMultiCount = (state.uiState as Record<string, unknown>).overviewMultiSelectCount
+  const overviewMultiSelectCount: 1 | 2 | 3 =
+    rawMultiCount === 2 ? 2 : rawMultiCount === 3 ? 3 : 1
+  const rawMultiSelections = (state.uiState as Record<string, unknown>).overviewMultiSelections
+  const overviewMultiSelections = Array.isArray(rawMultiSelections)
+    ? rawMultiSelections.filter(
+        (s: unknown) =>
+          s != null &&
+          typeof s === 'object' &&
+          typeof (s as Record<string, unknown>).kind === 'string',
+      ).slice(0, overviewMultiSelectCount)
+    : []
 
   // Weekly tasks: normalize and remove invalid progress
   const weeklyTasksInput = (state as Partial<AppStateV1>).weeklyTasks ?? {}
@@ -501,6 +529,9 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
       overviewWindowEndDate,
       overviewSelectedCategoryId,
       overviewSelectedHabitId,
+      overviewSelectedLabProjectId: overviewSelectedLabProjectId as string | null,
+      overviewMultiSelectCount,
+      overviewMultiSelections,
     },
   }
 }
@@ -546,6 +577,10 @@ export function createDefaultState(now: Date = new Date()): AppStateV1 {
       overviewMode: 'overall',
       overviewSelectedCategoryId: null,
       overviewSelectedHabitId: null,
+      overviewSelectedLabProjectId: null,
+
+      overviewMultiSelectCount: 1,
+      overviewMultiSelections: [],
 
       dailyLeftMode: 'normal',
       todoMode: 'normal',

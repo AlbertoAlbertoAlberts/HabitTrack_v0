@@ -39,7 +39,7 @@
 
 /* Top-left corner cell (empty) */
 .cornerCell {
-  /* intentionally empty */
+  display: block;
 }
 
 /* Quadrant cells */
