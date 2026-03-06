@@ -36,10 +36,11 @@ export function OverviewSelectionList({
   multiSelections,
 }: OverviewSelectionListProps) {
   const isMulti = multiSelectCount > 1
+  const multiModes = new Set(['habit', 'lab', 'weekly'])
   const showCategoryList = mode === 'category'
-  const showHabitList = mode === 'habit' || (isMulti && (mode === 'habit' || mode === 'lab' || mode === 'weekly'))
-  const showLabList = mode === 'lab' || (isMulti && (mode === 'habit' || mode === 'lab' || mode === 'weekly'))
-  const showWeeklyEntry = isMulti && (mode === 'habit' || mode === 'lab' || mode === 'weekly')
+  const showHabitList = mode === 'habit' || (isMulti && multiModes.has(mode))
+  const showLabList = mode === 'lab' || (isMulti && multiModes.has(mode))
+  const showWeeklyEntry = isMulti && multiModes.has(mode)
 
   // In multi-select, clicking adds/removes from selections
   function handleMultiClick(kind: OverviewSelection['kind'], id?: string) {

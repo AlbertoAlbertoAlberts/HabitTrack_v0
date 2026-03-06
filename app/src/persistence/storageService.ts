@@ -330,7 +330,7 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
 
   let overviewSelectedCategoryId = state.uiState.overviewSelectedCategoryId
   let overviewSelectedHabitId = state.uiState.overviewSelectedHabitId
-  let overviewSelectedLabProjectId = (state.uiState as Record<string, unknown>).overviewSelectedLabProjectId ?? null
+  let overviewSelectedLabProjectId = (state.uiState as unknown as Record<string, unknown>).overviewSelectedLabProjectId ?? null
 
   if (overviewMode !== 'category') overviewSelectedCategoryId = null
   if (overviewMode !== 'habit') overviewSelectedHabitId = null
@@ -351,7 +351,10 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
   if (overviewMode === 'lab') {
     // Validate the selected lab project ID still exists
     if (typeof overviewSelectedLabProjectId === 'string' && overviewSelectedLabProjectId) {
-      const labProjects = lab.projects ?? {}
+      const rawLab = (state as Partial<AppStateV1>).lab
+      const labProjects = (rawLab && typeof rawLab === 'object' && 'projects' in rawLab)
+        ? (rawLab.projects as Record<string, unknown>)
+        : {}
       if (!labProjects[overviewSelectedLabProjectId]) {
         overviewSelectedLabProjectId = null
       }
@@ -359,10 +362,10 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
   }
 
   // Multi-select: repair / default
-  const rawMultiCount = (state.uiState as Record<string, unknown>).overviewMultiSelectCount
+  const rawMultiCount = (state.uiState as unknown as Record<string, unknown>).overviewMultiSelectCount
   const overviewMultiSelectCount: 1 | 2 | 3 =
     rawMultiCount === 2 ? 2 : rawMultiCount === 3 ? 3 : 1
-  const rawMultiSelections = (state.uiState as Record<string, unknown>).overviewMultiSelections
+  const rawMultiSelections = (state.uiState as unknown as Record<string, unknown>).overviewMultiSelections
   const overviewMultiSelections = Array.isArray(rawMultiSelections)
     ? rawMultiSelections.filter(
         (s: unknown) =>
