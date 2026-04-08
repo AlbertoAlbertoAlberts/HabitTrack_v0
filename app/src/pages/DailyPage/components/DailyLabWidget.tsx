@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAppState } from '../../../domain/store/useAppStore'
 import { appStore } from '../../../domain/store/appStore'
-import type { LabProject, LabTagUse } from '../../../domain/types'
+import type { LabProject, LabTagUse, LabDailyProjectConfig } from '../../../domain/types'
 import { formatTagNameDisplay } from '../../../domain/lab/utils/tagDisplay'
 import { IntensityPicker } from '../../../components/ui/IntensityPicker'
 import { Dialog, DialogBody, DialogFooter } from '../../../components/ui/Dialog'
@@ -69,6 +69,13 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
   const [dailyNote, setDailyNote] = useState(existingLog?.note || '')
   const [eventNote, setEventNote] = useState('')
   const [eventSeverity, setEventSeverity] = useState('')
+  const [additionalOutcomes, setAdditionalOutcomes] = useState<Record<string, string>>(() => {
+    const ao = existingLog?.additionalOutcomes
+    if (!ao) return {}
+    const init: Record<string, string> = {}
+    for (const [id, val] of Object.entries(ao)) init[id] = String(val)
+    return init
+  })
   const [tagIntensities, setTagIntensities] = useState<Record<string, number>>(() => {
     const next: Record<string, number> = {}
     for (const t of existingLog?.tags || []) {
@@ -99,6 +106,13 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
     setSelectedTags(new Set(log?.tags.map((t) => t.tagId) || []))
     setNoTags(log?.noTags || false)
     setDailyNote(log?.note || '')
+    setAdditionalOutcomes(() => {
+      const ao = log?.additionalOutcomes
+      if (!ao) return {}
+      const init: Record<string, string> = {}
+      for (const [id, val] of Object.entries(ao)) init[id] = String(val)
+      return init
+    })
     setTagIntensities(() => {
       const next: Record<string, number> = {}
       for (const t of log?.tags || []) {
@@ -195,8 +209,24 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
     }
 
     if (project.mode === 'daily' && project.config.kind === 'daily') {
+      // Parse additional outcomes
+      const addOutcomesParsed: Record<string, number> = {}
+      const aoDefs = (project.config as LabDailyProjectConfig).additionalOutcomes || []
+      for (const def of aoDefs) {
+        const raw = additionalOutcomes[def.id]?.trim()
+        if (raw) {
+          const num = Number(raw)
+          if (isNaN(num) || num < def.scale.min || num > def.scale.max) {
+            setSaveError(`${def.name} must be between ${def.scale.min} and ${def.scale.max}`)
+            return
+          }
+          addOutcomesParsed[def.id] = num
+        }
+      }
+
       appStore.actions.setLabDailyLog(project.id, date, {
         outcome: outcome !== '' ? Number(outcome) : undefined,
+        additionalOutcomes: Object.keys(addOutcomesParsed).length > 0 ? addOutcomesParsed : undefined,
         tags,
         noTags: noTags && tags.length === 0,
         note: dailyNote.trim() ? dailyNote.trim() : undefined,
@@ -284,6 +314,30 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
               </div>
             </div>
           </div>
+
+          {(project.config as LabDailyProjectConfig).additionalOutcomes?.map((def) => (
+            <div key={def.id} className={styles.sliderSection}>
+              <div className={styles.sliderHeader}>
+                <span className={styles.label}>{def.name}</span>
+                <span className={styles.sliderValue}>{additionalOutcomes[def.id] ?? ''}</span>
+              </div>
+              <div className={styles.sliderContainer}>
+                <input
+                  type="range"
+                  className={styles.slider}
+                  value={additionalOutcomes[def.id] || String(def.scale.min)}
+                  onChange={(e) => setAdditionalOutcomes(prev => ({ ...prev, [def.id]: e.target.value }))}
+                  min={def.scale.min}
+                  max={def.scale.max}
+                  step={def.scale.step || 1}
+                />
+                <div className={styles.sliderLabels}>
+                  <span>{def.scale.min}</span>
+                  <span>{def.scale.max}</span>
+                </div>
+              </div>
+            </div>
+          ))}
 
           {showTags && (
             <>

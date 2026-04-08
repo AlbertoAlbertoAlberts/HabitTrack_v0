@@ -623,8 +623,9 @@ export function LabPage() {
       />
 
       <ProjectDialog
+        key={editingProjectId ?? 'new'}
         open={projectDialogOpen}
-        onClose={() => setProjectDialogOpen(false)}
+        onClose={() => { setProjectDialogOpen(false); setEditingProjectId(null) }}
         projectId={editingProjectId}
       />
 

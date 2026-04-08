@@ -343,31 +343,22 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
                   onChange={(e) => setOutcomeName(e.target.value)}
                   placeholder="e.g., Energy Level, Mood"
                 />
-              </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="outcome-min">
-                    Min
-                  </label>
+                <div className={styles.scaleRow}>
+                  <label className={styles.scaleLabel}>Min</label>
                   <input
                     id="outcome-min"
                     type="number"
-                    className={styles.input}
+                    className={styles.scaleInput}
                     value={outcomeMin}
                     onChange={(e) => setOutcomeMin(Number(e.target.value))}
                     min={0}
                     max={outcomeMax - 1}
                   />
-                </div>
-                <div className={styles.formGroup}>
-                  <label className={styles.label} htmlFor="outcome-max">
-                    Max
-                  </label>
+                  <label className={styles.scaleLabel}>Max</label>
                   <input
                     id="outcome-max"
                     type="number"
-                    className={styles.input}
+                    className={styles.scaleInput}
                     value={outcomeMax}
                     onChange={(e) => setOutcomeMax(Number(e.target.value))}
                     min={outcomeMin + 1}
