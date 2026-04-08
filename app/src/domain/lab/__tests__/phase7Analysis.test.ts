@@ -11,7 +11,7 @@ import {
 } from '../analysis/datasetBuilders'
 import { generateFingerprint } from '../analysis/cache'
 import { runAnalysisForProject } from '../analysis/runner'
-import type { AppStateV1, LabProject, LabDailyLog, LabMultiChoiceLog } from '../../types'
+import type { LabProject, LabDailyLog, LabMultiChoiceLog } from '../../types'
 
 // ── Helpers ─────────────────────────────────────────────────
 
