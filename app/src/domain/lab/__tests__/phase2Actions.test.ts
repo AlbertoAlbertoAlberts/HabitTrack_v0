@@ -28,8 +28,8 @@ const dailyConfig: LabDailyProjectConfig = {
     required: true,
   },
   additionalOutcomes: [
-    { id: 'outcome_2', name: 'Energy' },
-    { id: 'outcome_3', name: 'Mood' },
+    { id: 'outcome_2', name: 'Energy', scale: { min: 1, max: 10 } },
+    { id: 'outcome_3', name: 'Mood', scale: { min: 1, max: 10 } },
   ],
   alignment: { exposureWindow: 'sameDay' },
   completion: { requireOutcome: true, requireAtLeastOneTag: false },
@@ -203,6 +203,34 @@ describe('setLabDailyLog with additionalOutcomes', () => {
       tags: [],
     })
     expect(next.lab!.dailyLogsByProject['d1']).toEqual({})
+  })
+
+  it('validates each additional outcome against its own scale', () => {
+    const mixedScaleConfig: LabDailyProjectConfig = {
+      ...dailyConfig,
+      additionalOutcomes: [
+        { id: 'outcome_2', name: 'Sleep', scale: { min: 1, max: 5 } },
+        { id: 'outcome_3', name: 'Energy', scale: { min: 1, max: 20 } },
+      ],
+    }
+    const proj3 = makeProject('d3', 'daily', mixedScaleConfig)
+    const state = stateWithProject(proj3)
+
+    // Value 15 is out of range for outcome_2 (max 5) — should reject
+    const rejected = setLabDailyLog(state, 'd3', '2025-01-15', {
+      outcome: 7,
+      additionalOutcomes: { outcome_2: 15 },
+      tags: [],
+    })
+    expect(rejected.lab!.dailyLogsByProject['d3']).toEqual({})
+
+    // Value 15 is within range for outcome_3 (max 20) — should accept
+    const accepted = setLabDailyLog(state, 'd3', '2025-01-15', {
+      outcome: 7,
+      additionalOutcomes: { outcome_3: 15 },
+      tags: [],
+    })
+    expect(accepted.lab!.dailyLogsByProject['d3']['2025-01-15'].additionalOutcomes).toEqual({ outcome_3: 15 })
   })
 
   it('works for single-outcome daily projects (no additionalOutcomes)', () => {
@@ -457,8 +485,8 @@ describe('updateLabProject validations', () => {
     const badConfig: LabDailyProjectConfig = {
       ...dailyConfig,
       additionalOutcomes: [
-        { id: 'outcome_2', name: 'Energy' },
-        { id: 'outcome_3', name: 'energy' }, // duplicate
+        { id: 'outcome_2', name: 'Energy', scale: { min: 1, max: 10 } },
+        { id: 'outcome_3', name: 'energy', scale: { min: 1, max: 10 } }, // duplicate
       ],
     }
     const next = updateLabProject(state, 'd1', { config: badConfig })

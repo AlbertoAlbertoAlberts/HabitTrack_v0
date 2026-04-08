@@ -42,21 +42,31 @@ function pearson(xs: number[], ys: number[]): number {
  * MO1: Cross-outcome correlation.
  * For each pair of outcomes (primary + additional), compute Pearson correlation.
  * Requires ≥10 days with both outcomes logged.
+ * Values are normalized to [0,1] per outcome's scale before correlation.
  *
- * @param dataset     The standard daily dataset (rows include outcome as primary value)
  * @param projectId   The project ID
  * @param outcomeIds  Array of additional outcome IDs
  * @param outcomeDatasets Map from outcome ID → DailyDataset (built with that outcome as row.outcome)
+ * @param primaryDataset The standard daily dataset (rows include outcome as primary value)
+ * @param scales      Map from outcome ID (or 'primary') → { min, max }
  */
 export function crossOutcomeCorrelation(
   projectId: string,
   outcomeIds: string[],
   outcomeDatasets: Record<string, DailyDataset>,
   primaryDataset: DailyDataset,
+  scales?: Record<string, { min: number; max: number }>,
 ): LabFinding[] {
   // Combine primary (key: 'primary') + additional outcomes
   const allIds = ['primary', ...outcomeIds]
   const allDatasets: Record<string, DailyDataset> = { primary: primaryDataset, ...outcomeDatasets }
+
+  // Normalizer helper: maps raw value to [0,1] if scale is available
+  const normalize = (id: string, value: number): number => {
+    const s = scales?.[id]
+    if (!s || s.max === s.min) return value
+    return (value - s.min) / (s.max - s.min)
+  }
 
   // Index each dataset by date for efficient pairing
   const dateIndexed: Record<string, Record<string, number>> = {}
@@ -66,7 +76,7 @@ export function crossOutcomeCorrelation(
     const byDate: Record<string, number> = {}
     for (const row of ds.rows) {
       if (row.outcome !== undefined) {
-        byDate[row.date] = row.outcome
+        byDate[row.date] = normalize(id, row.outcome)
       }
     }
     dateIndexed[id] = byDate

@@ -265,6 +265,24 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
       if (filtered.length > 0) tagCategoryOrderByProject[projectId] = filtered
     }
 
+    // Repair additionalOutcomes: backfill missing `scale` from primary outcome
+    for (const project of Object.values(projects)) {
+      if (project.config.kind === 'daily' && project.config.additionalOutcomes) {
+        const primaryScale = project.config.outcome.scale
+        let patched = false
+        const repaired = project.config.additionalOutcomes.map(ao => {
+          if (!ao.scale || typeof ao.scale.min !== 'number' || typeof ao.scale.max !== 'number') {
+            patched = true
+            return { ...ao, scale: { ...primaryScale } }
+          }
+          return ao
+        })
+        if (patched) {
+          ;(project.config as { additionalOutcomes: typeof repaired }).additionalOutcomes = repaired
+        }
+      }
+    }
+
     return {
       version: 1,
       projects,

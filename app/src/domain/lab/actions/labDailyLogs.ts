@@ -30,18 +30,19 @@ export function setLabDailyLog(
     if (project.config.kind !== 'daily') return state
 
     const config = project.config
-    const validOutcomeIds = new Set(
-      (config.additionalOutcomes || []).map(o => o.id)
+    const outcomeDefs = config.additionalOutcomes || []
+    const validOutcomeMap = new Map(
+      outcomeDefs.map(o => [o.id, o])
     )
-    const scale = config.outcome.scale
 
     for (const [outcomeId, value] of Object.entries(data.additionalOutcomes)) {
-      if (!validOutcomeIds.has(outcomeId)) {
+      const def = validOutcomeMap.get(outcomeId)
+      if (!def) {
         console.warn(`Invalid additional outcome ID: ${outcomeId}`)
         return state
       }
-      if (value < scale.min || value > scale.max) {
-        console.warn(`Additional outcome value ${value} out of range [${scale.min}, ${scale.max}]`)
+      if (value < def.scale.min || value > def.scale.max) {
+        console.warn(`Additional outcome value ${value} out of range [${def.scale.min}, ${def.scale.max}]`)
         return state
       }
     }

@@ -186,8 +186,16 @@ export function runAnalysisForProject(
         outcomeDatasets[outcomeId] = buildDailyDatasetForOutcome(state, projectId, outcomeId)
       }
 
+      // Build scales map for normalization in cross-outcome correlation
+      const scales: Record<string, { min: number; max: number }> = {
+        primary: { min: project.config.outcome.scale.min, max: project.config.outcome.scale.max },
+      }
+      for (const ao of project.config.additionalOutcomes) {
+        scales[ao.id] = { min: ao.scale.min, max: ao.scale.max }
+      }
+
       // MO1: Cross-outcome correlation
-      const crossFindings = crossOutcomeCorrelation(projectId, additionalOutcomeIds, outcomeDatasets, dataset)
+      const crossFindings = crossOutcomeCorrelation(projectId, additionalOutcomeIds, outcomeDatasets, dataset, scales)
       findings.push(...crossFindings)
 
       // MO2: Per-outcome tag correlation (run existing daily methods per additional outcome)

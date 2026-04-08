@@ -124,15 +124,42 @@
 
 /* --- List rows (additional outcomes, multi-choice options) --- */
 
+.outcomeBlock {
+  margin-bottom: 12px;
+}
+
 .listRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .listRow .input {
   flex: 1;
+}
+
+.scaleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  margin-bottom: 4px;
+}
+
+.scaleLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted, #888);
+}
+
+.scaleInput {
+  width: 60px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border, #444);
+  background: var(--bg-surface, #1a1a2e);
+  color: var(--text, #fff);
+  font-size: 0.85rem;
 }
 
 .btnRemove {

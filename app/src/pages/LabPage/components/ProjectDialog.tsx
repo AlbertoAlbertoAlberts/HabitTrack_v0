@@ -92,12 +92,18 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
   const addOutcome = () => {
     setAdditionalOutcomes(prev => [
       ...prev,
-      { id: `outcome_${Date.now()}`, name: '' },
+      { id: `outcome_${Date.now()}`, name: '', scale: { min: outcomeMin, max: outcomeMax } },
     ])
   }
 
   const updateOutcomeName = (idx: number, newName: string) => {
     setAdditionalOutcomes(prev => prev.map((o, i) => i === idx ? { ...o, name: newName } : o))
+  }
+
+  const updateOutcomeScale = (idx: number, field: 'min' | 'max', value: number) => {
+    setAdditionalOutcomes(prev => prev.map((o, i) =>
+      i === idx ? { ...o, scale: { ...o.scale, [field]: value } } : o
+    ))
   }
 
   const removeOutcome = (idx: number) => {
@@ -154,6 +160,7 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
         const norm = o.name.trim().toLowerCase()
         if (names.has(norm)) return false
         names.add(norm)
+        if (!o.scale || o.scale.min >= o.scale.max) return false
       }
     }
     return true
@@ -373,25 +380,42 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
               <div className={styles.formGroup}>
                 <label className={styles.label}>
                   Additional Outcomes
-                  <span className={styles.labelHint}> (share the same scale)</span>
                 </label>
                 {additionalOutcomes.map((ao, idx) => (
-                  <div key={ao.id} className={styles.listRow}>
-                    <input
-                      type="text"
-                      className={styles.input}
-                      value={ao.name}
-                      onChange={(e) => updateOutcomeName(idx, e.target.value)}
-                      placeholder={`Outcome ${idx + 2}`}
-                    />
-                    <button
-                      type="button"
-                      className={styles.btnRemove}
-                      onClick={() => removeOutcome(idx)}
-                      title="Remove outcome"
-                    >
-                      ×
-                    </button>
+                  <div key={ao.id} className={styles.outcomeBlock}>
+                    <div className={styles.listRow}>
+                      <input
+                        type="text"
+                        className={styles.input}
+                        value={ao.name}
+                        onChange={(e) => updateOutcomeName(idx, e.target.value)}
+                        placeholder={`Outcome ${idx + 2}`}
+                      />
+                      <button
+                        type="button"
+                        className={styles.btnRemove}
+                        onClick={() => removeOutcome(idx)}
+                        title="Remove outcome"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className={styles.scaleRow}>
+                      <label className={styles.scaleLabel}>Min</label>
+                      <input
+                        type="number"
+                        className={styles.scaleInput}
+                        value={ao.scale?.min ?? 1}
+                        onChange={(e) => updateOutcomeScale(idx, 'min', Number(e.target.value))}
+                      />
+                      <label className={styles.scaleLabel}>Max</label>
+                      <input
+                        type="number"
+                        className={styles.scaleInput}
+                        value={ao.scale?.max ?? 10}
+                        onChange={(e) => updateOutcomeScale(idx, 'max', Number(e.target.value))}
+                      />
+                    </div>
                   </div>
                 ))}
                 {additionalOutcomes.length < 10 && (

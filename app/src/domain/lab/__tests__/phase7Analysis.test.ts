@@ -340,7 +340,7 @@ describe('Multi-outcome analysis methods', () => {
         config: {
           kind: 'daily',
           outcome: { id: 'outcome', name: 'Quality', scale: { min: 1, max: 15 }, required: true },
-          additionalOutcomes: [{ id: 'out2', name: 'Energy' }],
+          additionalOutcomes: [{ id: 'out2', name: 'Energy', scale: { min: 1, max: 15 } }],
           alignment: { exposureWindow: 'sameDay' },
           completion: { requireOutcome: true, requireAtLeastOneTag: false },
         },
@@ -380,7 +380,7 @@ describe('Multi-outcome analysis methods', () => {
         config: {
           kind: 'daily',
           outcome: { id: 'outcome', name: 'Quality', scale: { min: 1, max: 15 }, required: true },
-          additionalOutcomes: [{ id: 'out2', name: 'Energy' }],
+          additionalOutcomes: [{ id: 'out2', name: 'Energy', scale: { min: 1, max: 15 } }],
           alignment: { exposureWindow: 'sameDay' },
           completion: { requireOutcome: true, requireAtLeastOneTag: false },
         },
@@ -418,7 +418,7 @@ describe('Multi-outcome analysis methods', () => {
         config: {
           kind: 'daily',
           outcome: { id: 'outcome', name: 'Quality', scale: { min: 1, max: 10 }, required: true },
-          additionalOutcomes: [{ id: 'out2', name: 'Energy' }],
+          additionalOutcomes: [{ id: 'out2', name: 'Energy', scale: { min: 1, max: 10 } }],
           alignment: { exposureWindow: 'sameDay' },
           completion: { requireOutcome: true, requireAtLeastOneTag: false },
         },
@@ -459,7 +459,7 @@ describe('Multi-outcome analysis methods', () => {
         config: {
           kind: 'daily',
           outcome: { id: 'outcome', name: 'Quality', scale: { min: 1, max: 10 }, required: true },
-          additionalOutcomes: [{ id: 'out2', name: 'Energy' }],
+          additionalOutcomes: [{ id: 'out2', name: 'Energy', scale: { min: 1, max: 10 } }],
           alignment: { exposureWindow: 'sameDay' },
           completion: { requireOutcome: false, requireAtLeastOneTag: false },
         },
@@ -569,7 +569,7 @@ describe('New dataset builders', () => {
       config: {
         kind: 'daily',
         outcome: { id: 'outcome', name: 'Quality', scale: { min: 1, max: 10 }, required: true },
-        additionalOutcomes: [{ id: 'out2', name: 'Energy' }],
+        additionalOutcomes: [{ id: 'out2', name: 'Energy', scale: { min: 1, max: 10 } }],
         alignment: { exposureWindow: 'sameDay' },
         completion: { requireOutcome: true, requireAtLeastOneTag: false },
       },
@@ -599,7 +599,7 @@ describe('New dataset builders', () => {
       config: {
         kind: 'daily',
         outcome: { id: 'outcome', name: 'Quality', scale: { min: 1, max: 10 }, required: true },
-        additionalOutcomes: [{ id: 'out2', name: 'Energy' }],
+        additionalOutcomes: [{ id: 'out2', name: 'Energy', scale: { min: 1, max: 10 } }],
         alignment: { exposureWindow: 'sameDay' },
         completion: { requireOutcome: true, requireAtLeastOneTag: false },
       },

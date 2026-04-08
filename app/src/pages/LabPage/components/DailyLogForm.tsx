@@ -172,8 +172,8 @@ function DailyOutcomeForm({ projectId, project, date }: DailyOutcomeFormProps) {
         const raw = additionalOutcomes[def.id]?.trim()
         if (raw) {
           const num = Number(raw)
-          if (isNaN(num) || num < config.outcome.scale.min || num > config.outcome.scale.max) {
-            setSaveError(`${def.name} must be between ${config.outcome.scale.min} and ${config.outcome.scale.max}`)
+          if (isNaN(num) || num < def.scale.min || num > def.scale.max) {
+            setSaveError(`${def.name} must be between ${def.scale.min} and ${def.scale.max}`)
             return
           }
           addOutcomesParsed[def.id] = num
@@ -254,12 +254,12 @@ function DailyOutcomeForm({ projectId, project, date }: DailyOutcomeFormProps) {
               onChange={(e) =>
                 setAdditionalOutcomes((prev) => ({ ...prev, [def.id]: e.target.value }))
               }
-              min={config.outcome.scale.min}
-              max={config.outcome.scale.max}
-              step={config.outcome.scale.step || 1}
-              placeholder={`${config.outcome.scale.min}–${config.outcome.scale.max}`}
+              min={def.scale.min}
+              max={def.scale.max}
+              step={def.scale.step || 1}
+              placeholder={`${def.scale.min}–${def.scale.max}`}
             />
-            <span className={styles.outcomeScale}>{config.outcome.scale.min}–{config.outcome.scale.max}</span>
+            <span className={styles.outcomeScale}>{def.scale.min}–{def.scale.max}</span>
           </div>
         ))}
       </div>

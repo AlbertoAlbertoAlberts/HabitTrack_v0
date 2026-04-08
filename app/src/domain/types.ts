@@ -36,7 +36,11 @@ export type LabProjectConfig =
 export interface LabOutcomeDef {
   id: string               // unique within project, e.g. 'outcome_2'
   name: string
-  // scale inherited from project's primary outcome.scale
+  scale: {
+    min: number
+    max: number
+    step?: number
+  }
 }
 
 export interface LabDailyProjectConfig {
@@ -51,7 +55,7 @@ export interface LabDailyProjectConfig {
     }
     required: boolean
   }
-  additionalOutcomes?: LabOutcomeDef[]  // extra outcomes sharing same scale
+  additionalOutcomes?: LabOutcomeDef[]  // extra outcomes, each with its own scale
   exposureLabel?: string
   alignment: {
     exposureWindow: 'sameDay' | 'previousEvening'
