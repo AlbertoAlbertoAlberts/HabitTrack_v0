@@ -34,6 +34,74 @@ function isEffectivelyEmptyState(state: AppStateV1): boolean {
   return labProjects === 0
 }
 
+/** True when running on localhost / dev server — sync is read-only in this mode. */
+function isDevMode(): boolean {
+  try {
+    if (import.meta.env.DEV) return true
+    if (
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    )
+      return true
+  } catch {
+    // ignore
+  }
+  return false
+}
+
+/**
+ * Computes a numeric "richness" score for a state snapshot.
+ * Used to detect when stale local data would overwrite richer remote data.
+ */
+function computeDataRichness(state: AppStateV1): number {
+  let score = 0
+  score += Object.keys(state.dailyScores || {}).length * 10
+  score += Object.keys(state.dayLocks || {}).length * 5
+  score += Object.keys(state.habits || {}).length * 3
+  score += Object.keys(state.categories || {}).length * 2
+  score += Object.keys(state.todos || {}).length * 2
+  score += Object.keys(state.todoArchive || {}).length
+  score += Object.keys(state.weeklyTasks || {}).length * 2
+  const lab = state.lab
+  if (lab) {
+    score += Object.keys(lab.projects || {}).length * 5
+    if (lab.dailyLogsByProject) {
+      for (const byDate of Object.values(lab.dailyLogsByProject)) {
+        score += Object.keys(byDate || {}).length * 3
+      }
+    }
+    if (lab.eventLogsByProject) {
+      for (const byId of Object.values(lab.eventLogsByProject)) {
+        score += Object.keys(byId || {}).length * 3
+      }
+    }
+  }
+  return score
+}
+
+const REMOTE_BACKUP_KEY = 'habitTracker.sync.remoteBackups'
+const MAX_REMOTE_BACKUPS = 3
+
+/** Save the current remote state to localStorage before overwriting it. */
+function backupRemoteBeforeOverwrite(remoteState: AppStateV1): void {
+  try {
+    const raw = localStorage.getItem(REMOTE_BACKUP_KEY)
+    const backups: Array<{ savedAt: string; backedUpAt: string; state: AppStateV1 }> = raw
+      ? JSON.parse(raw)
+      : []
+    backups.push({
+      savedAt: remoteState.savedAt,
+      backedUpAt: new Date().toISOString(),
+      state: remoteState,
+    })
+    while (backups.length > MAX_REMOTE_BACKUPS) backups.shift()
+    localStorage.setItem(REMOTE_BACKUP_KEY, JSON.stringify(backups))
+    pushDebugEvent('backup:saved', { savedAt: remoteState.savedAt, totalBackups: backups.length })
+  } catch {
+    // Storage full or unavailable — don't block sync
+  }
+}
+
 type AppStatesRow = {
   user_id: string
   schema_version: number
@@ -69,7 +137,7 @@ type SyncStatus = {
     labTagsCount: number
     labActiveProjectId: string | null
   } | null
-  autoSyncPausedReason: 'pull-only-restore' | null
+  autoSyncPausedReason: 'pull-only-restore' | 'dev-mode-readonly' | null
   preferRemoteOnLogin: boolean
   readyToPush: boolean
   suppressNextPush: boolean
@@ -207,6 +275,12 @@ export function subscribeSupabaseSync(listener: SyncListener): () => void {
 }
 
 export async function forceSupabasePush(): Promise<void> {
+  if (isDevMode()) {
+    setStatus({ lastError: 'Push blocked: dev mode is read-only.' })
+    pushDebugEvent('forcePush:blocked-dev-mode', {})
+    return
+  }
+
   const s = status
   if (!s.configured || !s.signedIn || !s.userId) {
     setStatus({ lastError: 'Not signed in to Supabase.' })
@@ -327,6 +401,11 @@ export async function restoreSupabasePullOnly(): Promise<void> {
 }
 
 export function resumeSupabaseAutoSync(): void {
+  // Never allow resuming auto-push in dev mode — this is a hard safety barrier.
+  if (isDevMode()) {
+    pushDebugEvent('autoSync:resume-blocked:dev-mode', { userId: status.userId ?? null })
+    return
+  }
   const s = status
   setStatus({ autoSyncPausedReason: null })
   // The lastHydratedRemoteSavedAt check in schedulePush prevents pushing back
@@ -641,6 +720,35 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
   // Pull succeeded: reset failure counter.
   reconcilePullFailures = 0
 
+  // ── DEV-MODE SAFEGUARD ──────────────────────────────────────────────
+  // On localhost / dev, ALWAYS pull remote (if available) and disable
+  // auto-push.  This MUST run before first-push and bootstrapped-empty
+  // paths to prevent stale local data from ever overwriting production.
+  if (isDevMode()) {
+    if (remoteRow?.state) {
+      const remoteSavedAt = remoteRow.state.savedAt || remoteRow.saved_at
+      noteRemoteSavedAt(remoteSavedAt, 'reconcile:dev-mode')
+      appStore.hydrate(repairState(remoteRow.state))
+      lastHydratedRemoteSavedAt = remoteSavedAt
+    }
+    // Even if no remote row exists, NEVER push in dev mode.
+    setStatus({
+      lastPulledAt: new Date().toISOString(),
+      lastError: null,
+      conflict: null,
+      autoSyncPausedReason: 'dev-mode-readonly',
+    })
+    hasReconciledThisSession = true
+    readyToPush = false
+    setPreferRemoteOnLogin(true)
+    pushDebugEvent('reconcile:dev-mode:pull-only', {
+      userId,
+      remoteSavedAt: remoteRow?.state?.savedAt ?? remoteRow?.saved_at ?? null,
+      localSavedAt: local.savedAt,
+    })
+    return
+  }
+
   if (!remoteRow?.state) {
     // First-time migration: push local state to Supabase.
     pushDebugEvent('reconcile:first-push', { userId, localSavedAt: local.savedAt })
@@ -697,9 +805,34 @@ async function reconcileRemoteLocal(userId: string): Promise<void> {
       return
     }
 
+    // ── RICHNESS SAFEGUARD ──────────────────────────────────────────
+    // Even though local is "newer" by timestamp, if it has significantly
+    // less data than remote, it's stale data with a fresh timestamp.
+    // Pull remote instead of overwriting it.
+    const localRichness = computeDataRichness(local)
+    const remoteRichness = computeDataRichness(remoteRow.state)
+    if (remoteRichness > 0 && localRichness < remoteRichness * 0.5) {
+      backupRemoteBeforeOverwrite(remoteRow.state)
+      appStore.hydrate(repairState(remoteRow.state))
+      lastHydratedRemoteSavedAt = remoteSavedAt
+      setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
+      hasReconciledThisSession = true
+      readyToPush = paused ? false : true
+      setPreferRemoteOnLogin(true)
+      pushDebugEvent('reconcile:local-newer-but-poorer->pull', {
+        userId,
+        localSavedAt,
+        remoteSavedAt,
+        localRichness,
+        remoteRichness,
+      })
+      return
+    }
+
     // Local has real data that's newer than remote.
     // With last-write-wins: push local to preserve unpushed changes.
     if (getConflictPolicy() === 'last-write-wins') {
+      backupRemoteBeforeOverwrite(remoteRow.state)
       pushDebugEvent('reconcile:local-newer->push', { userId, localSavedAt, remoteSavedAt })
       await upsertRemoteState(userId, local, { force: true, reason: 'reconcile:local-newer' })
       hasReconciledThisSession = true
@@ -875,6 +1008,32 @@ async function upsertRemoteState(
     // Local is newer or equal → push.  With LWW, use a simple upsert (the preflight
     // already confirmed remote isn't newer, and the tiny race window is acceptable).
     // With manual policy, use a conditional update to detect mid-flight changes.
+
+    // ── RICHNESS SAFEGUARD ──────────────────────────────────────────────
+    // Even in auto-push, refuse to overwrite significantly richer remote data.
+    const localRichness = computeDataRichness(state)
+    const remoteRichness = computeDataRichness(remoteRow.state)
+    if (remoteRichness > 0 && localRichness < remoteRichness * 0.5) {
+      // Local data is suspiciously thin compared to remote — block the push.
+      backupRemoteBeforeOverwrite(remoteRow.state)
+      appStore.hydrate(repairState(remoteRow.state))
+      lastHydratedRemoteSavedAt = remoteSavedAt
+      setStatus({ lastPulledAt: new Date().toISOString(), lastError: null, conflict: null })
+      readyToPush = false
+      pushDebugEvent('push:blocked:local-poorer', {
+        userId,
+        reason,
+        localSavedAt,
+        remoteSavedAt,
+        localRichness,
+        remoteRichness,
+      })
+      return
+    }
+
+    // Backup remote state before overwriting.
+    backupRemoteBeforeOverwrite(remoteRow.state)
+
     if (getConflictPolicy() === 'last-write-wins') {
       try {
         const result = await withTimeout(

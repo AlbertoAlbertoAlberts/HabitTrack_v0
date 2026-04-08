@@ -2,7 +2,7 @@
 .page {
   grid-template-columns: 320px minmax(0, 1fr) 340px;
   grid-template-areas: 'left main todo';
-  align-content: start;
+  grid-template-rows: 1fr;
 }
 
 .leftPanel {
