@@ -12,6 +12,7 @@ import TodoPage from './pages/TodoPage/TodoPage'
 import { useAppState } from './domain/store/useAppStore'
 import { getSupabaseSyncStatus, subscribeSupabaseSync } from './persistence/supabaseSync'
 import { useState } from 'react'
+import './App.css'
 
 export default function App() {
   const themeMode = useAppState().uiState.themeMode
