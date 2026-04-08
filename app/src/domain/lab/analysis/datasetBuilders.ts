@@ -1,4 +1,4 @@
-import type { AppStateV1, LabDailyLog, LabEventLog } from '../../types'
+import type { AppStateV1, LabDailyLog, LabEventLog, LabMultiChoiceLog } from '../../types'
 import { toLocalDateString } from '../../utils/localDate'
 
 // Episode segmentation: events within this gap are considered part of the same episode.
@@ -50,8 +50,38 @@ export interface EventDataset {
   coverage: DatasetCoverage
 }
 
+/** * Tag-only dataset row: one entry per date, tags only (no outcome)
+ */
+export interface TagOnlyDatasetRow {
+  date: string // ISO date
+  tags: Record<string, boolean> // tagId → present
+}
+
 /**
- * Event daily frequency row: one entry per local date.
+ * Tag-only dataset with coverage stats
+ */
+export interface TagOnlyDataset {
+  rows: TagOnlyDatasetRow[]
+  coverage: DatasetCoverage
+}
+
+/**
+ * Multi-choice dataset row: one entry per date
+ */
+export interface MultiChoiceDatasetRow {
+  date: string // ISO date
+  selectedOptionIds: string[]
+}
+
+/**
+ * Multi-choice dataset with coverage stats
+ */
+export interface MultiChoiceDataset {
+  rows: MultiChoiceDatasetRow[]
+  coverage: DatasetCoverage
+}
+
+/** * Event daily frequency row: one entry per local date.
  * Useful for simple “how often did events happen?” visuals.
  */
 export interface EventDailyFrequencyRow {
@@ -533,5 +563,151 @@ export function buildEventGroupDataset(state: AppStateV1, projectId: string): Ev
     rows,
     coverage: base.coverage,
     groupKeyToName,
+  }
+}
+
+// ── New dataset builders for tag-only, multi-choice, per-outcome ──
+
+/**
+ * Build a tag-only dataset for a daily-tag-only project.
+ * Pure function: takes state + projectId, returns dataset with coverage stats.
+ */
+export function buildTagOnlyDataset(state: AppStateV1, projectId: string): TagOnlyDataset {
+  const project = state.lab?.projects[projectId]
+  if (!project || project.mode !== 'daily-tag-only') {
+    return { rows: [], coverage: { totalLogs: 0, validRows: 0, skippedRows: 0 } }
+  }
+
+  const logs = state.lab?.dailyLogsByProject[projectId] || {}
+  const projectTags = state.lab?.tagsByProject[projectId] || {}
+  const allTagIds = Object.keys(projectTags)
+
+  const rows: TagOnlyDatasetRow[] = []
+
+  for (const [date, log] of Object.entries(logs) as [string, LabDailyLog][]) {
+    const tags: Record<string, boolean> = {}
+    // Initialize all project tags as absent
+    for (const tagId of allTagIds) {
+      tags[tagId] = false
+    }
+    // Mark present tags
+    for (const tagUse of log.tags) {
+      tags[tagUse.tagId] = true
+    }
+
+    rows.push({ date, tags })
+  }
+
+  // Sort by date ascending
+  rows.sort((a, b) => a.date.localeCompare(b.date))
+
+  return {
+    rows,
+    coverage: {
+      totalLogs: Object.keys(logs).length,
+      validRows: rows.length,
+      skippedRows: 0,
+    },
+  }
+}
+
+/**
+ * Build a multi-choice dataset for a daily-multi-choice project.
+ * Reads from state.lab.multiChoiceLogsByProject (NOT dailyLogsByProject).
+ */
+export function buildMultiChoiceDataset(state: AppStateV1, projectId: string): MultiChoiceDataset {
+  const project = state.lab?.projects[projectId]
+  if (!project || project.mode !== 'daily-multi-choice') {
+    return { rows: [], coverage: { totalLogs: 0, validRows: 0, skippedRows: 0 } }
+  }
+
+  const logs = state.lab?.multiChoiceLogsByProject[projectId] || {}
+
+  const rows: MultiChoiceDatasetRow[] = []
+
+  for (const [date, log] of Object.entries(logs) as [string, LabMultiChoiceLog][]) {
+    rows.push({
+      date,
+      selectedOptionIds: log.selectedOptionIds,
+    })
+  }
+
+  // Sort by date ascending
+  rows.sort((a, b) => a.date.localeCompare(b.date))
+
+  return {
+    rows,
+    coverage: {
+      totalLogs: Object.keys(logs).length,
+      validRows: rows.length,
+      skippedRows: 0,
+    },
+  }
+}
+
+/**
+ * Build a standard DailyDataset for a specific additional outcome.
+ * Sets `row.outcome` to the value of the specified outcome rather than the primary.
+ * Used by MO2 (per-outcome tag correlation) so existing daily methods can run unchanged.
+ *
+ * @param state       App state
+ * @param projectId   The project ID (must be a 'daily' project)
+ * @param outcomeId   The additional outcome ID to use as `row.outcome`
+ */
+export function buildDailyDatasetForOutcome(
+  state: AppStateV1,
+  projectId: string,
+  outcomeId: string,
+): DailyDataset {
+  const project = state.lab?.projects[projectId]
+  if (!project || project.mode !== 'daily' || project.config.kind !== 'daily') {
+    return { rows: [], coverage: { totalLogs: 0, validRows: 0, skippedRows: 0 } }
+  }
+
+  const logs = state.lab?.dailyLogsByProject[projectId] || {}
+  const projectTags = state.lab?.tagsByProject[projectId] || {}
+
+  const rows: DailyDatasetRow[] = []
+  let skippedRows = 0
+
+  for (const [date, log] of Object.entries(logs) as [string, LabDailyLog][]) {
+    // Get the specified outcome value
+    const outcomeValue = log.additionalOutcomes?.[outcomeId]
+
+    // Skip rows where the specified outcome is not logged
+    if (outcomeValue === undefined) {
+      skippedRows++
+      continue
+    }
+
+    // Build tag map
+    const tags: Record<string, { present: boolean; intensity?: number }> = {}
+    for (const tagId of Object.keys(projectTags)) {
+      tags[tagId] = { present: false }
+    }
+    for (const tagUse of log.tags) {
+      tags[tagUse.tagId] = {
+        present: true,
+        intensity: tagUse.intensity,
+      }
+    }
+
+    rows.push({
+      date,
+      outcome: outcomeValue,
+      tags,
+    })
+  }
+
+  // Sort by date ascending
+  rows.sort((a, b) => a.date.localeCompare(b.date))
+
+  return {
+    rows,
+    coverage: {
+      totalLogs: Object.keys(logs).length,
+      validRows: rows.length,
+      skippedRows,
+    },
   }
 }

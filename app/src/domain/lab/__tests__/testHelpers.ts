@@ -15,6 +15,7 @@ export function createTestState(labState: Partial<LabState> = {}): AppStateV1 {
     tagOrderByProject: {},
     dailyLogsByProject: {},
     eventLogsByProject: {},
+    multiChoiceLogsByProject: {},
     ...labState,
   }
 

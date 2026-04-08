@@ -5,7 +5,9 @@ import type {
   LabDailyAbsenceMarker,
   LabDailyLog,
   LabEventLog,
+  LabMultiChoiceLog,
   LabState,
+  LabTagCategory,
   LabTagUse,
 } from '../domain/types'
 
@@ -33,7 +35,10 @@ export function createEmptyLabState(): LabState {
     tagOrderByProject: {},
     dailyLogsByProject: {},
     eventLogsByProject: {},
+    multiChoiceLogsByProject: {},
     absenceMarkersByProject: {},
+    tagCategoriesByProject: {},
+    tagCategoryOrderByProject: {},
     findingsCache: {},
     ui: {},
   }
@@ -94,6 +99,30 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
     const dailyLogsRaw = isRecord(raw.dailyLogsByProject) ? raw.dailyLogsByProject : {}
     const eventLogsRaw = isRecord(raw.eventLogsByProject) ? raw.eventLogsByProject : {}
     const absenceRaw = isRecord(raw.absenceMarkersByProject) ? raw.absenceMarkersByProject : {}
+    const multiChoiceLogsRaw = isRecord(raw.multiChoiceLogsByProject) ? raw.multiChoiceLogsByProject : {}
+
+    const multiChoiceLogsByProject: LabState['multiChoiceLogsByProject'] = {}
+    for (const [projectId, byDate] of Object.entries(multiChoiceLogsRaw)) {
+      if (!isRecord(byDate)) continue
+      const nextForProject: Record<string, LabMultiChoiceLog> = {}
+
+      for (const [date, log] of Object.entries(byDate)) {
+        if (!isRecord(log)) continue
+
+        const selectedOptionIds = Array.isArray(log.selectedOptionIds)
+          ? log.selectedOptionIds.filter((v): v is string => typeof v === 'string')
+          : []
+
+        nextForProject[date] = {
+          date,
+          updatedAt: typeof log.updatedAt === 'string' ? log.updatedAt : repairNow,
+          selectedOptionIds,
+          note: typeof log.note === 'string' ? log.note : undefined,
+        }
+      }
+
+      multiChoiceLogsByProject[projectId] = nextForProject
+    }
 
     const findingsRaw = raw.findingsCache
     const legacyFindingsRaw = raw['findingsCacheByProject']
@@ -124,10 +153,22 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
           })
           .filter((t): t is LabTagUse => Boolean(t))
 
+        // Repair additionalOutcomes: must be Record<string, number> or undefined
+        let additionalOutcomes: Record<string, number> | undefined = undefined
+        if (isRecord(log.additionalOutcomes)) {
+          const ao: Record<string, number> = {}
+          for (const [outcomeId, val] of Object.entries(log.additionalOutcomes)) {
+            const n = coerceFiniteNumber(val)
+            if (n !== undefined) ao[outcomeId] = n
+          }
+          if (Object.keys(ao).length > 0) additionalOutcomes = ao
+        }
+
         nextForProject[date] = {
           date,
           updatedAt: typeof log.updatedAt === 'string' ? log.updatedAt : repairNow,
           outcome: coerceFiniteNumber(log.outcome),
+          additionalOutcomes,
           tags,
           note: typeof log.note === 'string' ? log.note : undefined,
           noTags: typeof log.noTags === 'boolean' ? log.noTags : undefined,
@@ -191,6 +232,39 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
       absenceMarkersByProject[projectId] = nextForProject
     }
 
+    // Repair tag categories
+    const tagCategoriesRaw = isRecord(raw.tagCategoriesByProject) ? raw.tagCategoriesByProject : {}
+    const tagCategoriesByProject: NonNullable<LabState['tagCategoriesByProject']> = {}
+    for (const [projectId, byId] of Object.entries(tagCategoriesRaw)) {
+      if (!isRecord(byId)) continue
+      const nextForProject: Record<string, LabTagCategory> = {}
+
+      for (const [catId, cat] of Object.entries(byId)) {
+        if (!isRecord(cat)) continue
+        if (typeof cat.name !== 'string' || !cat.name) continue
+
+        nextForProject[catId] = {
+          id: typeof cat.id === 'string' ? cat.id : catId,
+          name: cat.name,
+          sortIndex: typeof cat.sortIndex === 'number' ? cat.sortIndex : 0,
+          createdAt: typeof cat.createdAt === 'string' ? cat.createdAt : repairNow,
+          updatedAt: typeof cat.updatedAt === 'string' ? cat.updatedAt : repairNow,
+        }
+      }
+
+      if (Object.keys(nextForProject).length > 0) {
+        tagCategoriesByProject[projectId] = nextForProject
+      }
+    }
+
+    const tagCategoryOrderRaw = isRecord(raw.tagCategoryOrderByProject) ? raw.tagCategoryOrderByProject : {}
+    const tagCategoryOrderByProject: NonNullable<LabState['tagCategoryOrderByProject']> = {}
+    for (const [projectId, order] of Object.entries(tagCategoryOrderRaw)) {
+      if (!Array.isArray(order)) continue
+      const filtered = order.filter((v): v is string => typeof v === 'string')
+      if (filtered.length > 0) tagCategoryOrderByProject[projectId] = filtered
+    }
+
     return {
       version: 1,
       projects,
@@ -199,7 +273,10 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
       tagOrderByProject,
       dailyLogsByProject,
       eventLogsByProject,
+      multiChoiceLogsByProject,
       absenceMarkersByProject,
+      tagCategoriesByProject,
+      tagCategoryOrderByProject,
       findingsCache,
       ui,
     }

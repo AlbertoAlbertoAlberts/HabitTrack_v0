@@ -1,0 +1,428 @@
+/* DailyLogForm — daily logging form for all daily project types */
+
+.container {
+  margin-top: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.dateNav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dateBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+
+.dateBtn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.dateBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.dateLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 100px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.dateLabel:hover {
+  color: var(--accent);
+}
+
+.todayBadge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--accent);
+  letter-spacing: 0.3px;
+}
+
+/* Form body */
+
+.form {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+}
+
+.saveError {
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  border: 1px solid rgba(244, 67, 54, 0.35);
+  border-radius: 8px;
+  background: rgba(244, 67, 54, 0.08);
+}
+
+/* Outcome section */
+
+.outcomeSection {
+  margin-bottom: 14px;
+}
+
+.outcomeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.outcomeLabel {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outcomeInput {
+  width: 70px;
+  padding: 5px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: inherit;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.outcomeInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.outcomeScale {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Multi-choice section */
+
+.choicesSection {
+  margin-bottom: 14px;
+}
+
+.choicesTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.choicesList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.choiceLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+
+.choiceLabel:hover {
+  background: var(--hover);
+}
+
+.choiceLabelSelected {
+  border-color: var(--accent);
+  background: rgba(79, 70, 229, 0.08);
+}
+
+.choiceLabel input[type='checkbox'],
+.choiceLabel input[type='radio'] {
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+/* Tags section */
+
+.tagsSection {
+  margin-bottom: 14px;
+}
+
+.tagsTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.tagGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 6px;
+}
+
+.tagLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.tagLabel input[type='checkbox'] {
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.noTagsRow {
+  margin-top: 8px;
+}
+
+.noTagsLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.noTagsLabel input[type='checkbox'] {
+  cursor: pointer;
+}
+
+.intensityList {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.intensityTitle {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.intensityRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.intensityName {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.intensityUnit {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* Tag category group headers */
+
+.tagCategoryHeader {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin-top: 10px;
+  margin-bottom: 4px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tagCategoryHeader:first-child {
+  margin-top: 0;
+}
+
+/* Note */
+
+.noteSection {
+  margin-bottom: 14px;
+}
+
+.noteLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.textarea {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Form actions */
+
+.formActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.saveButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  font-family: inherit;
+  transition: opacity var(--t-fast) var(--ease-out);
+}
+
+.saveButton:hover {
+  opacity: 0.9;
+}
+
+.clearButton {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+
+.clearButton:hover {
+  background: var(--btn-bg-hover);
+}
+
+/* Saved indicator */
+
+.savedIndicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.savedCheck {
+  font-size: 14px;
+}
+
+/* Empty / info states */
+
+.emptyInfo {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .dateNav {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tagGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .formActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .saveButton,
+  .clearButton {
+    width: 100%;
+  }
+
+  .choiceLabel {
+    padding: 8px 12px;
+  }
+}

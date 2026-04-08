@@ -1,5 +1,5 @@
 import { useAppState } from '../../../domain/store/useAppStore'
-import { buildDailyDataset, buildEventDataset } from '../../../domain/lab/analysis/datasetBuilders'
+import { buildDailyDataset, buildEventDataset, buildTagOnlyDataset, buildMultiChoiceDataset } from '../../../domain/lab/analysis/datasetBuilders'
 import { formatTagNameDisplay } from '../../../domain/lab/utils/tagDisplay'
 import styles from './DataMaturityView.module.css'
 import type { CSSProperties } from 'react'
@@ -34,16 +34,27 @@ export function DataMaturityView({ projectId }: DataMaturityViewProps) {
 
   if (!project) return null
 
-  const isDaily = project.mode === 'daily'
+  const isDateBased = project.mode === 'daily' || project.mode === 'daily-tag-only' || project.mode === 'daily-multi-choice'
   const totalWindow = 120
 
-  const countLogged = isDaily
-    ? buildDailyDataset(state, projectId).coverage.validRows
-    : buildEventDataset(state, projectId).coverage.validRows
+  const countLogged = (() => {
+    switch (project.mode) {
+      case 'daily':
+        return buildDailyDataset(state, projectId).coverage.validRows
+      case 'daily-tag-only':
+        return buildTagOnlyDataset(state, projectId).coverage.validRows
+      case 'daily-multi-choice':
+        return buildMultiChoiceDataset(state, projectId).coverage.validRows
+      case 'event':
+        return buildEventDataset(state, projectId).coverage.validRows
+      default:
+        return 0
+    }
+  })()
 
   const countClamped = Math.max(0, Math.min(countLogged, totalWindow))
 
-  const unitLabel = isDaily ? 'dienas' : 'logs'
+  const unitLabel = isDateBased ? 'dienas' : 'logs'
 
   const phases = [
     { label: 'Pētīšanas stadija', range: `0–13 ${unitLabel}`, min: 0, max: 13 },
@@ -161,14 +172,17 @@ export function TagCoverageView({ projectId }: TagCoverageViewProps) {
 
   const dataset = project.mode === 'daily'
     ? buildDailyDataset(state, projectId)
-    : project.mode === 'event'
-      ? buildEventDataset(state, projectId)
-      : null
+    : project.mode === 'daily-tag-only'
+      ? buildTagOnlyDataset(state, projectId)
+      : project.mode === 'event'
+        ? buildEventDataset(state, projectId)
+        : null
 
   if (!dataset) return null
 
   const { rows } = dataset
   const tagIds = Object.keys(tags)
+  const isTagOnly = project.mode === 'daily-tag-only'
 
   const totalCount = rows.length
 
@@ -186,7 +200,7 @@ export function TagCoverageView({ projectId }: TagCoverageViewProps) {
       <div className={styles.tagMaturity}>
         <div className={styles.tagMaturityTitle}>Tag Coverage</div>
         <div className={styles.tagMaturityEmpty}>
-          {project.mode === 'daily' ? 'No daily logs yet.' : 'No events yet.'}
+          {project.mode === 'event' ? 'No events yet.' : 'No daily logs yet.'}
         </div>
       </div>
     )
@@ -195,7 +209,9 @@ export function TagCoverageView({ projectId }: TagCoverageViewProps) {
   const items = tagIds
     .map((tagId) => {
       const tagName = tags[tagId]?.name || 'Unknown'
-      const presentCount = rows.filter((r) => r.tags[tagId]?.present).length
+      const presentCount = isTagOnly
+        ? rows.filter((r) => (r as { tags: Record<string, boolean> }).tags[tagId]).length
+        : rows.filter((r) => (r as { tags: Record<string, { present: boolean }> }).tags[tagId]?.present).length
       return { tagId, tagName, presentCount }
     })
     // Most mature first: highest presence count (coverage), then name for stability

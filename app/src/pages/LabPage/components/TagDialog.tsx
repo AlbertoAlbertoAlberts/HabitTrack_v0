@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Dialog, DialogBody, DialogFooter } from '../../../components/ui/Dialog'
 import { useAppState, useAppStore } from '../../../domain/store/useAppStore'
-import type { LabTagDef } from '../../../domain/types'
+import type { LabTagCategory, LabTagDef } from '../../../domain/types'
 import styles from './TagDialog.module.css'
 
 interface TagDialogProps {
@@ -37,6 +37,15 @@ export function TagDialog({ open, onClose, projectId, tagId }: TagDialogProps) {
 
   const [name, setName] = useState(existingTag?.name || '')
   const [group, setGroup] = useState(existingTag?.group || '')
+  const [categoryId, setCategoryId] = useState(existingTag?.categoryId || '')
+
+  const categoriesMap = state.lab?.tagCategoriesByProject?.[projectId] ?? {}
+  const categoryOrder = state.lab?.tagCategoryOrderByProject?.[projectId] ?? []
+  const orderedCatSet = new Set(categoryOrder)
+  const categories: LabTagCategory[] = [
+    ...categoryOrder.map((id) => categoriesMap[id]).filter(Boolean),
+    ...Object.values(categoriesMap).filter((c) => !orderedCatSet.has(c.id)),
+  ]
 
   const [intensityEnabled, setIntensityEnabled] = useState(Boolean(existingTag?.intensity?.enabled))
   const [intensityPreset, setIntensityPreset] = useState<IntensityPreset>(() =>
@@ -67,6 +76,7 @@ export function TagDialog({ open, onClose, projectId, tagId }: TagDialogProps) {
     const tagDef: Omit<LabTagDef, 'id' | 'createdAt' | 'updatedAt'> = {
       name: name.trim(),
       group: group.trim() || undefined,
+      categoryId: categoryId || undefined,
       intensity: intensityEnabled
         ? {
             enabled: true,
@@ -90,6 +100,7 @@ export function TagDialog({ open, onClose, projectId, tagId }: TagDialogProps) {
   const handleClose = () => {
     setName(existingTag?.name || '')
     setGroup(existingTag?.group || '')
+    setCategoryId(existingTag?.categoryId || '')
 
     const enabled = Boolean(existingTag?.intensity?.enabled)
     setIntensityEnabled(enabled)
@@ -143,6 +154,27 @@ export function TagDialog({ open, onClose, projectId, tagId }: TagDialogProps) {
               </datalist>
             ) : null}
           </div>
+
+          {categories.length > 0 && (
+            <div className={styles.formGroup}>
+              <label className={styles.label} htmlFor="tag-category">
+                Category (optional)
+              </label>
+              <select
+                id="tag-category"
+                className={styles.input}
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+              >
+                <option value="">(none)</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className={styles.formGroup}>
             <label className={styles.checkboxLabel}>

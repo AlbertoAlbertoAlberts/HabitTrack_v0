@@ -54,8 +54,11 @@ interface ProjectEntryProps {
 
 function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps) {
   const state = useAppState()
-  const existingLog = project.mode === 'daily'
+  const existingLog = (project.mode === 'daily' || project.mode === 'daily-tag-only')
     ? state.lab?.dailyLogsByProject[project.id]?.[date]
+    : null
+  const existingMultiChoiceLog = project.mode === 'daily-multi-choice'
+    ? state.lab?.multiChoiceLogsByProject?.[project.id]?.[date]
     : null
 
   const [outcome, setOutcome] = useState(existingLog?.outcome?.toString() || '')
@@ -83,7 +86,7 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
   const projectTags = Object.values(state.lab?.tagsByProject[project.id] || {})
     .sort((a, b) => a.name.localeCompare(b.name, 'lv'))
   const selectedIntensityTags = projectTags.filter((t) => selectedTags.has(t.id) && t.intensity?.enabled)
-  const hasLog = !!existingLog
+  const hasLog = !!existingLog || !!existingMultiChoiceLog
 
   // When the user opens the project (or the log changes), sync the form state from persisted data.
   // This prevents the UI from showing stale defaults even though the checkmark indicates a saved log.
@@ -232,6 +235,8 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
           <span className={styles.projectName}>
             {project.name}
             {project.mode === 'event' && <span className={styles.modeBadge}>event</span>}
+            {project.mode === 'daily-tag-only' && <span className={styles.modeBadge}>tags</span>}
+            {project.mode === 'daily-multi-choice' && <span className={styles.modeBadge}>choice</span>}
           </span>
           {hasLog && <span className={styles.badge}>✓</span>}
         </button>
@@ -470,6 +475,26 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
           <button className={styles.saveButton} onClick={handleSave}>
             {hasLog ? 'Update' : 'Save'}
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (project.mode === 'daily-tag-only' || project.mode === 'daily-multi-choice') {
+    return (
+      <div className={styles.projectExpanded}>
+        <div className={styles.header}>
+          <span className={styles.projectName}>{project.name}</span>
+          <button className={styles.closeButton} onClick={onToggle}>
+            ✕
+          </button>
+        </div>
+        <div className={styles.form}>
+          <div className={styles.tagEmptyHint}>
+            {project.mode === 'daily-tag-only'
+              ? 'Tag-only logging is available in the LAB page.'
+              : 'Multi-choice logging is available in the LAB page.'}
+          </div>
         </div>
       </div>
     )

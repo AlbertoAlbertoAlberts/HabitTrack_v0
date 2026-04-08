@@ -136,8 +136,8 @@ export function OverviewSelectionList({
           )}
           <div className={styles.list}>
             {labProjects.map((p) => {
-              const badge = p.mode === 'daily' ? 'D' : 'E'
-              const multiKind = p.mode === 'daily' ? 'labDaily' : 'labEvent'
+              const badge = p.mode === 'event' ? 'E' : p.mode === 'daily-tag-only' ? 'T' : p.mode === 'daily-multi-choice' ? 'M' : 'D'
+              const multiKind = p.mode === 'event' ? 'labEvent' : 'labDaily'
               if (isMulti) {
                 const slotIdx = getSlotColorIndex(p.id, multiKind, multiSelections)
                 const selected = slotIdx !== null

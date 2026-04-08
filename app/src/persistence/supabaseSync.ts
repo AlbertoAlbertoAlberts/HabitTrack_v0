@@ -75,6 +75,11 @@ function computeDataRichness(state: AppStateV1): number {
         score += Object.keys(byId || {}).length * 3
       }
     }
+    if (lab.multiChoiceLogsByProject) {
+      for (const byDate of Object.values(lab.multiChoiceLogsByProject)) {
+        score += Object.keys(byDate || {}).length * 3
+      }
+    }
   }
   return score
 }
@@ -134,6 +139,7 @@ type SyncStatus = {
     labProjectsCount: number
     labDailyLogsCount: number
     labEventLogsCount: number
+    labMultiChoiceLogsCount: number
     labTagsCount: number
     labActiveProjectId: string | null
   } | null
@@ -177,6 +183,9 @@ function summarizeAppState(state: AppStateV1): NonNullable<SyncStatus['localStat
   const labEventLogsCount = lab?.eventLogsByProject
     ? Object.values(lab.eventLogsByProject).reduce((sum, byId) => sum + Object.keys(byId || {}).length, 0)
     : 0
+  const labMultiChoiceLogsCount = lab?.multiChoiceLogsByProject
+    ? Object.values(lab.multiChoiceLogsByProject).reduce((sum, byDate) => sum + Object.keys(byDate || {}).length, 0)
+    : 0
   const labTagsCount = lab?.tagsByProject
     ? Object.values(lab.tagsByProject).reduce((sum, byTag) => sum + Object.keys(byTag || {}).length, 0)
     : 0
@@ -195,6 +204,7 @@ function summarizeAppState(state: AppStateV1): NonNullable<SyncStatus['localStat
     labProjectsCount,
     labDailyLogsCount,
     labEventLogsCount,
+    labMultiChoiceLogsCount,
     labTagsCount,
     labActiveProjectId: lab?.ui?.activeProjectId ?? null,
   }

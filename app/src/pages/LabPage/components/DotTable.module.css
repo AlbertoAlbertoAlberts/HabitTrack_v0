@@ -1,0 +1,142 @@
+/* DotTable — 30-day presence grid for tag-only and multi-choice projects */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dateNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.dateNavBtn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  font-family: inherit;
+  transition: background-color var(--t-fast) var(--ease-out);
+  flex: 0 0 auto;
+}
+
+.dateNavBtn:hover {
+  background: var(--btn-bg-hover);
+}
+
+.dateNavLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  min-width: 0;
+}
+
+.scrollWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+
+.grid {
+  display: grid;
+  gap: 0;
+  min-width: max-content;
+}
+
+/* Row label column + 30 day columns */
+.headerCell {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  padding: 0 1px 4px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.headerCellWeekend {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.rowLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  padding: 4px 10px 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+  align-self: center;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #4caf50;
+  box-shadow: 0 0 6px rgba(76, 175, 80, 0.55), 0 0 2px rgba(76, 175, 80, 0.3);
+}
+
+.dotEmpty {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  opacity: 0.35;
+}
+
+.emptyState {
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-bg);
+}
+
+@media (max-width: 560px) {
+  .rowLabel {
+    font-size: 10px;
+    max-width: 100px;
+    padding-right: 6px;
+  }
+
+  .cell {
+    width: 16px;
+    height: 16px;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dotEmpty {
+    width: 5px;
+    height: 5px;
+  }
+
+  .headerCell {
+    font-size: 8px;
+  }
+}

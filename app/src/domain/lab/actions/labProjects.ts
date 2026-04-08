@@ -1,4 +1,4 @@
-import type { AppStateV1, LabProject, LabProjectId, LabProjectConfig } from '../../types'
+import type { AppStateV1, LabProject, LabProjectId, LabProjectConfig, LabProjectMode } from '../../types'
 import { generateId } from '../../utils/generateId'
 
 /**
@@ -7,7 +7,7 @@ import { generateId } from '../../utils/generateId'
 export function addLabProject(
   state: AppStateV1,
   name: string,
-  mode: 'daily' | 'event',
+  mode: LabProjectMode,
   config: LabProjectConfig
 ): AppStateV1 {
   const now = new Date().toISOString()
@@ -22,37 +22,47 @@ export function addLabProject(
     config,
   }
 
+  const lab = state.lab!
+
   return {
     ...state,
     lab: {
-      ...state.lab!,
+      ...lab,
       projects: {
-        ...state.lab!.projects,
+        ...lab.projects,
         [id]: project,
       },
-      projectOrder: [...state.lab!.projectOrder, id],
+      projectOrder: [...lab.projectOrder, id],
       tagsByProject: {
-        ...state.lab!.tagsByProject,
+        ...lab.tagsByProject,
         [id]: {},
       },
       tagOrderByProject: {
-        ...state.lab!.tagOrderByProject,
+        ...lab.tagOrderByProject,
         [id]: [],
       },
       dailyLogsByProject: {
-        ...state.lab!.dailyLogsByProject,
+        ...lab.dailyLogsByProject,
         [id]: {},
       },
       eventLogsByProject: {
-        ...state.lab!.eventLogsByProject,
+        ...lab.eventLogsByProject,
         [id]: {},
+      },
+      // Initialize multi-choice log store for multi-choice projects
+      multiChoiceLogsByProject: {
+        ...lab.multiChoiceLogsByProject,
+        ...(mode === 'daily-multi-choice' ? { [id]: {} } : {}),
       },
     },
   }
 }
 
 /**
- * Update an existing LAB project
+ * Update an existing LAB project.
+ * For multi-choice projects: archiving options (setting archived: true) is preferred
+ * over deletion when data has been logged with that option.
+ * Option labels must be non-empty and unique (case-insensitive).
  */
 export function updateLabProject(
   state: AppStateV1,
@@ -62,6 +72,47 @@ export function updateLabProject(
   const project = state.lab!.projects[projectId]
   if (!project) {
     return state
+  }
+
+  // Validate multi-choice options if updating config
+  if (updates.config && updates.config.kind === 'daily-multi-choice') {
+    const opts = updates.config.options
+    const activeOpts = opts.filter(o => !o.archived)
+    // Labels must be non-empty
+    if (activeOpts.some(o => !o.label.trim())) {
+      console.warn('Multi-choice option labels must be non-empty')
+      return state
+    }
+    // Labels must be unique (case-insensitive) among active options
+    const labels = new Set<string>()
+    for (const o of activeOpts) {
+      const norm = o.label.trim().toLowerCase()
+      if (labels.has(norm)) {
+        console.warn(`Duplicate multi-choice option label: "${o.label}"`)
+        return state
+      }
+      labels.add(norm)
+    }
+  }
+
+  // Validate additional outcomes if updating a daily config
+  if (updates.config && updates.config.kind === 'daily' && updates.config.additionalOutcomes) {
+    const outcomes = updates.config.additionalOutcomes
+    // Names must be non-empty
+    if (outcomes.some(o => !o.name.trim())) {
+      console.warn('Additional outcome names must be non-empty')
+      return state
+    }
+    // Names must be unique (case-insensitive)
+    const names = new Set<string>()
+    for (const o of outcomes) {
+      const norm = o.name.trim().toLowerCase()
+      if (names.has(norm)) {
+        console.warn(`Duplicate additional outcome name: "${o.name}"`)
+        return state
+      }
+      names.add(norm)
+    }
   }
 
   const now = new Date().toISOString()
@@ -138,7 +189,7 @@ export function unarchiveLabProject(state: AppStateV1, projectId: LabProjectId):
 
 /**
  * Delete a LAB project permanently (hard delete)
- * WARNING: This removes all associated data (tags, logs, findings)
+ * WARNING: This removes all associated data (tags, logs, findings, categories, absence markers)
  */
 export function deleteLabProject(state: AppStateV1, projectId: LabProjectId): AppStateV1 {
   const project = state.lab!.projects[projectId]
@@ -151,16 +202,45 @@ export function deleteLabProject(state: AppStateV1, projectId: LabProjectId): Ap
   const { [projectId]: _removedTagOrder, ...remainingTagOrder } = state.lab!.tagOrderByProject
   const { [projectId]: _removedDailyLogs, ...remainingDailyLogs } = state.lab!.dailyLogsByProject
   const { [projectId]: _removedEventLogs, ...remainingEventLogs } = state.lab!.eventLogsByProject
+  const { [projectId]: _removedMultiChoiceLogs, ...remainingMultiChoiceLogs } = state.lab!.multiChoiceLogsByProject
   void _removed
   void _removedTags
   void _removedTagOrder
   void _removedDailyLogs
   void _removedEventLogs
+  void _removedMultiChoiceLogs
 
   const remainingFindings = state.lab!.findingsCache
     ? (() => {
         const { [projectId]: _removedFindings, ...rest } = state.lab!.findingsCache
         void _removedFindings
+        return rest
+      })()
+    : undefined
+
+  // Clean up absence markers
+  const remainingAbsenceMarkers = state.lab!.absenceMarkersByProject
+    ? (() => {
+        const { [projectId]: _removedAbsence, ...rest } = state.lab!.absenceMarkersByProject!
+        void _removedAbsence
+        return rest
+      })()
+    : undefined
+
+  // Clean up tag categories
+  const remainingTagCategories = state.lab!.tagCategoriesByProject
+    ? (() => {
+        const { [projectId]: _removedCats, ...rest } = state.lab!.tagCategoriesByProject!
+        void _removedCats
+        return rest
+      })()
+    : undefined
+
+  // Clean up tag category order
+  const remainingTagCategoryOrder = state.lab!.tagCategoryOrderByProject
+    ? (() => {
+        const { [projectId]: _removedCatOrder, ...rest } = state.lab!.tagCategoryOrderByProject!
+        void _removedCatOrder
         return rest
       })()
     : undefined
@@ -175,7 +255,11 @@ export function deleteLabProject(state: AppStateV1, projectId: LabProjectId): Ap
       tagOrderByProject: remainingTagOrder,
       dailyLogsByProject: remainingDailyLogs,
       eventLogsByProject: remainingEventLogs,
+      multiChoiceLogsByProject: remainingMultiChoiceLogs,
       findingsCache: remainingFindings,
+      absenceMarkersByProject: remainingAbsenceMarkers,
+      tagCategoriesByProject: remainingTagCategories,
+      tagCategoryOrderByProject: remainingTagCategoryOrder,
     },
   }
 }

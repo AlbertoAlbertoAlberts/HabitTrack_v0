@@ -10,11 +10,12 @@ interface LabMenuProps {
   onToggleEdit: () => void
   onToggleDelete: () => void
   onToggleReorder: () => void
+  onManageCategories?: () => void
   onClose: () => void
 }
 
 export const LabMenu = forwardRef<HTMLDetailsElement, LabMenuProps>(
-  ({ onAddNew, onToggleEdit, onToggleDelete, onToggleReorder, onClose }, ref) => {
+  ({ context, onAddNew, onToggleEdit, onToggleDelete, onToggleReorder, onManageCategories, onClose }, ref) => {
     return (
       <details className={styles.menu} ref={ref}>
         <summary className={styles.menuButton} aria-label="Atvērt izvēlni" title="Izvēlne">
@@ -53,6 +54,22 @@ export const LabMenu = forwardRef<HTMLDetailsElement, LabMenuProps>(
           >
             Rediģēt
           </button>
+
+          {context === 'tags' && onManageCategories && (
+            <>
+              <hr className={styles.menuDivider} />
+              <button
+                type="button"
+                className={styles.menuItem}
+                onClick={() => {
+                  onClose()
+                  onManageCategories()
+                }}
+              >
+                Kategorijas
+              </button>
+            </>
+          )}
           
           <hr className={styles.menuDivider} />
 

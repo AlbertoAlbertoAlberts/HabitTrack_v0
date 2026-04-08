@@ -1,15 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 import sharedStyles from '../../components/ui/shared.module.css'
 import { useAppState, useAppStore } from '../../domain/store/useAppStore'
-import type { LabTagDef } from '../../domain/types'
+import type { LabTagCategory, LabTagDef } from '../../domain/types'
 import { formatTagNameDisplay } from '../../domain/lab/utils/tagDisplay'
 import { ProjectDialog } from './components/ProjectDialog'
 import { TagDialog } from './components/TagDialog'
+import { TagCategoryDialog } from './components/TagCategoryDialog'
 import { EventLogList } from './components/EventLogList'
+import { DailyLogForm } from './components/DailyLogForm'
 import { DatasetDebugView } from './components/DatasetDebugView'
 import { FindingsView } from './components/FindingsView'
+import { TagOnlyFindingsView } from './components/TagOnlyFindingsView'
+import { MultiChoiceFindingsView } from './components/MultiChoiceFindingsView'
 import { LabErrorBoundary } from './components/ErrorBoundary'
 import { LabMenu } from './components/LabMenu'
+import { ExportCsvDialog } from './components/ExportCsvDialog'
 import styles from './LabPage.module.css'
 
 export function LabPage() {
@@ -30,6 +35,9 @@ export function LabPage() {
   const [deleteConfirmProjectId, setDeleteConfirmProjectId] = useState<string | null>(null)
   const [deleteConfirmTagId, setDeleteConfirmTagId] = useState<string | null>(null)
   const [tagsNotice, setTagsNotice] = useState<string | null>(null)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set())
   const projectMenuRef = useRef<HTMLDetailsElement>(null)
   const tagMenuRef = useRef<HTMLDetailsElement>(null)
 
@@ -87,6 +95,59 @@ export function LabPage() {
           .filter(Boolean)
           .sort((a, b) => a.name.localeCompare(b.name, 'lv')) || [])
       : []
+
+  // Group tags by category for display
+  const categoriesMap = activeProjectId ? (lab.tagCategoriesByProject?.[activeProjectId] ?? {}) : {}
+  const categoryOrder = activeProjectId ? (lab.tagCategoryOrderByProject?.[activeProjectId] ?? []) : []
+  const orderedCatSet = new Set(categoryOrder)
+  const allCategories: LabTagCategory[] = [
+    ...categoryOrder.map((id) => categoriesMap[id]).filter(Boolean),
+    ...Object.values(categoriesMap).filter((c) => !orderedCatSet.has(c.id)),
+  ]
+  const hasCategories = allCategories.length > 0
+
+  const tagsByCategory: { category: LabTagCategory | null; tags: LabTagDef[] }[] = (() => {
+    if (!hasCategories) return [{ category: null, tags: activeTags }]
+
+    const groups: { category: LabTagCategory | null; tags: LabTagDef[] }[] = []
+    const catTagMap = new Map<string, LabTagDef[]>()
+    const uncategorized: LabTagDef[] = []
+
+    for (const tag of activeTags) {
+      if (tag.categoryId && categoriesMap[tag.categoryId]) {
+        const list = catTagMap.get(tag.categoryId) ?? []
+        list.push(tag)
+        catTagMap.set(tag.categoryId, list)
+      } else {
+        uncategorized.push(tag)
+      }
+    }
+
+    for (const cat of allCategories) {
+      const tags = catTagMap.get(cat.id) ?? []
+      if (tags.length > 0) {
+        groups.push({ category: cat, tags })
+      }
+    }
+
+    if (uncategorized.length > 0) {
+      groups.push({ category: null, tags: uncategorized })
+    }
+
+    return groups
+  })()
+
+  const toggleCategoryCollapse = (categoryId: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev)
+      if (next.has(categoryId)) {
+        next.delete(categoryId)
+      } else {
+        next.add(categoryId)
+      }
+      return next
+    })
+  }
 
   const handleAddProject = () => {
     setEditingProjectId(null)
@@ -231,11 +292,22 @@ export function LabPage() {
                   >
                     <div className={styles.projectHeader}>
                       <div className={styles.projectName}>{project.name}</div>
-                      <div className={styles.projectBadge}>{project.mode}</div>
+                      <div className={styles.projectBadge}>
+                        {project.mode === 'daily' && 'Daily – Outcome'}
+                        {project.mode === 'daily-tag-only' && 'Daily – Tags'}
+                        {project.mode === 'daily-multi-choice' && 'Daily – Multi-choice'}
+                        {project.mode === 'event' && 'Event'}
+                      </div>
                     </div>
                     <div className={styles.projectMeta}>
                       {project.config.kind === 'daily' && (
                         <span>{project.config.outcome.name} ({project.config.outcome.scale.min}–{project.config.outcome.scale.max})</span>
+                      )}
+                      {project.config.kind === 'daily-tag-only' && (
+                        <span>Tag-only tracking</span>
+                      )}
+                      {project.config.kind === 'daily-multi-choice' && (
+                        <span>{project.config.selectionMode === 'single' ? 'Single choice' : 'Multiple choices'} · {project.config.options.filter(o => !o.archived).length} options</span>
                       )}
                       {project.config.kind === 'event' && <span>{project.config.event.name}</span>}
                     </div>
@@ -271,28 +343,88 @@ export function LabPage() {
         </div>
 
         <div className={styles.analysisArea}>
-          {activeProject && (
+          {activeProject && (activeProject.mode === 'daily' || activeProject.mode === 'event') && (
             <LabErrorBoundary>
               <section className={sharedStyles.panel}>
-                <h2 className={styles.subtitle}>Analysis for {activeProject.name}</h2>
+                <div className={styles.headerRow}>
+                  <h2 className={styles.subtitle}>Analysis for {activeProject.name}</h2>
+                  <button
+                    type="button"
+                    className={styles.btnExport}
+                    onClick={() => setExportDialogOpen(true)}
+                  >
+                    Download CSV
+                  </button>
+                </div>
                 <FindingsView projectId={activeProjectId!} onEditProject={handleEditProject} />
+              </section>
+            </LabErrorBoundary>
+          )}
+
+          {activeProject && activeProject.mode === 'daily-tag-only' && (
+            <LabErrorBoundary>
+              <section className={sharedStyles.panel}>
+                <div className={styles.headerRow}>
+                  <h2 className={styles.subtitle}>Analysis for {activeProject.name}</h2>
+                  <button
+                    type="button"
+                    className={styles.btnExport}
+                    onClick={() => setExportDialogOpen(true)}
+                  >
+                    Download CSV
+                  </button>
+                </div>
+                <TagOnlyFindingsView projectId={activeProjectId!} />
+              </section>
+            </LabErrorBoundary>
+          )}
+
+          {activeProject && activeProject.mode === 'daily-multi-choice' && (
+            <LabErrorBoundary>
+              <section className={sharedStyles.panel}>
+                <div className={styles.headerRow}>
+                  <h2 className={styles.subtitle}>Analysis for {activeProject.name}</h2>
+                  <button
+                    type="button"
+                    className={styles.btnExport}
+                    onClick={() => setExportDialogOpen(true)}
+                  >
+                    Download CSV
+                  </button>
+                </div>
+                <MultiChoiceFindingsView projectId={activeProjectId!} />
               </section>
             </LabErrorBoundary>
           )}
 
           {!activeProject && (
             <section className={sharedStyles.panel}>
-              <div className={styles.emptyState}>
-                <div className={styles.emptyTitle}>Select a project</div>
-                <div className={styles.emptyBody}>
-                  Choose a project from the left to view analysis and manage tags.
+              <div className={styles.headerRow}>
+                <div className={styles.emptyState}>
+                  <div className={styles.emptyTitle}>Select a project</div>
+                  <div className={styles.emptyBody}>
+                    Choose a project from the left to view analysis and manage tags.
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  className={styles.btnExport}
+                  onClick={() => setExportDialogOpen(true)}
+                >
+                  Download CSV
+                </button>
               </div>
             </section>
           )}
         </div>
 
-        {activeProject && activeProject.config.kind === 'daily' && activeProject.config.tagsEnabled === false ? (
+        {activeProject && activeProject.config.kind === 'daily-multi-choice' ? (
+          <div className={styles.tagsArea}>
+            <section className={sharedStyles.panel}>
+              <DailyLogForm projectId={activeProjectId!} />
+            </section>
+          </div>
+        ) : activeProject && activeProject.config.kind === 'daily' && activeProject.config.tagsEnabled === false ? (
           <div className={styles.tagsArea}>
             <section className={sharedStyles.panel}>
               <div className={styles.headerRow}>
@@ -301,6 +433,7 @@ export function LabPage() {
               <div className={styles.emptyState}>
                 <div className={styles.emptyBody}>Tags are disabled for this project.</div>
               </div>
+              <DailyLogForm projectId={activeProjectId!} />
             </section>
           </div>
         ) : activeProject && (
@@ -331,6 +464,7 @@ export function LabPage() {
                     onToggleEdit={() => setIsEditModeTags(!isEditModeTags)}
                     onToggleDelete={() => setIsDeleteModeTags(!isDeleteModeTags)}
                     onToggleReorder={() => setIsReorderingTags(!isReorderingTags)}
+                    onManageCategories={() => setCategoryDialogOpen(true)}
                     onClose={() => { if (tagMenuRef.current) tagMenuRef.current.open = false }}
                   />
                 )}
@@ -355,84 +489,115 @@ export function LabPage() {
                   <div className={styles.emptyBody}>Add tags to track different factors for this project.</div>
                 </div>
               ) : (
-                <div className={styles.tagList}>
-                  {activeTags.map((tag, index) => (
-                    <div
-                      key={tag.id}
-                      className={[
-                        styles.tagCard,
-                        isReorderingTags && styles.tagCardDraggable,
-                        dragOverTagId === tag.id && styles.tagCardDragOver
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                      draggable={isReorderingTags}
-                      onDragStart={(e) => {
-                        if (!isReorderingTags) return
-                        e.dataTransfer.effectAllowed = 'move'
-                        e.dataTransfer.setData('text/plain', JSON.stringify({ index, tagId: tag.id }))
-                      }}
-                      onDragOver={(e) => {
-                        if (!isReorderingTags) return
-                        e.preventDefault()
-                        setDragOverTagId(tag.id)
-                      }}
-                      onDragLeave={() => {
-                        if (!isReorderingTags) return
-                        setDragOverTagId(null)
-                      }}
-                      onDrop={(e) => {
-                        if (!isReorderingTags) return
-                        e.preventDefault()
-                        setDragOverTagId(null)
-                        const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-                        if (data.index !== index && activeProjectId) {
-                          const reordered = [...activeTags]
-                          const [moved] = reordered.splice(data.index, 1)
-                          reordered.splice(index, 0, moved)
-                          store.actions.reorderLabTags(activeProjectId, reordered.map((t) => t.id))
-                        }
-                      }}
-                    >
-                      <div className={styles.tagHeader}>
-                        <div className={styles.tagName}>{formatTagNameDisplay(tag.name)}</div>
-                        {tag.group && <div className={styles.tagGroup}>{tag.group}</div>}
+                <>
+                  {tagsByCategory.map((group) => {
+                    const catKey = group.category?.id ?? '__uncategorized__'
+                    const isCollapsed = collapsedCategories.has(catKey)
+
+                    return (
+                      <div key={catKey} className={styles.categorySection}>
+                        {hasCategories && (
+                          <button
+                            type="button"
+                            className={styles.categoryHeader}
+                            onClick={() => toggleCategoryCollapse(catKey)}
+                            aria-expanded={!isCollapsed}
+                          >
+                            <span className={styles.categoryArrow}>{isCollapsed ? '▶' : '▼'}</span>
+                            <span className={styles.categoryLabel}>
+                              {group.category?.name ?? 'Uncategorized'}
+                            </span>
+                            <span className={styles.categoryCount}>{group.tags.length}</span>
+                          </button>
+                        )}
+
+                        {!isCollapsed && (
+                          <div className={styles.tagList}>
+                            {group.tags.map((tag) => {
+                              const globalIndex = activeTags.indexOf(tag)
+                              return (
+                              <div
+                                key={tag.id}
+                                className={[
+                                  styles.tagCard,
+                                  isReorderingTags && styles.tagCardDraggable,
+                                  dragOverTagId === tag.id && styles.tagCardDragOver
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ')}
+                                draggable={isReorderingTags}
+                                onDragStart={(e) => {
+                                  if (!isReorderingTags) return
+                                  e.dataTransfer.effectAllowed = 'move'
+                                  e.dataTransfer.setData('text/plain', JSON.stringify({ index: globalIndex, tagId: tag.id }))
+                                }}
+                                onDragOver={(e) => {
+                                  if (!isReorderingTags) return
+                                  e.preventDefault()
+                                  setDragOverTagId(tag.id)
+                                }}
+                                onDragLeave={() => {
+                                  if (!isReorderingTags) return
+                                  setDragOverTagId(null)
+                                }}
+                                onDrop={(e) => {
+                                  if (!isReorderingTags) return
+                                  e.preventDefault()
+                                  setDragOverTagId(null)
+                                  const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+                                  if (data.index !== globalIndex && activeProjectId) {
+                                    const reordered = [...activeTags]
+                                    const [moved] = reordered.splice(data.index, 1)
+                                    reordered.splice(globalIndex, 0, moved)
+                                    store.actions.reorderLabTags(activeProjectId, reordered.map((t) => t.id))
+                                  }
+                                }}
+                              >
+                                <div className={styles.tagHeader}>
+                                  <div className={styles.tagName}>{formatTagNameDisplay(tag.name)}</div>
+                                  {tag.group && <div className={styles.tagGroup}>{tag.group}</div>}
+                                </div>
+                                {tag.intensity?.enabled && (
+                                  <div className={styles.tagMeta}>
+                                    Intensity: {tag.intensity.min}–{tag.intensity.max}
+                                    {tag.intensity.unitLabel && ` ${tag.intensity.unitLabel}`}
+                                  </div>
+                                )}
+                                {isEditModeTags && (
+                                  <button
+                                    className={styles.btnIconOverlay}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setTagsNotice(null)
+                                      handleEditTag(tag.id)
+                                    }}
+                                    aria-label="Edit"
+                                  >
+                                    ✎
+                                  </button>
+                                )}
+                                {isDeleteModeTags && (
+                                  <button
+                                    className={styles.btnDelete}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setTagsNotice(null)
+                                      handleDeleteTag(tag.id)
+                                    }}
+                                    aria-label="Delete"
+                                  >
+                                    🗑️
+                                  </button>
+                                )}
+                              </div>
+                              )
+                            })}
+                          </div>
+                        )}
                       </div>
-                      {tag.intensity?.enabled && (
-                        <div className={styles.tagMeta}>
-                          Intensity: {tag.intensity.min}–{tag.intensity.max}
-                          {tag.intensity.unitLabel && ` ${tag.intensity.unitLabel}`}
-                        </div>
-                      )}
-                      {isEditModeTags && (
-                        <button
-                          className={styles.btnIconOverlay}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setTagsNotice(null)
-                            handleEditTag(tag.id)
-                          }}
-                          aria-label="Edit"
-                        >
-                          ✎
-                        </button>
-                      )}
-                      {isDeleteModeTags && (
-                        <button
-                          className={styles.btnDelete}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setTagsNotice(null)
-                            handleDeleteTag(tag.id)
-                          }}
-                          aria-label="Delete"
-                        >
-                          🗑️
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    )
+                  })}
+                </>
               )}
 
               {activeProject.mode === 'event' && (
@@ -441,12 +606,21 @@ export function LabPage() {
                   onEditProject={() => handleEditProject(activeProjectId!)}
                 />
               )}
+
+              {(activeProject.mode === 'daily' || activeProject.mode === 'daily-tag-only') && (
+                <DailyLogForm projectId={activeProjectId!} />
+              )}
             </section>
           </div>
         )}
       </div>
 
       <DatasetDebugView />
+
+      <ExportCsvDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+      />
 
       <ProjectDialog
         open={projectDialogOpen}
@@ -461,6 +635,14 @@ export function LabPage() {
           onClose={() => setTagDialogOpen(false)}
           projectId={activeProjectId}
           tagId={editingTagId}
+        />
+      )}
+
+      {activeProjectId && categoryDialogOpen && (
+        <TagCategoryDialog
+          open={categoryDialogOpen}
+          onClose={() => setCategoryDialogOpen(false)}
+          projectId={activeProjectId}
         />
       )}
 

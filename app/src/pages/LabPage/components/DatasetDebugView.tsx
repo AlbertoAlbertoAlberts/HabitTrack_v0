@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useAppState } from '../../../domain/store/useAppStore'
 import { appStore } from '../../../domain/store/appStore'
-import type { DailyDataset, EventDataset } from '../../../domain/lab/analysis/datasetBuilders'
-import { buildDailyDataset, buildEventDailyFrequency, buildEventDataset } from '../../../domain/lab/analysis/datasetBuilders'
+import type { DailyDataset, EventDataset, TagOnlyDataset, MultiChoiceDataset } from '../../../domain/lab/analysis/datasetBuilders'
+import { buildDailyDataset, buildEventDailyFrequency, buildEventDataset, buildTagOnlyDataset, buildMultiChoiceDataset } from '../../../domain/lab/analysis/datasetBuilders'
 import { importMorningDummyMoreTagsIfNeeded } from '../../../domain/lab/seed/morningDummyMoreTagsSeed'
 import { importBloatingDummyIfNeeded } from '../../../domain/lab/seed/bloatingDummySeed'
+import { importTagOnlyDummyIfNeeded } from '../../../domain/lab/seed/tagOnlyDummySeed'
+import { importMultiChoiceDummyIfNeeded } from '../../../domain/lab/seed/multiChoiceDummySeed'
 import sharedStyles from '../../../components/ui/shared.module.css'
 import styles from './DatasetDebugView.module.css'
 
@@ -29,19 +31,28 @@ export function DatasetDebugView() {
 
   const selectedProject = selectedProjectId ? state.lab?.projects[selectedProjectId] : null
   
-  let dataset: DailyDataset | EventDataset | null = null
+  let dataset: DailyDataset | EventDataset | TagOnlyDataset | MultiChoiceDataset | null = null
   let eventFrequencyStats: { distinctDays: number; maxEventsPerDay: number } | null = null
   if (selectedProject) {
-    if (selectedProject.mode === 'daily') {
-      dataset = buildDailyDataset(state, selectedProjectId)
-    } else {
-      dataset = buildEventDataset(state, selectedProjectId)
-
-      const daily = buildEventDailyFrequency(state, selectedProjectId)
-      const maxEventsPerDay = daily.reduce((max, r) => Math.max(max, r.count), 0)
-      eventFrequencyStats = {
-        distinctDays: daily.length,
-        maxEventsPerDay,
+    switch (selectedProject.mode) {
+      case 'daily':
+        dataset = buildDailyDataset(state, selectedProjectId)
+        break
+      case 'daily-tag-only':
+        dataset = buildTagOnlyDataset(state, selectedProjectId)
+        break
+      case 'daily-multi-choice':
+        dataset = buildMultiChoiceDataset(state, selectedProjectId)
+        break
+      case 'event': {
+        dataset = buildEventDataset(state, selectedProjectId)
+        const daily = buildEventDailyFrequency(state, selectedProjectId)
+        const maxEventsPerDay = daily.reduce((max, r) => Math.max(max, r.count), 0)
+        eventFrequencyStats = {
+          distinctDays: daily.length,
+          maxEventsPerDay,
+        }
+        break
       }
     }
   }
@@ -77,6 +88,32 @@ export function DatasetDebugView() {
                 }}
               >
                 Import bloating_dummy
+              </button>
+
+              <button
+                type="button"
+                className={[sharedStyles.smallBtn, styles.controlBtn].join(' ')}
+                onClick={() => {
+                  importTagOnlyDummyIfNeeded()
+                  const next = appStore.getState()
+                  const project = Object.values(next.lab?.projects || {}).find((p) => p.name === 'Morning_symptoms_dummy')
+                  if (project) setSelectedProjectId(project.id)
+                }}
+              >
+                Import tag-only dummy
+              </button>
+
+              <button
+                type="button"
+                className={[sharedStyles.smallBtn, styles.controlBtn].join(' ')}
+                onClick={() => {
+                  importMultiChoiceDummyIfNeeded()
+                  const next = appStore.getState()
+                  const project = Object.values(next.lab?.projects || {}).find((p) => p.name === 'Day_type_dummy')
+                  if (project) setSelectedProjectId(project.id)
+                }}
+              >
+                Import multi-choice dummy
               </button>
             </>
           )}

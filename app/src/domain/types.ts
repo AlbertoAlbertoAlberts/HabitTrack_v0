@@ -15,7 +15,7 @@ export type LabLogId = string
 export type ISODate = string // YYYY-MM-DD (local timezone)
 export type ISOTimestamp = string // ISO-8601 timestamp
 
-export type LabProjectMode = 'daily' | 'event'
+export type LabProjectMode = 'daily' | 'daily-tag-only' | 'daily-multi-choice' | 'event'
 
 export interface LabProject {
   id: LabProjectId
@@ -27,7 +27,17 @@ export interface LabProject {
   archived?: boolean
 }
 
-export type LabProjectConfig = LabDailyProjectConfig | LabEventProjectConfig
+export type LabProjectConfig =
+  | LabDailyProjectConfig
+  | LabEventProjectConfig
+  | LabDailyTagOnlyProjectConfig
+  | LabDailyMultiChoiceProjectConfig
+
+export interface LabOutcomeDef {
+  id: string               // unique within project, e.g. 'outcome_2'
+  name: string
+  // scale inherited from project's primary outcome.scale
+}
 
 export interface LabDailyProjectConfig {
   kind: 'daily'
@@ -41,6 +51,7 @@ export interface LabDailyProjectConfig {
     }
     required: boolean
   }
+  additionalOutcomes?: LabOutcomeDef[]  // extra outcomes sharing same scale
   exposureLabel?: string
   alignment: {
     exposureWindow: 'sameDay' | 'previousEvening'
@@ -51,6 +62,33 @@ export interface LabDailyProjectConfig {
     requireAtLeastOneTag: boolean
   }
   allowExplicitNoTags?: boolean
+}
+
+// --- Tag-only daily project ---
+export interface LabDailyTagOnlyProjectConfig {
+  kind: 'daily-tag-only'
+  tagsEnabled: true               // always true; exists for consistency
+  completion: {
+    requireAtLeastOneTag: boolean  // whether day is "complete" only with ≥1 tag
+  }
+  allowExplicitNoTags?: boolean
+}
+
+// --- Multiple-choice daily project ---
+export interface LabMultiChoiceOption {
+  id: string               // stable ID (generateId)
+  label: string            // display text
+  createdAt: ISOTimestamp
+  archived?: boolean       // soft-delete when removed after data exists
+}
+
+export interface LabDailyMultiChoiceProjectConfig {
+  kind: 'daily-multi-choice'
+  selectionMode: 'single' | 'multiple'
+  options: LabMultiChoiceOption[]
+  completion: {
+    requireAtLeastOneChoice: boolean
+  }
 }
 
 export interface LabEventProjectConfig {
@@ -72,6 +110,14 @@ export interface LabEventProjectConfig {
   }
 }
 
+export interface LabTagCategory {
+  id: string
+  name: string
+  sortIndex: number
+  createdAt: ISOTimestamp
+  updatedAt: ISOTimestamp
+}
+
 export interface LabTagDef {
   id: LabTagId
   name: string
@@ -85,6 +131,7 @@ export interface LabTagDef {
     unitLabel?: string
   }
   group?: string
+  categoryId?: string         // reference to LabTagCategory.id
 }
 
 export interface LabTagUse {
@@ -96,9 +143,17 @@ export interface LabDailyLog {
   date: ISODate
   updatedAt: ISOTimestamp
   outcome?: number
+  additionalOutcomes?: Record<string, number>  // outcomeId → value
   tags: LabTagUse[]
   note?: string
   noTags?: boolean
+}
+
+export interface LabMultiChoiceLog {
+  date: ISODate
+  updatedAt: ISOTimestamp
+  selectedOptionIds: string[]
+  note?: string
 }
 
 export interface LabDailyAbsenceMarker {
@@ -165,7 +220,10 @@ export interface LabState {
   tagOrderByProject: Record<LabProjectId, LabTagId[]>
   dailyLogsByProject: Record<LabProjectId, Record<ISODate, LabDailyLog>>
   eventLogsByProject: Record<LabProjectId, Record<LabLogId, LabEventLog>>
+  multiChoiceLogsByProject: Record<LabProjectId, Record<ISODate, LabMultiChoiceLog>>
   absenceMarkersByProject?: Record<LabProjectId, Record<ISODate, LabDailyAbsenceMarker>>
+  tagCategoriesByProject?: Record<LabProjectId, Record<string, LabTagCategory>>
+  tagCategoryOrderByProject?: Record<LabProjectId, string[]>
   findingsCache?: Record<LabProjectId, FindingsCache> // Cache for analysis findings
   ui?: {
     activeProjectId?: LabProjectId

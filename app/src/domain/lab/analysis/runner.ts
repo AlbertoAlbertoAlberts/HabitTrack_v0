@@ -1,6 +1,16 @@
 import type { AppStateV1 } from '../../types'
-import { buildDailyDataset, buildEventDataset, buildEventGroupDataset } from './datasetBuilders'
+import {
+  buildDailyDataset,
+  buildDailyDatasetForOutcome,
+  buildEventDataset,
+  buildEventGroupDataset,
+  buildMultiChoiceDataset,
+  buildTagOnlyDataset,
+} from './datasetBuilders'
 import { v1AllMethods } from './methods'
+import { tagFrequency, tagCoOccurrence } from './tagOnlyMethods'
+import { choiceFrequency } from './multiChoiceMethods'
+import { crossOutcomeCorrelation, perOutcomeTagCorrelation } from './multiOutcomeMethods'
 import type { LabFinding } from './types'
 import { generateFingerprint, getCachedFindings, setCachedFindings, type FindingsCache } from './cache'
 
@@ -48,9 +58,15 @@ function applyGuardrails(findings: LabFinding[], minSampleSize: number = 6): Lab
 
     // Filter very small effects (likely noise)
     // Frequency-style findings use an effect in [0..1] (rate). Small rates can still be useful.
-    const isFrequency = finding.method === 'event-tag-frequency' || finding.method === 'event-group-frequency'
+    const isFrequency =
+      finding.method === 'event-tag-frequency' ||
+      finding.method === 'event-group-frequency' ||
+      finding.method === 'tag-frequency' ||
+      finding.method === 'choice-frequency'
     const isOccurrence = finding.method === 'event-tag-occurrence-effect' || finding.method === 'event-group-occurrence-effect'
-    if (!isFrequency && !isOccurrence && Math.abs(finding.effect) < 0.1) return false
+    const isCoOccurrence = finding.method === 'tag-co-occurrence'
+    const isCrossOutcome = finding.method === 'cross-outcome-correlation'
+    if (!isFrequency && !isOccurrence && !isCoOccurrence && !isCrossOutcome && Math.abs(finding.effect) < 0.1) return false
 
     return true
   })
@@ -160,6 +176,28 @@ export function runAnalysisForProject(
       }
     }
 
+    // Multi-outcome analysis (MO1 + MO2)
+    if (project.config.kind === 'daily' && project.config.additionalOutcomes && project.config.additionalOutcomes.length > 0) {
+      const additionalOutcomeIds = project.config.additionalOutcomes.map((o) => o.id)
+
+      // Build per-outcome datasets
+      const outcomeDatasets: Record<string, ReturnType<typeof buildDailyDatasetForOutcome>> = {}
+      for (const outcomeId of additionalOutcomeIds) {
+        outcomeDatasets[outcomeId] = buildDailyDatasetForOutcome(state, projectId, outcomeId)
+      }
+
+      // MO1: Cross-outcome correlation
+      const crossFindings = crossOutcomeCorrelation(projectId, additionalOutcomeIds, outcomeDatasets, dataset)
+      findings.push(...crossFindings)
+
+      // MO2: Per-outcome tag correlation (run existing daily methods per additional outcome)
+      for (const outcomeId of additionalOutcomeIds) {
+        const outcomeDataset = outcomeDatasets[outcomeId]
+        const perOutcomeFindings = perOutcomeTagCorrelation(outcomeId, outcomeDataset, projectId)
+        findings.push(...perOutcomeFindings)
+      }
+    }
+
     // Filter rare tags
     const nonRareFindings = findings.filter((f) => !rareTagIds.has(f.tagId))
 
@@ -174,6 +212,41 @@ export function runAnalysisForProject(
       finalFindings
     )
 
+    return { findings: finalFindings, updatedCache, cacheHit: false }
+  }
+
+  // Tag-only projects
+  if (project.mode === 'daily-tag-only') {
+    const dataset = buildTagOnlyDataset(state, projectId)
+
+    if (dataset.rows.length < 5) {
+      const updatedCache = setCachedFindings(state.lab?.findingsCache, projectId, fingerprint, [])
+      return { findings: [], updatedCache, cacheHit: false }
+    }
+
+    const findings: LabFinding[] = []
+    findings.push(...tagFrequency(dataset, projectId))
+    findings.push(...tagCoOccurrence(dataset, projectId))
+
+    const finalFindings = applyGuardrails(findings)
+    const updatedCache = setCachedFindings(state.lab?.findingsCache, projectId, fingerprint, finalFindings)
+    return { findings: finalFindings, updatedCache, cacheHit: false }
+  }
+
+  // Multi-choice projects
+  if (project.mode === 'daily-multi-choice') {
+    const dataset = buildMultiChoiceDataset(state, projectId)
+
+    if (dataset.rows.length < 5) {
+      const updatedCache = setCachedFindings(state.lab?.findingsCache, projectId, fingerprint, [])
+      return { findings: [], updatedCache, cacheHit: false }
+    }
+
+    const findings: LabFinding[] = []
+    findings.push(...choiceFrequency(dataset, projectId))
+
+    const finalFindings = applyGuardrails(findings)
+    const updatedCache = setCachedFindings(state.lab?.findingsCache, projectId, fingerprint, finalFindings)
     return { findings: finalFindings, updatedCache, cacheHit: false }
   }
 

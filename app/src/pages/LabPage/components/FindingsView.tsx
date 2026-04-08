@@ -2,7 +2,7 @@ import { useAppState } from '../../../domain/store/useAppStore'
 import { appStore } from '../../../domain/store/appStore'
 import { runAnalysisForProject } from '../../../domain/lab/analysis/runner'
 import type { LabFinding } from '../../../domain/lab/analysis/types'
-import type { LabTagDef } from '../../../domain/types'
+import type { LabTagDef, LabOutcomeDef } from '../../../domain/types'
 import { getConfidenceExplanation } from '../../../domain/lab/analysis/summaryBuilder'
 import { formatTagNameDisplay } from '../../../domain/lab/utils/tagDisplay'
 import { TagStatsView } from './TagStatsView'
@@ -16,7 +16,7 @@ import { useSearchParams } from 'react-router-dom'
 
 function isTabKey(
   value: string | null
-): value is 'top' | 'occurrence' | 'eventFrequency' | 'positive' | 'negative' | 'stats' | 'coverage' | 'uncertain' {
+): value is 'top' | 'occurrence' | 'eventFrequency' | 'positive' | 'negative' | 'stats' | 'coverage' | 'uncertain' | 'crossOutcome' {
   return (
     value === 'top' ||
     value === 'occurrence' ||
@@ -25,7 +25,8 @@ function isTabKey(
     value === 'negative' ||
     value === 'stats' ||
     value === 'coverage' ||
-    value === 'uncertain'
+    value === 'uncertain' ||
+    value === 'crossOutcome'
   )
 }
 
@@ -43,6 +44,7 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
   const [selectedStatsTagId, setSelectedStatsTagId] = useState<string | null>(null)
   const tabPanelRef = useRef<HTMLDivElement | null>(null)
   const [tabPanelMinHeight, setTabPanelMinHeight] = useState(0)
+  const [selectedOutcomeId, setSelectedOutcomeId] = useState<string>('primary')
   const project = state.lab?.projects[projectId]
   const tags: Record<string, LabTagDef> = state.lab?.tagsByProject[projectId] || {}
   const eventLogsById = useMemo(
@@ -68,12 +70,25 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
 
   const severityTabsAvailable = project?.mode === 'event' ? eventSeverityLogCount >= 6 : true
 
+  const hasAdditionalOutcomes =
+    project?.mode === 'daily' &&
+    project.config.kind === 'daily' &&
+    (project.config.additionalOutcomes?.length ?? 0) > 0
+
+  const additionalOutcomes: LabOutcomeDef[] =
+    project?.config.kind === 'daily' ? (project.config.additionalOutcomes ?? []) : []
+
+  const primaryOutcomeName =
+    project?.config.kind === 'daily' ? project.config.outcome.name : 'Primary'
+
   const availableTabs: LabResultsTabKey[] =
     project?.mode === 'event' && !severityTabsAvailable
       ? ['top', 'occurrence', 'stats', 'eventFrequency', 'coverage']
       : project?.mode === 'event'
         ? ['top', 'occurrence', 'positive', 'negative', 'stats', 'eventFrequency', 'coverage', 'uncertain']
-        : ['top', 'positive', 'negative', 'stats', 'coverage', 'uncertain']
+        : hasAdditionalOutcomes
+          ? ['top', 'positive', 'negative', 'crossOutcome', 'stats', 'coverage', 'uncertain']
+          : ['top', 'positive', 'negative', 'stats', 'coverage', 'uncertain']
 
   const activeTab: LabResultsTabKey = availableTabs.includes(parsedTab) ? parsedTab : availableTabs[0]
 
@@ -99,10 +114,29 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
   const findings = result.findings
 
   const visibleFindings = useMemo(() => {
-    if (project?.mode !== 'event') return findings
-    if (viewMode === 'groups') return findings.filter((f) => f.tagId.startsWith('group:'))
-    return findings.filter((f) => !f.tagId.startsWith('group:'))
-  }, [findings, project?.mode, viewMode])
+    if (project?.mode === 'event') {
+      if (viewMode === 'groups') return findings.filter((f) => f.tagId.startsWith('group:'))
+      return findings.filter((f) => !f.tagId.startsWith('group:'))
+    }
+
+    // For multi-outcome daily projects, filter by selected outcome
+    if (hasAdditionalOutcomes) {
+      if (selectedOutcomeId === 'primary') {
+        // Show findings from primary outcome methods (no outcome prefix) and exclude per-outcome findings
+        return findings.filter((f) => {
+          if (f.method === 'cross-outcome-correlation') return false
+          return !f.method.includes('::')
+        })
+      }
+      // Show findings for specific additional outcome (method prefixed with outcomeId::)
+      return findings.filter((f) => {
+        if (f.method === 'cross-outcome-correlation') return false
+        return f.method.startsWith(`${selectedOutcomeId}::`)
+      })
+    }
+
+    return findings
+  }, [findings, project?.mode, viewMode, hasAdditionalOutcomes, selectedOutcomeId])
 
   // Persist cache updates to state
   useEffect(() => {
@@ -215,6 +249,14 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
     }
   }, [visibleFindings, project?.mode, viewMode])
 
+  // Cross-outcome correlation findings for multi-outcome daily projects
+  const crossOutcomeFindings = useMemo(() => {
+    if (!hasAdditionalOutcomes) return []
+    return findings
+      .filter((f) => f.method === 'cross-outcome-correlation')
+      .sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect))
+  }, [findings, hasAdditionalOutcomes])
+
   // Prevent the content area from collapsing upward when switching to a shorter tab.
   useLayoutEffect(() => {
     const el = tabPanelRef.current
@@ -246,14 +288,20 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
 
   const tabDefs: LabResultsTabDef[] = useMemo(() => {
     if (project?.mode !== 'event') {
-      return [
+      const baseTabs: LabResultsTabDef[] = [
         { key: 'top', label: 'Top findings' },
         { key: 'positive', label: 'Positive effects' },
         { key: 'negative', label: 'Negative effects' },
+      ]
+      if (hasAdditionalOutcomes) {
+        baseTabs.push({ key: 'crossOutcome', label: 'Cross-outcome' })
+      }
+      baseTabs.push(
         { key: 'stats', label: 'Tag Statistics' },
         { key: 'coverage', label: 'Tag coverage' },
         { key: 'uncertain', label: 'Uncertain' },
-      ]
+      )
+      return baseTabs
     }
 
     if (!severityTabsAvailable) {
@@ -276,7 +324,7 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
       { key: 'coverage', label: 'Tag coverage' },
       { key: 'uncertain', label: 'Uncertain' },
     ]
-  }, [project?.mode, severityTabsAvailable, viewMode])
+  }, [project?.mode, severityTabsAvailable, viewMode, hasAdditionalOutcomes])
 
   if (!project) return null
 
@@ -378,6 +426,23 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
                 >
                   Groups
                 </button>
+              </div>
+            )}
+
+            {hasAdditionalOutcomes && activeTab !== 'crossOutcome' && (
+              <div className={styles.outcomeSelector}>
+                <label className={styles.outcomeSelectorLabel} htmlFor="outcome-select">Outcome:</label>
+                <select
+                  id="outcome-select"
+                  className={styles.outcomeSelectorSelect}
+                  value={selectedOutcomeId}
+                  onChange={(e) => setSelectedOutcomeId(e.target.value)}
+                >
+                  <option value="primary">{primaryOutcomeName}</option>
+                  {additionalOutcomes.map((o) => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
@@ -516,7 +581,22 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
             </div>
           </section>
         )}
-
+        {activeTab === 'crossOutcome' && hasAdditionalOutcomes && (
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>Cross-outcome correlations</h3>
+            {crossOutcomeFindings.length > 0 ? (
+              <CrossOutcomeTable
+                findings={crossOutcomeFindings}
+                primaryOutcomeName={primaryOutcomeName}
+                additionalOutcomes={additionalOutcomes}
+              />
+            ) : (
+              <div className={styles.emptyHint}>
+                Not enough data to compute cross-outcome correlations. At least 10 days with multiple outcomes logged are needed.
+              </div>
+            )}
+          </section>
+        )}
         {activeTab === 'stats' && !(viewMode === 'groups' && project.mode === 'event') && (
           <section className={styles.section}>
             <TagStatsView
@@ -608,6 +688,57 @@ function FindingCard({ finding, tags, rank }: FindingCardProps) {
         </span>
         <span className={styles.sample}>n={finding.sampleSize}</span>
       </div>
+    </div>
+  )
+}
+
+function CrossOutcomeTable({
+  findings,
+  primaryOutcomeName,
+  additionalOutcomes,
+}: {
+  findings: LabFinding[]
+  primaryOutcomeName: string
+  additionalOutcomes: LabOutcomeDef[]
+}) {
+  // Build outcome name map
+  const outcomeNames: Record<string, string> = { primary: primaryOutcomeName }
+  for (const o of additionalOutcomes) {
+    outcomeNames[o.id] = o.name
+  }
+
+  return (
+    <div className={styles.crossOutcomeList}>
+      {findings.map((f) => {
+        const raw = f.rawData as { outcomeIdA: string; outcomeIdB: string; r: number; n: number } | undefined
+        if (!raw) return null
+
+        const nameA = outcomeNames[raw.outcomeIdA] || raw.outcomeIdA
+        const nameB = outcomeNames[raw.outcomeIdB] || raw.outcomeIdB
+        const r = raw.r
+        const color = r >= 0 ? styles.effectPositive : styles.effectNegative
+
+        return (
+          <div key={f.tagId} className={styles.crossOutcomeCard}>
+            <div className={styles.crossOutcomeHeader}>
+              <span className={styles.crossOutcomeNames}>
+                {nameA} <span className={styles.crossOutcomeVs}>vs</span> {nameB}
+              </span>
+              <span className={`${styles.effectBadge} ${color}`}>
+                {r >= 0 ? '+' : ''}{r.toFixed(2)}
+              </span>
+            </div>
+            <div className={styles.summary}>{f.summary}</div>
+            <div className={styles.meta}>
+              <span className={styles.method}>{f.method}</span>
+              <span className={styles.confidence}>
+                {{ high: '●●●', medium: '●●○', low: '●○○' }[f.confidence]}
+              </span>
+              <span className={styles.sample}>n={f.sampleSize}</span>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

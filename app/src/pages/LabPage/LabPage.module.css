@@ -164,6 +164,37 @@
   border-color: var(--primary);
 }
 
+.btnExport {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(79, 70, 229, 0.45);
+  background: rgba(79, 70, 229, 0.12);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.btnExport:hover {
+  background: rgba(79, 70, 229, 0.2);
+}
+
+.btnExport:active {
+  transform: scale(0.98);
+}
+
+.btnExport:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .btnDelete {
   position: absolute;
   bottom: 12px;
@@ -389,6 +420,60 @@
 .projectActions {
   display: flex;
   gap: 4px;
+}
+
+/* Tag Categories */
+
+.categorySection {
+  margin-bottom: 8px;
+}
+
+.categorySection:last-child {
+  margin-bottom: 0;
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 4px;
+  margin-bottom: 8px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: color var(--t-fast) var(--ease-out);
+}
+
+.categoryHeader:hover {
+  color: var(--text);
+}
+
+.categoryArrow {
+  font-size: 9px;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.categoryLabel {
+  flex: 1;
+  text-align: left;
+}
+
+.categoryCount {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  opacity: 0.7;
 }
 
 /* Tag List */

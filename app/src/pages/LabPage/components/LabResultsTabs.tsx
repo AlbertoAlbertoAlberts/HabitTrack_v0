@@ -10,6 +10,7 @@ export type LabResultsTabKey =
   | 'stats'
   | 'coverage'
   | 'uncertain'
+  | 'crossOutcome'
 
 export type LabResultsTabDef = { key: LabResultsTabKey; label: string }
 

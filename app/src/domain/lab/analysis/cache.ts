@@ -2,7 +2,7 @@ import type { AppStateV1 } from '../../types'
 import type { LabFinding } from './types'
 
 // Bump this when analysis logic changes in a way that should force recomputation.
-const ANALYSIS_FINGERPRINT_VERSION = 'lab-analysis-v4'
+const ANALYSIS_FINGERPRINT_VERSION = 'lab-analysis-v5'
 
 /**
  * Findings cache entry
@@ -37,18 +37,33 @@ export function generateFingerprint(state: AppStateV1, projectId: string): strin
   parts.push(project.updatedAt) // Detect config changes
 
   // Logs with detailed content
-  if (project.mode === 'daily') {
+  if (project.mode === 'daily' || project.mode === 'daily-tag-only') {
     const logs = state.lab?.dailyLogsByProject[projectId] || {}
     parts.push(`logs:${Object.keys(logs).length}`)
     
-    // Include detailed log content hash (dates + outcomes + tag usage with intensity)
+    // Include detailed log content hash (dates + outcomes + tag usage with intensity + additionalOutcomes)
     const logHashes = Object.entries(logs)
       .map(([date, log]) => {
         const tagStr = log.tags
           .map((t) => `${t.tagId}${t.intensity !== undefined ? `:${t.intensity}` : ''}`)
           .sort()
           .join(',')
-        return `${date}:${log.outcome ?? 'null'}:${tagStr}:${log.noTags ? 'noTags' : ''}`
+        const addOutStr = log.additionalOutcomes
+          ? Object.entries(log.additionalOutcomes).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${k}=${v}`).join(',')
+          : ''
+        return `${date}:${log.outcome ?? 'null'}:${tagStr}:${log.noTags ? 'noTags' : ''}:${addOutStr}`
+      })
+      .sort()
+      .join('|')
+    parts.push(logHashes)
+  } else if (project.mode === 'daily-multi-choice') {
+    const logs = state.lab?.multiChoiceLogsByProject[projectId] || {}
+    parts.push(`mcLogs:${Object.keys(logs).length}`)
+    
+    const logHashes = Object.entries(logs)
+      .map(([date, log]) => {
+        const optionStr = [...log.selectedOptionIds].sort().join(',')
+        return `${date}:${optionStr}`
       })
       .sort()
       .join('|')

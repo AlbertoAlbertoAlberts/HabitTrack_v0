@@ -15,6 +15,7 @@ import type {
   WeeklyTaskId,
   LabProjectId,
   LabProjectConfig,
+  LabProjectMode,
   LabTagId,
   LabTagDef,
   ISODate,
@@ -89,6 +90,7 @@ import {
   validateLabTagIntensity,
 } from '../lab/actions/labTags'
 import { setLabDailyLog, deleteLabDailyLog } from '../lab/actions/labDailyLogs'
+import { setLabMultiChoiceLog, deleteLabMultiChoiceLog } from '../lab/actions/labMultiChoiceLogs'
 import {
   addLabEventLog,
   updateLabEventLog,
@@ -96,8 +98,15 @@ import {
   setLabEventAbsenceMarker,
   removeLabEventAbsenceMarker,
 } from '../lab/actions/labEventLogs'
+import {
+  addLabTagCategory,
+  updateLabTagCategory,
+  deleteLabTagCategory,
+  reorderLabTagCategories,
+  isLabTagCategoryInUse,
+} from '../lab/actions/labTagCategories'
 import { updateFindingsCache } from '../lab/actions/labCache'
-import { isLabDailyLogComplete } from '../utils/labValidation'
+import { isLabDailyLogComplete, isLabMultiChoiceLogComplete } from '../utils/labValidation'
 import type { FindingsCache } from '../lab/analysis/cache'
 
 type Listener = () => void
@@ -316,7 +325,7 @@ export const appStore = {
     },
 
     // LAB Projects
-    addLabProject(name: string, mode: 'daily' | 'event', config: LabProjectConfig) {
+    addLabProject(name: string, mode: LabProjectMode, config: LabProjectConfig) {
       setState(addLabProject(state, name, mode, config))
     },
     updateLabProject(projectId: LabProjectId, updates: Partial<{ name: string; config: LabProjectConfig }>) {
@@ -365,12 +374,24 @@ export const appStore = {
     setLabDailyLog(
       projectId: LabProjectId,
       date: ISODate,
-      data: { outcome?: number; tags: LabTagUse[]; noTags?: boolean; note?: string }
+      data: { outcome?: number; additionalOutcomes?: Record<string, number>; tags: LabTagUse[]; noTags?: boolean; note?: string }
     ) {
       setState(setLabDailyLog(state, projectId, date, data))
     },
     deleteLabDailyLog(projectId: LabProjectId, date: ISODate) {
       setState(deleteLabDailyLog(state, projectId, date))
+    },
+
+    // LAB Multi-Choice Logs
+    setLabMultiChoiceLog(
+      projectId: LabProjectId,
+      date: ISODate,
+      data: { selectedOptionIds: string[]; note?: string }
+    ) {
+      setState(setLabMultiChoiceLog(state, projectId, date, data))
+    },
+    deleteLabMultiChoiceLog(projectId: LabProjectId, date: ISODate) {
+      setState(deleteLabMultiChoiceLog(state, projectId, date))
     },
 
     // LAB Event Logs
@@ -395,6 +416,20 @@ export const appStore = {
     },
     removeLabEventAbsenceMarker(projectId: LabProjectId, date: ISODate) {
       setState(removeLabEventAbsenceMarker(state, projectId, date))
+    },
+
+    // LAB Tag Categories
+    addLabTagCategory(projectId: LabProjectId, name: string) {
+      setState(addLabTagCategory(state, projectId, name))
+    },
+    updateLabTagCategory(projectId: LabProjectId, categoryId: string, updates: { name?: string; sortIndex?: number }) {
+      setState(updateLabTagCategory(state, projectId, categoryId, updates))
+    },
+    deleteLabTagCategory(projectId: LabProjectId, categoryId: string) {
+      setState(deleteLabTagCategory(state, projectId, categoryId))
+    },
+    reorderLabTagCategories(projectId: LabProjectId, orderedIds: string[]) {
+      setState(reorderLabTagCategories(state, projectId, orderedIds))
     },
 
     // LAB Cache
@@ -423,6 +458,15 @@ export const appStore = {
       const log = state.lab?.dailyLogsByProject[projectId]?.[date]
       if (!project || !log) return false
       return isLabDailyLogComplete(log, project)
+    },
+    isLabMultiChoiceLogComplete(projectId: LabProjectId, date: ISODate): boolean {
+      const project = state.lab?.projects[projectId]
+      const log = state.lab?.multiChoiceLogsByProject?.[projectId]?.[date]
+      if (!project || !log) return false
+      return isLabMultiChoiceLogComplete(log, project)
+    },
+    isLabTagCategoryInUse(projectId: LabProjectId, categoryId: string): boolean {
+      return isLabTagCategoryInUse(state, projectId, categoryId)
     },
   },
 }
