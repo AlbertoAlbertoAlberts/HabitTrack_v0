@@ -384,9 +384,6 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
         <button className={styles.projectButton} onClick={onToggle}>
           <span className={styles.projectName}>
             {project.name}
-            {project.mode === 'event' && <span className={styles.modeBadge}>event</span>}
-            {project.mode === 'daily-tag-only' && <span className={styles.modeBadge}>tags</span>}
-            {project.mode === 'daily-multi-choice' && <span className={styles.modeBadge}>choice</span>}
           </span>
           {hasLog && <span className={styles.badge}>✓</span>}
         </button>
