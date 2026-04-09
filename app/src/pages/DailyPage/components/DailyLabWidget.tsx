@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAppState } from '../../../domain/store/useAppStore'
 import { appStore } from '../../../domain/store/appStore'
-import type { LabProject, LabTagUse, LabDailyProjectConfig } from '../../../domain/types'
+import type { LabProject, LabTagUse, LabDailyProjectConfig, LabDailyTagOnlyProjectConfig, LabDailyMultiChoiceProjectConfig } from '../../../domain/types'
 import { formatTagNameDisplay } from '../../../domain/lab/utils/tagDisplay'
 import { IntensityPicker } from '../../../components/ui/IntensityPicker'
 import { Dialog, DialogBody, DialogFooter } from '../../../components/ui/Dialog'
@@ -90,6 +90,15 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
   const [newTagIntensityMax, setNewTagIntensityMax] = useState<3 | 5>(5)
   const [saveError, setSaveError] = useState<string | null>(null)
 
+  // Multi-choice state
+  const [mcSelectedOptionIds, setMcSelectedOptionIds] = useState<Set<string>>(
+    new Set(existingMultiChoiceLog?.selectedOptionIds ?? [])
+  )
+  const [mcNote, setMcNote] = useState(existingMultiChoiceLog?.note ?? '')
+  const [mcSaved, setMcSaved] = useState(false)
+  // Tag-only saved indicator
+  const [tagOnlySaved, setTagOnlySaved] = useState(false)
+
   const projectTags = Object.values(state.lab?.tagsByProject[project.id] || {})
     .sort((a, b) => a.name.localeCompare(b.name, 'lv'))
   const selectedIntensityTags = projectTags.filter((t) => selectedTags.has(t.id) && t.intensity?.enabled)
@@ -122,6 +131,45 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isExpanded, project.mode, existingLog?.updatedAt])
+
+  // Sync tag-only form state when expanded
+  useEffect(() => {
+    if (!isExpanded) return
+    if (project.mode !== 'daily-tag-only') return
+
+    const log = existingLog ?? null
+    setSelectedTags(new Set(log?.tags.map((t) => t.tagId) || []))
+    setNoTags(log?.noTags || false)
+    setDailyNote(log?.note || '')
+    setTagIntensities(() => {
+      const next: Record<string, number> = {}
+      for (const t of log?.tags || []) {
+        if (t.intensity !== undefined) next[t.tagId] = t.intensity
+      }
+      return next
+    })
+    setTagOnlySaved(false)
+    setSaveError(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpanded, project.mode, existingLog?.updatedAt])
+
+  // Sync multi-choice form state when expanded
+  useEffect(() => {
+    if (!isExpanded) return
+    if (project.mode !== 'daily-multi-choice') return
+
+    const log = existingMultiChoiceLog ?? null
+    setMcSelectedOptionIds(new Set(log?.selectedOptionIds ?? []))
+    setMcNote(log?.note ?? '')
+    setMcSaved(false)
+    setSaveError(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExpanded, project.mode, existingMultiChoiceLog?.updatedAt])
+
+  const activeOptions = useMemo(() => {
+    if (project.config.kind !== 'daily-multi-choice') return []
+    return (project.config as LabDailyMultiChoiceProjectConfig).options.filter((o) => !o.archived)
+  }, [project.config])
 
   const groupOptions = Array.from(
     new Set(
@@ -256,6 +304,78 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
     }
 
     onToggle()
+  }
+
+  const handleSaveTagOnly = () => {
+    setSaveError(null)
+
+    const tags: LabTagUse[] = Array.from(selectedTags).map((tagId) => {
+      const intensity = tagIntensities[tagId]
+      return { tagId, intensity }
+    })
+
+    for (const tagUse of tags) {
+      const tagDef = projectTags.find((t) => t.id === tagUse.tagId)
+      if (!tagDef) continue
+      const res = appStore.selectors.validateLabTagIntensity(tagDef, tagUse.intensity)
+      if (!res.valid) {
+        setSaveError(`"${formatTagNameDisplay(tagDef.name)}": ${res.error}`)
+        return
+      }
+    }
+
+    appStore.actions.setLabDailyLog(project.id, date, {
+      outcome: undefined,
+      tags,
+      noTags: noTags && tags.length === 0 ? true : undefined,
+      note: dailyNote.trim() || undefined,
+    })
+
+    setTagOnlySaved(true)
+    setTimeout(() => setTagOnlySaved(false), 2000)
+  }
+
+  const handleClearTagOnly = () => {
+    if (!existingLog) return
+    appStore.actions.deleteLabDailyLog(project.id, date)
+    setSelectedTags(new Set())
+    setTagIntensities({})
+    setNoTags(false)
+    setDailyNote('')
+    setTagOnlySaved(false)
+  }
+
+  const handleSaveMultiChoice = () => {
+    setSaveError(null)
+    appStore.actions.setLabMultiChoiceLog(project.id, date, {
+      selectedOptionIds: Array.from(mcSelectedOptionIds),
+      note: mcNote.trim() || undefined,
+    })
+    setMcSaved(true)
+    setTimeout(() => setMcSaved(false), 2000)
+  }
+
+  const handleClearMultiChoice = () => {
+    if (!existingMultiChoiceLog) return
+    appStore.actions.deleteLabMultiChoiceLog(project.id, date)
+    setMcSelectedOptionIds(new Set())
+    setMcNote('')
+    setMcSaved(false)
+  }
+
+  const toggleMcOption = (optionId: string) => {
+    const isSingleSelect = project.config.kind === 'daily-multi-choice'
+      && (project.config as LabDailyMultiChoiceProjectConfig).selectionMode === 'single'
+    if (isSingleSelect) {
+      setMcSelectedOptionIds((prev) => (prev.has(optionId) ? new Set() : new Set([optionId])))
+    } else {
+      setMcSelectedOptionIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(optionId)) next.delete(optionId)
+        else next.add(optionId)
+        return next
+      })
+    }
   }
 
   if (!isExpanded) {
@@ -534,7 +654,8 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
     )
   }
 
-  if (project.mode === 'daily-tag-only' || project.mode === 'daily-multi-choice') {
+  if (project.mode === 'daily-tag-only' && project.config.kind === 'daily-tag-only') {
+    const tagOnlyConfig = project.config as LabDailyTagOnlyProjectConfig
     return (
       <div className={styles.projectExpanded}>
         <div className={styles.header}>
@@ -544,10 +665,300 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
           </button>
         </div>
         <div className={styles.form}>
-          <div className={styles.tagEmptyHint}>
-            {project.mode === 'daily-tag-only'
-              ? 'Tag-only logging is available in the LAB page.'
-              : 'Multi-choice logging is available in the LAB page.'}
+          {saveError && (
+            <div className={styles.tagEmptyHint} role="alert">
+              {saveError}
+            </div>
+          )}
+
+          <div className={styles.tagsSection}>
+            <div className={styles.label}>Tags</div>
+            <div className={styles.tagGrid}>
+              {projectTags.length === 0 && (
+                <div className={styles.tagEmptyHint}>No tags yet — add your first tag.</div>
+              )}
+
+              {projectTags.map((tag) => (
+                <button
+                  key={tag.id}
+                  type="button"
+                  className={[
+                    styles.tagButton,
+                    selectedTags.has(tag.id) && styles.tagButtonActive,
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={() => {
+                    const next = new Set(selectedTags)
+                    if (selectedTags.has(tag.id)) {
+                      next.delete(tag.id)
+                      setTagIntensities((prev) => {
+                        const copy = { ...prev }
+                        delete copy[tag.id]
+                        return copy
+                      })
+                      setNoTags(false)
+                    } else {
+                      next.add(tag.id)
+                      setNoTags(false)
+                    }
+                    setSelectedTags(next)
+                  }}
+                >
+                  {formatTagNameDisplay(tag.name)}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                className={styles.tagAddButton}
+                onClick={() => setIsAddingTag(true)}
+              >
+                + Add tag
+              </button>
+            </div>
+
+            {tagOnlyConfig.allowExplicitNoTags && (
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={noTags}
+                  onChange={(e) => {
+                    setNoTags(e.target.checked)
+                    if (e.target.checked) {
+                      setSelectedTags(new Set())
+                      setTagIntensities({})
+                    }
+                  }}
+                />
+                No tags today
+              </label>
+            )}
+
+            {selectedIntensityTags.length > 0 && (
+              <div className={styles.intensityList}>
+                <div className={styles.label}>Intensity</div>
+                {selectedIntensityTags.map((tag) => (
+                  <div key={tag.id} className={styles.intensityRow}>
+                    <div className={styles.intensityName}>{formatTagNameDisplay(tag.name)}</div>
+                    <IntensityPicker
+                      min={tag.intensity?.min ?? 1}
+                      max={tag.intensity?.max ?? 5}
+                      step={tag.intensity?.step ?? 1}
+                      value={tagIntensities[tag.id]}
+                      onChange={(next) =>
+                        setTagIntensities((prev) => ({
+                          ...prev,
+                          [tag.id]: next,
+                        }))
+                      }
+                      ariaLabel={`Intensity for ${formatTagNameDisplay(tag.name)}`}
+                    />
+                    {tag.intensity?.unitLabel && (
+                      <span className={styles.intensityUnit}>{tag.intensity.unitLabel}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <label className={styles.label}>
+            Note (optional)
+            <textarea
+              className={styles.textarea}
+              value={dailyNote}
+              onChange={(e) => setDailyNote(e.target.value)}
+              rows={2}
+              placeholder="Additional details..."
+            />
+          </label>
+
+          <Dialog open={isAddingTag} title="New tag" onClose={closeNewTagDialog}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleCreateTag()
+              }}
+            >
+              <DialogBody>
+                <label className={styles.label}>
+                  Tag name
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="New tag..."
+                    autoFocus
+                    required
+                  />
+                </label>
+
+                <label className={styles.label}>
+                  Group (optional)
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={newTagGroup}
+                    onChange={(e) => setNewTagGroup(e.target.value)}
+                    list={groupDatalistId}
+                    placeholder="e.g., sleep, food, training"
+                  />
+                  {groupOptions.length > 0 ? (
+                    <datalist id={groupDatalistId}>
+                      {groupOptions.map((g) => (
+                        <option key={g} value={g} />
+                      ))}
+                    </datalist>
+                  ) : null}
+                </label>
+
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={newTagTrackIntensity}
+                    onChange={(e) => setNewTagTrackIntensity(e.target.checked)}
+                  />
+                  Track intensity
+                </label>
+
+                {newTagTrackIntensity && (
+                  <label className={styles.label}>
+                    Intensity scale
+                    <select
+                      className={styles.input}
+                      value={String(newTagIntensityMax)}
+                      onChange={(e) => setNewTagIntensityMax(Number(e.target.value) as 3 | 5)}
+                    >
+                      <option value="3">1–3</option>
+                      <option value="5">1–5</option>
+                    </select>
+                  </label>
+                )}
+              </DialogBody>
+
+              <DialogFooter>
+                <button type="button" className={sharedStyles.smallBtn} onClick={closeNewTagDialog}>
+                  Cancel
+                </button>
+                <button type="submit" className={sharedStyles.smallBtn} disabled={!newTagName.trim()}>
+                  Create
+                </button>
+              </DialogFooter>
+            </form>
+          </Dialog>
+
+          {existingLog?.updatedAt ? (
+            <div className={styles.savedHint}>
+              Last saved: {new Date(existingLog.updatedAt).toLocaleString()}
+            </div>
+          ) : null}
+
+          <div className={styles.formActions}>
+            {tagOnlySaved && <span className={styles.savedIndicator}>✓ Saved</span>}
+            {existingLog && (
+              <button type="button" className={styles.clearButton} onClick={handleClearTagOnly}>
+                Clear
+              </button>
+            )}
+            <button className={styles.saveButton} onClick={handleSaveTagOnly}>
+              {existingLog ? 'Update' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (project.mode === 'daily-multi-choice' && project.config.kind === 'daily-multi-choice') {
+    const mcConfig = project.config as LabDailyMultiChoiceProjectConfig
+    const isSingleSelect = mcConfig.selectionMode === 'single'
+
+    return (
+      <div className={styles.projectExpanded}>
+        <div className={styles.header}>
+          <span className={styles.projectName}>{project.name}</span>
+          <button className={styles.closeButton} onClick={onToggle}>
+            ✕
+          </button>
+        </div>
+        <div className={styles.form}>
+          {saveError && (
+            <div className={styles.tagEmptyHint} role="alert">
+              {saveError}
+            </div>
+          )}
+
+          {activeOptions.length === 0 ? (
+            <div className={styles.tagEmptyHint}>
+              All options are archived. Edit the project to add new options.
+            </div>
+          ) : (
+            <div className={styles.choicesSection}>
+              <div className={styles.choicesTitle}>
+                {isSingleSelect ? 'Select one' : 'Select all that apply'}
+              </div>
+              <div className={styles.choicesList}>
+                {activeOptions.map((option) => {
+                  const isSelected = mcSelectedOptionIds.has(option.id)
+                  return (
+                    <label
+                      key={option.id}
+                      className={[
+                        styles.choiceLabel,
+                        isSelected && styles.choiceLabelSelected,
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
+                      <input
+                        type={isSingleSelect ? 'radio' : 'checkbox'}
+                        name={`mc-${project.id}-${date}`}
+                        checked={isSelected}
+                        onChange={() => {
+                          if (!isSingleSelect) toggleMcOption(option.id)
+                        }}
+                        onClick={() => {
+                          if (isSingleSelect) toggleMcOption(option.id)
+                        }}
+                      />
+                      {option.label}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          <label className={styles.label}>
+            Note (optional)
+            <textarea
+              className={styles.textarea}
+              value={mcNote}
+              onChange={(e) => setMcNote(e.target.value)}
+              rows={2}
+              placeholder="Additional details..."
+            />
+          </label>
+
+          {existingMultiChoiceLog?.updatedAt ? (
+            <div className={styles.savedHint}>
+              Last saved: {new Date(existingMultiChoiceLog.updatedAt).toLocaleString()}
+            </div>
+          ) : null}
+
+          <div className={styles.formActions}>
+            {mcSaved && <span className={styles.savedIndicator}>✓ Saved</span>}
+            {existingMultiChoiceLog && (
+              <button type="button" className={styles.clearButton} onClick={handleClearMultiChoice}>
+                Clear
+              </button>
+            )}
+            <button className={styles.saveButton} onClick={handleSaveMultiChoice}>
+              {existingMultiChoiceLog ? 'Update' : 'Save'}
+            </button>
           </div>
         </div>
       </div>

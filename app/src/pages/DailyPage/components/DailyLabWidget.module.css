@@ -424,3 +424,84 @@
   border-radius: 3px;
   font-weight: 600;
 }
+
+/* ── Multi-choice ── */
+
+.choicesSection {
+  margin-bottom: 4px;
+}
+
+.choicesTitle {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.choicesList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.choiceLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out);
+}
+
+.choiceLabel:hover {
+  background: var(--btn-bg-hover);
+}
+
+.choiceLabelSelected {
+  border-color: #52850a;
+  background: rgba(82, 133, 10, 0.10);
+}
+
+.choiceLabel input[type='checkbox'],
+.choiceLabel input[type='radio'] {
+  cursor: pointer;
+  accent-color: #52850a;
+}
+
+/* ── Form actions row ── */
+
+.formActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.savedIndicator {
+  font-size: 12px;
+  font-weight: 700;
+  color: #52850a;
+}
+
+.clearButton {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--btn-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+
+.clearButton:hover {
+  background: var(--btn-bg-hover);
+}
