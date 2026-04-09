@@ -9,6 +9,7 @@
 .dateNav {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   margin-bottom: 4px;
 }
@@ -62,6 +63,11 @@
   padding: 0 1px 4px;
   line-height: 1.2;
   white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.headerCellHighlight {
+  color: var(--text);
 }
 
 .headerCellWeekend {
@@ -72,12 +78,20 @@
   font-size: 11px;
   font-weight: 700;
   color: var(--text);
-  padding: 4px 10px 4px 0;
+  padding: 4px 6px 4px 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 140px;
   align-self: center;
+  text-align: right;
+  transition: color 0.15s ease;
+  opacity: 0.75;
+}
+
+.rowLabelHighlight {
+  opacity: 1;
+  color: #fff;
 }
 
 .cell {
@@ -94,6 +108,12 @@
   border-radius: 50%;
   background: #4caf50;
   box-shadow: 0 0 6px rgba(76, 175, 80, 0.55), 0 0 2px rgba(76, 175, 80, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dotHovered {
+  transform: scale(1.5);
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.8), 0 0 4px rgba(76, 175, 80, 0.5);
 }
 
 .dotEmpty {
@@ -102,6 +122,12 @@
   border-radius: 50%;
   background: var(--border);
   opacity: 0.35;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.dotEmptyHovered {
+  opacity: 0.7;
+  transform: scale(1.4);
 }
 
 .emptyState {

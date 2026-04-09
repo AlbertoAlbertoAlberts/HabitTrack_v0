@@ -90,12 +90,14 @@ export function buildChoiceGridData(
     start.setDate(start.getDate() - (days - 1))
   }
 
-  // Build set of dates in window
+  // Build set of dates in window (use local timezone to match DotTable)
   const dateSet = new Set<string>()
   const cursor = new Date(start)
   for (let i = 0; i < days; i++) {
-    const d = cursor.toISOString().slice(0, 10)
-    dateSet.add(d)
+    const yyyy = cursor.getFullYear()
+    const mm = String(cursor.getMonth() + 1).padStart(2, '0')
+    const dd = String(cursor.getDate()).padStart(2, '0')
+    dateSet.add(`${yyyy}-${mm}-${dd}`)
     cursor.setDate(cursor.getDate() + 1)
   }
 

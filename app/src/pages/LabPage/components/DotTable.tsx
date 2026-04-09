@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import styles from './DotTable.module.css'
 
 interface DotTableProps {
@@ -44,6 +44,7 @@ function formatHeaderDate(dateStr: string): string {
 
 export function DotTable({ data, labels, startDate, onStartDateChange, days = 30 }: DotTableProps) {
   const rowKeys = useMemo(() => Object.keys(labels), [labels])
+  const [hovered, setHovered] = useState<{ row: number; col: number } | null>(null)
 
   const defaultStart = useMemo(() => {
     return addDays(toISODate(new Date()), -(days - 1))
@@ -95,16 +96,20 @@ export function DotTable({ data, labels, startDate, onStartDateChange, days = 30
         <div
           className={styles.grid}
           style={{
-            gridTemplateColumns: `auto repeat(${days}, 20px)`,
+            gridTemplateColumns: `max-content repeat(${days}, 20px)`,
             gridTemplateRows: `auto repeat(${rowKeys.length}, 20px)`,
           }}
         >
           {/* Header row: empty corner + date headers */}
           <div /> {/* corner */}
-          {dates.map((date) => (
+          {dates.map((date, colIdx) => (
             <div
               key={date}
-              className={[styles.headerCell, isWeekend(date) && styles.headerCellWeekend]
+              className={[
+                styles.headerCell,
+                isWeekend(date) && styles.headerCellWeekend,
+                hovered?.col === colIdx && styles.headerCellHighlight,
+              ]
                 .filter(Boolean)
                 .join(' ')}
             >
@@ -113,16 +118,40 @@ export function DotTable({ data, labels, startDate, onStartDateChange, days = 30
           ))}
 
           {/* Data rows */}
-          {rowKeys.map((key) => (
+          {rowKeys.map((key, rowIdx) => (
             <Fragment key={key}>
-              <div className={styles.rowLabel} title={labels[key]}>
+              <div
+                className={[
+                  styles.rowLabel,
+                  hovered?.row === rowIdx && styles.rowLabelHighlight,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+                title={labels[key]}
+              >
                 {labels[key]}
               </div>
-              {dates.map((date) => {
+              {dates.map((date, colIdx) => {
                 const present = data[key]?.[date] ?? false
+                const isHovered = hovered?.row === rowIdx && hovered?.col === colIdx
+                let dotClass: string
+                if (present) {
+                  dotClass = isHovered
+                    ? `${styles.dot} ${styles.dotHovered}`
+                    : styles.dot
+                } else {
+                  dotClass = isHovered
+                    ? `${styles.dotEmpty} ${styles.dotEmptyHovered}`
+                    : styles.dotEmpty
+                }
                 return (
-                  <div key={`${key}-${date}`} className={styles.cell}>
-                    <div className={present ? styles.dot : styles.dotEmpty} />
+                  <div
+                    key={`${key}-${date}`}
+                    className={styles.cell}
+                    onMouseEnter={() => setHovered({ row: rowIdx, col: colIdx })}
+                    onMouseLeave={() => setHovered(null)}
+                  >
+                    <div className={dotClass} />
                   </div>
                 )
               })}
