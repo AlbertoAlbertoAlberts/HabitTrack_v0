@@ -18,7 +18,7 @@ interface MultiChoiceFindingsViewProps {
 
 export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewProps) {
   const state = useAppState()
-  const [activeTab, setActiveTab] = useState<TabKey>('overview')
+  const [activeTab, setActiveTab] = useState<TabKey>('dotTable')
   const [dotStartDate, setDotStartDate] = useState<string | undefined>(undefined)
 
   const project = state.lab?.projects[projectId]
@@ -86,32 +86,22 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
       <div className={styles.tabs}>
         <button
           type="button"
-          className={[styles.tab, activeTab === 'overview' && styles.tabActive].filter(Boolean).join(' ')}
-          onClick={() => setActiveTab('overview')}
-        >
-          Overview
-        </button>
-        <button
-          type="button"
           className={[styles.tab, activeTab === 'dotTable' && styles.tabActive].filter(Boolean).join(' ')}
           onClick={() => setActiveTab('dotTable')}
         >
           30-Day Table
         </button>
+        <button
+          type="button"
+          className={[styles.tab, activeTab === 'overview' && styles.tabActive].filter(Boolean).join(' ')}
+          onClick={() => setActiveTab('overview')}
+        >
+          Overview
+        </button>
         <div style={{ marginLeft: 'auto' }}>
           <DataMaturityView projectId={projectId} />
         </div>
       </div>
-
-      {activeTab === 'overview' && (
-        notEnoughData ? (
-          <div className={styles.emptyHint}>
-            Start logging choices to see frequency analysis. At least 5 logged days are needed.
-          </div>
-        ) : (
-          <OverviewTab findings={frequencyFindings} optionLabels={optionLabels} />
-        )
-      )}
 
       {activeTab === 'dotTable' && (
         options.length === 0 ? (
@@ -128,6 +118,16 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
               onStartDateChange={setDotStartDate}
             />
           </section>
+        )
+      )}
+
+      {activeTab === 'overview' && (
+        notEnoughData ? (
+          <div className={styles.emptyHint}>
+            Start logging choices to see frequency analysis. At least 5 logged days are needed.
+          </div>
+        ) : (
+          <OverviewTab findings={frequencyFindings} optionLabels={optionLabels} />
         )
       )}
     </div>

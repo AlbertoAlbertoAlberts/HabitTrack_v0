@@ -68,38 +68,44 @@ export function DotTable({ data, labels, startDate, onStartDateChange, days = 30
 
   return (
     <div className={styles.container}>
-      {onStartDateChange && (
-        <div className={styles.dateNav}>
-          <button
-            type="button"
-            className={styles.dateNavBtn}
-            onClick={() => onStartDateChange(addDays(effectiveStart, -7))}
-            aria-label="Previous 7 days"
-          >
-            ◀
-          </button>
-          <span className={styles.dateNavLabel}>
-            {effectiveStart} — {dates[dates.length - 1]}
-          </span>
-          <button
-            type="button"
-            className={styles.dateNavBtn}
-            onClick={() => onStartDateChange(addDays(effectiveStart, 7))}
-            aria-label="Next 7 days"
-          >
-            ▶
-          </button>
-        </div>
-      )}
-
       <div className={styles.scrollWrap}>
         <div
           className={styles.grid}
           style={{
             gridTemplateColumns: `max-content repeat(${days}, 20px)`,
-            gridTemplateRows: `auto repeat(${rowKeys.length}, 20px)`,
+            gridTemplateRows: `${onStartDateChange ? 'auto ' : ''}auto repeat(${rowKeys.length}, 20px)`,
           }}
         >
+          {/* Date nav row: spans only date columns */}
+          {onStartDateChange && (
+            <>
+              <div /> {/* corner */}
+              <div className={styles.dateNavCell} style={{ gridColumn: `2 / -1` }}>
+                <div className={styles.dateNav}>
+                  <button
+                    type="button"
+                    className={styles.dateNavBtn}
+                    onClick={() => onStartDateChange(addDays(effectiveStart, -7))}
+                    aria-label="Previous 7 days"
+                  >
+                    ◀
+                  </button>
+                  <span className={styles.dateNavLabel}>
+                    {effectiveStart} — {dates[dates.length - 1]}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.dateNavBtn}
+                    onClick={() => onStartDateChange(addDays(effectiveStart, 7))}
+                    aria-label="Next 7 days"
+                  >
+                    ▶
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Header row: empty corner + date headers */}
           <div /> {/* corner */}
           {dates.map((date, colIdx) => (
