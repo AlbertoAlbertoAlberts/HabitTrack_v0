@@ -161,6 +161,21 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
     const log = existingMultiChoiceLog ?? null
     setMcSelectedOptionIds(new Set(log?.selectedOptionIds ?? []))
     setMcNote(log?.note ?? '')
+    // Restore tag state
+    if (log?.tags) {
+      setSelectedTags(new Set(log.tags.map((t) => t.tagId)))
+      setTagIntensities(() => {
+        const next: Record<string, number> = {}
+        for (const t of log.tags!) {
+          if (t.intensity !== undefined) next[t.tagId] = t.intensity
+        }
+        return next
+      })
+    } else {
+      setSelectedTags(new Set())
+      setTagIntensities({})
+    }
+    setNoTags(log?.noTags ?? false)
     setMcSaved(false)
     setSaveError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -347,8 +362,34 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
 
   const handleSaveMultiChoice = () => {
     setSaveError(null)
+
+    const mcConfig = project.config as LabDailyMultiChoiceProjectConfig
+    const mcTagsOn = mcConfig.tagsEnabled === true
+
+    // Build tags if enabled
+    let tags: LabTagUse[] | undefined
+    if (mcTagsOn && selectedTags.size > 0) {
+      tags = Array.from(selectedTags).map((tagId) => ({
+        tagId,
+        intensity: tagIntensities[tagId],
+      }))
+
+      // Validate tag intensities
+      for (const t of tags) {
+        const tagDef = projectTags.find((x) => x.id === t.tagId)
+        if (!tagDef) continue
+        const res = appStore.selectors.validateLabTagIntensity(tagDef, t.intensity)
+        if (!res.valid) {
+          setSaveError(`"${formatTagNameDisplay(tagDef.name)}": ${res.error}`)
+          return
+        }
+      }
+    }
+
     appStore.actions.setLabMultiChoiceLog(project.id, date, {
       selectedOptionIds: Array.from(mcSelectedOptionIds),
+      tags,
+      noTags: mcTagsOn && noTags ? true : undefined,
       note: mcNote.trim() || undefined,
     })
     setMcSaved(true)
@@ -360,6 +401,9 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
     appStore.actions.deleteLabMultiChoiceLog(project.id, date)
     setMcSelectedOptionIds(new Set())
     setMcNote('')
+    setSelectedTags(new Set())
+    setTagIntensities({})
+    setNoTags(false)
     setMcSaved(false)
   }
 
@@ -872,6 +916,43 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
   if (project.mode === 'daily-multi-choice' && project.config.kind === 'daily-multi-choice') {
     const mcConfig = project.config as LabDailyMultiChoiceProjectConfig
     const isSingleSelect = mcConfig.selectionMode === 'single'
+    const mcTagsOn = mcConfig.tagsEnabled === true
+    const mcShowTags = mcTagsOn && projectTags.length > 0
+
+    // Choice-dependent tag filtering
+    const allLogs = state.lab?.multiChoiceLogsByProject[project.id] ?? {}
+    const tagBanks: Record<string, Set<string>> | null = mcConfig.choiceDependentTags
+      ? (() => {
+          const banks: Record<string, Set<string>> = {}
+          for (const log of Object.values(allLogs)) {
+            if (!log.tags || log.tags.length === 0) continue
+            for (const optId of log.selectedOptionIds) {
+              if (!banks[optId]) banks[optId] = new Set()
+              for (const t of log.tags) banks[optId].add(t.tagId)
+            }
+          }
+          return banks
+        })()
+      : null
+
+    const visibleTagIds: Set<string> | null = (() => {
+      if (!tagBanks) return null
+      if (mcSelectedOptionIds.size === 0) return new Set<string>()
+      const hasAnyHistory = Array.from(mcSelectedOptionIds).some((id) => tagBanks[id])
+      if (!hasAnyHistory) return null
+      const ids = new Set<string>()
+      for (const optId of mcSelectedOptionIds) {
+        const bank = tagBanks[optId]
+        if (bank) for (const tid of bank) ids.add(tid)
+      }
+      return ids
+    })()
+
+    const mcDisplayTags = visibleTagIds
+      ? projectTags.filter((t) => visibleTagIds.has(t.id))
+      : projectTags
+
+    const mcShouldShowTags = mcShowTags && (!mcConfig.choiceDependentTags || mcSelectedOptionIds.size > 0)
 
     return (
       <div className={styles.projectExpanded}>
@@ -927,6 +1008,95 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
                 })}
               </div>
             </div>
+          )}
+
+          {/* Tags (when enabled) */}
+          {mcTagsOn && projectTags.length === 0 && (
+            <div className={styles.tagEmptyHint}>
+              Add tags in the Lab page to start tagging your choices.
+            </div>
+          )}
+          {mcShouldShowTags && (
+            <>
+              <div className={styles.tagsSection}>
+                <div className={styles.label}>Tags</div>
+                <div className={styles.tagGrid}>
+                  {mcDisplayTags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      className={[
+                        styles.tagButton,
+                        selectedTags.has(tag.id) && styles.tagButtonActive,
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={() => {
+                        const next = new Set(selectedTags)
+                        if (selectedTags.has(tag.id)) {
+                          next.delete(tag.id)
+                          setTagIntensities((prev) => {
+                            const copy = { ...prev }
+                            delete copy[tag.id]
+                            return copy
+                          })
+                        } else {
+                          next.add(tag.id)
+                          setNoTags(false)
+                        }
+                        setSelectedTags(next)
+                      }}
+                    >
+                      {formatTagNameDisplay(tag.name)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedIntensityTags.length > 0 && (
+                <div className={styles.intensityList}>
+                  <div className={styles.label}>Intensity</div>
+                  {selectedIntensityTags.map((tag) => (
+                    <div key={tag.id} className={styles.intensityRow}>
+                      <div className={styles.intensityName}>{formatTagNameDisplay(tag.name)}</div>
+                      <IntensityPicker
+                        min={tag.intensity?.min ?? 1}
+                        max={tag.intensity?.max ?? 5}
+                        step={tag.intensity?.step ?? 1}
+                        value={tagIntensities[tag.id]}
+                        onChange={(next) =>
+                          setTagIntensities((prev) => ({
+                            ...prev,
+                            [tag.id]: next,
+                          }))
+                        }
+                        ariaLabel={`Intensity for ${formatTagNameDisplay(tag.name)}`}
+                      />
+                      {tag.intensity?.unitLabel && (
+                        <span className={styles.intensityUnit}>{tag.intensity.unitLabel}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {mcConfig.allowExplicitNoTags && (
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={noTags}
+                    onChange={(e) => {
+                      setNoTags(e.target.checked)
+                      if (e.target.checked) {
+                        setSelectedTags(new Set())
+                        setTagIntensities({})
+                      }
+                    }}
+                  />
+                  No tags today
+                </label>
+              )}
+            </>
           )}
 
           <label className={styles.label}>
