@@ -1012,8 +1012,17 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
 
           {/* Tags (when enabled) */}
           {mcTagsOn && projectTags.length === 0 && (
-            <div className={styles.tagEmptyHint}>
-              Add tags in the Lab page to start tagging your choices.
+            <div className={styles.tagsSection}>
+              <div className={styles.label}>Tags</div>
+              <div className={styles.tagGrid}>
+                <button
+                  type="button"
+                  className={styles.tagAddButton}
+                  onClick={() => setIsAddingTag(true)}
+                >
+                  + Add tag
+                </button>
+              </div>
             </div>
           )}
           {mcShouldShowTags && (
@@ -1050,6 +1059,14 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
                       {formatTagNameDisplay(tag.name)}
                     </button>
                   ))}
+
+                  <button
+                    type="button"
+                    className={styles.tagAddButton}
+                    onClick={() => setIsAddingTag(true)}
+                  >
+                    + Add tag
+                  </button>
                 </div>
               </div>
 
@@ -1098,6 +1115,82 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
               )}
             </>
           )}
+
+          <Dialog open={isAddingTag} title="New tag" onClose={closeNewTagDialog}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                handleCreateTag()
+              }}
+            >
+              <DialogBody>
+                <label className={styles.label}>
+                  Tag name
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="New tag..."
+                    autoFocus
+                    required
+                  />
+                </label>
+
+                <label className={styles.label}>
+                  Group (optional)
+                  <input
+                    type="text"
+                    className={styles.input}
+                    value={newTagGroup}
+                    onChange={(e) => setNewTagGroup(e.target.value)}
+                    list={groupDatalistId}
+                    placeholder="e.g., sleep, food, training"
+                  />
+                  {groupOptions.length > 0 ? (
+                    <datalist id={groupDatalistId}>
+                      {groupOptions.map((g) => (
+                        <option key={g} value={g} />
+                      ))}
+                    </datalist>
+                  ) : null}
+                </label>
+
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={newTagTrackIntensity}
+                    onChange={(e) => setNewTagTrackIntensity(e.target.checked)}
+                  />
+                  Track intensity
+                </label>
+
+                {newTagTrackIntensity && (
+                  <label className={styles.label}>
+                    Intensity scale
+                    <select
+                      className={styles.input}
+                      value={String(newTagIntensityMax)}
+                      onChange={(e) => setNewTagIntensityMax(Number(e.target.value) as 3 | 5)}
+                    >
+                      <option value="3">1–3</option>
+                      <option value="5">1–5</option>
+                    </select>
+                  </label>
+                )}
+              </DialogBody>
+
+              <DialogFooter>
+                <button type="button" className={sharedStyles.smallBtn} onClick={closeNewTagDialog}>
+                  Cancel
+                </button>
+                <button type="submit" className={sharedStyles.smallBtn} disabled={!newTagName.trim()}>
+                  Create
+                </button>
+              </DialogFooter>
+            </form>
+          </Dialog>
 
           <label className={styles.label}>
             Note (optional)
