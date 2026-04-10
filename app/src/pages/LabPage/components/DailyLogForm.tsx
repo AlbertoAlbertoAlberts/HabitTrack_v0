@@ -690,6 +690,11 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
       </div>
 
       {/* Tags (when enabled) */}
+      {mcTagsEnabled && projectTags.length === 0 && (
+        <div className={styles.emptyInfo}>
+          Add tags in the Tags section above to start tagging your choices.
+        </div>
+      )}
       {shouldShowTagSelector && (
         <TagSelector
           tagGroups={displayTagGroups}
