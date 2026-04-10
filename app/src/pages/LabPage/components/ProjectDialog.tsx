@@ -584,22 +584,24 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
                   <span>With tags</span>
                 </label>
                 {mcTagsEnabled && (
-                  <label className={styles.radioLabel} style={{ marginTop: 6, marginLeft: 24 }}>
-                    <input
-                      type="checkbox"
-                      checked={mcAllowExplicitNoTags}
-                      onChange={(e) => setMcAllowExplicitNoTags(e.target.checked)}
-                    />
-                    <span>Allow explicit "No tags today"</span>
-                  </label>
-                  <label className={styles.radioLabel} style={{ marginTop: 6, marginLeft: 24 }}>
-                    <input
-                      type="checkbox"
-                      checked={mcChoiceDependentTags}
-                      onChange={(e) => setMcChoiceDependentTags(e.target.checked)}
-                    />
-                    <span>Link tags to choices</span>
-                  </label>
+                  <>
+                    <label className={styles.radioLabel} style={{ marginTop: 6, marginLeft: 24 }}>
+                      <input
+                        type="checkbox"
+                        checked={mcAllowExplicitNoTags}
+                        onChange={(e) => setMcAllowExplicitNoTags(e.target.checked)}
+                      />
+                      <span>Allow explicit "No tags today"</span>
+                    </label>
+                    <label className={styles.radioLabel} style={{ marginTop: 6, marginLeft: 24 }}>
+                      <input
+                        type="checkbox"
+                        checked={mcChoiceDependentTags}
+                        onChange={(e) => setMcChoiceDependentTags(e.target.checked)}
+                      />
+                      <span>Link tags to choices</span>
+                    </label>
+                  </>
                 )}
               </div>
             </>
