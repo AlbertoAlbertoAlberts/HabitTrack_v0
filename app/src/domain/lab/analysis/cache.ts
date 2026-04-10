@@ -63,7 +63,10 @@ export function generateFingerprint(state: AppStateV1, projectId: string): strin
     const logHashes = Object.entries(logs)
       .map(([date, log]) => {
         const optionStr = [...log.selectedOptionIds].sort().join(',')
-        return `${date}:${optionStr}`
+        const tagStr = log.tags
+          ? log.tags.map((t) => `${t.tagId}${t.intensity !== undefined ? `:${t.intensity}` : ''}`).sort().join(',')
+          : ''
+        return `${date}:${optionStr}:${tagStr}:${log.noTags ? 'noTags' : ''}`
       })
       .sort()
       .join('|')

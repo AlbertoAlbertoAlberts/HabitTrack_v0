@@ -9,7 +9,7 @@ import {
 } from './datasetBuilders'
 import { v1AllMethods } from './methods'
 import { tagFrequency, tagCoOccurrence } from './tagOnlyMethods'
-import { choiceFrequency } from './multiChoiceMethods'
+import { choiceFrequency, tagChoiceCorrelation } from './multiChoiceMethods'
 import { crossOutcomeCorrelation, perOutcomeTagCorrelation } from './multiOutcomeMethods'
 import type { LabFinding } from './types'
 import { generateFingerprint, getCachedFindings, setCachedFindings, type FindingsCache } from './cache'
@@ -252,6 +252,7 @@ export function runAnalysisForProject(
 
     const findings: LabFinding[] = []
     findings.push(...choiceFrequency(dataset, projectId))
+    findings.push(...tagChoiceCorrelation(dataset, projectId))
 
     const finalFindings = applyGuardrails(findings)
     const updatedCache = setCachedFindings(state.lab?.findingsCache, projectId, fingerprint, finalFindings)

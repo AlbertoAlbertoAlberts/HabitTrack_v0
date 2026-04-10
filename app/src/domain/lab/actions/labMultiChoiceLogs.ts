@@ -1,4 +1,4 @@
-import type { AppStateV1, ISODate, LabProjectId } from '../../types'
+import type { AppStateV1, ISODate, LabProjectId, LabTagUse } from '../../types'
 
 /**
  * Set or update a multi-choice log entry for a project.
@@ -8,7 +8,7 @@ export function setLabMultiChoiceLog(
   state: AppStateV1,
   projectId: LabProjectId,
   date: ISODate,
-  data: { selectedOptionIds: string[]; note?: string }
+  data: { selectedOptionIds: string[]; tags?: LabTagUse[]; noTags?: boolean; note?: string }
 ): AppStateV1 {
   if (!state.lab) return state
 
@@ -34,6 +34,20 @@ export function setLabMultiChoiceLog(
     return state
   }
 
+  // Validate tags if provided
+  if (data.tags && data.tags.length > 0) {
+    if (!config.tagsEnabled) {
+      console.warn('Tags provided but tagsEnabled is not set on this multi-choice project')
+      return state
+    }
+    const projectTags = state.lab.tagsByProject[projectId] ?? {}
+    const invalidTagIds = data.tags.filter(t => !projectTags[t.tagId])
+    if (invalidTagIds.length > 0) {
+      console.warn(`Invalid tag IDs: ${invalidTagIds.map(t => t.tagId).join(', ')}`)
+      return state
+    }
+  }
+
   const projectLogs = state.lab.multiChoiceLogsByProject[projectId] || {}
 
   return {
@@ -48,6 +62,8 @@ export function setLabMultiChoiceLog(
             date,
             updatedAt: new Date().toISOString(),
             selectedOptionIds: data.selectedOptionIds,
+            tags: data.tags && data.tags.length > 0 ? data.tags : undefined,
+            noTags: data.noTags || undefined,
             note: data.note,
           },
         },

@@ -117,6 +117,10 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
           date,
           updatedAt: typeof log.updatedAt === 'string' ? log.updatedAt : repairNow,
           selectedOptionIds,
+          tags: Array.isArray(log.tags) ? log.tags.filter(
+            (t): t is LabTagUse => isRecord(t) && typeof t.tagId === 'string'
+          ) : undefined,
+          noTags: log.noTags === true ? true : undefined,
           note: typeof log.note === 'string' ? log.note : undefined,
         }
       }

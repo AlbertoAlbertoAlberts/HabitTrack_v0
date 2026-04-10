@@ -51,6 +51,14 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
     [result.findings],
   )
 
+  const tagChoiceFindings = useMemo(
+    () =>
+      result.findings
+        .filter((f) => f.method === 'tag-choice-correlation')
+        .sort((a, b) => Math.abs(b.effect) - Math.abs(a.effect)),
+    [result.findings],
+  )
+
   // Option ID → label lookup (includes archived for historical data)
   const optionLabels = useMemo(() => {
     const map: Record<string, string> = {}
@@ -59,6 +67,16 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
     }
     return map
   }, [allOptions])
+
+  // Tag ID → name lookup
+  const tagLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    const tags = state.lab?.tagsByProject[projectId] ?? {}
+    for (const [id, tag] of Object.entries(tags)) {
+      map[id] = tag.name
+    }
+    return map
+  }, [state.lab?.tagsByProject, projectId])
 
   // Build 30-day grid data
   const activeOptionIds = useMemo(() => options.map((o) => o.id), [options])
@@ -127,7 +145,7 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
             Start logging choices to see frequency analysis. At least 5 logged days are needed.
           </div>
         ) : (
-          <OverviewTab findings={frequencyFindings} optionLabels={optionLabels} />
+          <OverviewTab findings={frequencyFindings} tagChoiceFindings={tagChoiceFindings} optionLabels={optionLabels} tagLabels={tagLabels} />
         )
       )}
     </div>
@@ -138,39 +156,77 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
 
 function OverviewTab({
   findings,
+  tagChoiceFindings,
   optionLabels,
+  tagLabels,
 }: {
   findings: LabFinding[]
+  tagChoiceFindings: LabFinding[]
   optionLabels: Record<string, string>
+  tagLabels: Record<string, string>
 }) {
-  if (findings.length === 0) {
+  if (findings.length === 0 && tagChoiceFindings.length === 0) {
     return <div className={styles.emptyHint}>No frequency data yet.</div>
   }
 
   return (
-    <section className={styles.section}>
-      <h3 className={styles.sectionTitle}>Choice frequency</h3>
-      <div className={styles.frequencyList}>
-        {findings.map((f, i) => {
-          // tagId has format "option:<optionId>"
-          const optionId = f.tagId.replace(/^option:/, '')
-          const label = optionLabels[optionId] || 'Unknown'
-          const raw = f.rawData as { selectedCount: number; totalDays: number; percent: number } | undefined
-          const percent = raw?.percent ?? Math.round(f.effect * 100)
+    <>
+      {findings.length > 0 && (
+        <section className={styles.section}>
+          <h3 className={styles.sectionTitle}>Choice frequency</h3>
+          <div className={styles.frequencyList}>
+            {findings.map((f, i) => {
+              // tagId has format "option:<optionId>"
+              const optionId = f.tagId.replace(/^option:/, '')
+              const label = optionLabels[optionId] || 'Unknown'
+              const raw = f.rawData as { selectedCount: number; totalDays: number; percent: number } | undefined
+              const percent = raw?.percent ?? Math.round(f.effect * 100)
 
-          return (
-            <div key={f.tagId} className={styles.frequencyRow}>
-              <span className={styles.frequencyRank}>{i + 1}.</span>
-              <span className={styles.frequencyName}>{label}</span>
-              <div className={styles.frequencyBar}>
-                <div className={styles.frequencyBarFill} style={{ width: `${percent}%` }} />
-              </div>
-              <span className={styles.frequencyPercent}>{percent}%</span>
-              {raw && <span className={styles.frequencySample}>{raw.selectedCount}/{raw.totalDays}</span>}
-            </div>
-          )
-        })}
-      </div>
-    </section>
+              return (
+                <div key={f.tagId} className={styles.frequencyRow}>
+                  <span className={styles.frequencyRank}>{i + 1}.</span>
+                  <span className={styles.frequencyName}>{label}</span>
+                  <div className={styles.frequencyBar}>
+                    <div className={styles.frequencyBarFill} style={{ width: `${percent}%` }} />
+                  </div>
+                  <span className={styles.frequencyPercent}>{percent}%</span>
+                  {raw && <span className={styles.frequencySample}>{raw.selectedCount}/{raw.totalDays}</span>}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {tagChoiceFindings.length > 0 && (
+        <section className={styles.section}>
+          <h3 className={styles.sectionTitle}>Tag → Choice correlations</h3>
+          <div className={styles.frequencyList}>
+            {tagChoiceFindings.map((f, i) => {
+              const raw = f.rawData as { optionId: string; rateWith: number; rateWithout: number; withTagTotal: number; withoutTagTotal: number } | undefined
+              const tagName = tagLabels[f.tagId] || f.tagId
+              const optionName = raw ? (optionLabels[raw.optionId] || 'Unknown') : 'Unknown'
+              const percentDiff = Math.round(f.effect * 100)
+              const sign = percentDiff > 0 ? '+' : ''
+
+              return (
+                <div key={`${f.tagId}-${raw?.optionId}-${i}`} className={styles.frequencyRow}>
+                  <span className={styles.frequencyName} style={{ flex: 2 }}>
+                    {tagName} → {optionName}
+                  </span>
+                  <span className={styles.frequencyPercent} style={{ color: percentDiff > 0 ? 'var(--color-positive, #4ade80)' : 'var(--color-negative, #f87171)' }}>
+                    {sign}{percentDiff}%
+                  </span>
+                  <span className={styles.frequencySample}>
+                    n={f.sampleSize}
+                    {f.confidence === 'low' && ' ⚠'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+    </>
   )
 }

@@ -71,6 +71,7 @@ export interface TagOnlyDataset {
 export interface MultiChoiceDatasetRow {
   date: string // ISO date
   selectedOptionIds: string[]
+  tags?: Record<string, { present: boolean; intensity?: number }>
 }
 
 /**
@@ -622,14 +623,34 @@ export function buildMultiChoiceDataset(state: AppStateV1, projectId: string): M
   }
 
   const logs = state.lab?.multiChoiceLogsByProject[projectId] || {}
+  const projectTags = state.lab?.tagsByProject[projectId] || {}
+  const tagIds = Object.keys(projectTags)
+  const hasTags = project.config.kind === 'daily-multi-choice' && project.config.tagsEnabled && tagIds.length > 0
 
   const rows: MultiChoiceDatasetRow[] = []
 
   for (const [date, log] of Object.entries(logs) as [string, LabMultiChoiceLog][]) {
-    rows.push({
+    const row: MultiChoiceDatasetRow = {
       date,
       selectedOptionIds: log.selectedOptionIds,
-    })
+    }
+
+    if (hasTags) {
+      const tagMap: Record<string, { present: boolean; intensity?: number }> = {}
+      for (const tid of tagIds) {
+        tagMap[tid] = { present: false }
+      }
+      if (log.tags) {
+        for (const tu of log.tags) {
+          if (tagMap[tu.tagId] !== undefined) {
+            tagMap[tu.tagId] = { present: true, intensity: tu.intensity }
+          }
+        }
+      }
+      row.tags = tagMap
+    }
+
+    rows.push(row)
   }
 
   // Sort by date ascending

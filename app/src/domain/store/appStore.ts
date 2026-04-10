@@ -386,7 +386,7 @@ export const appStore = {
     setLabMultiChoiceLog(
       projectId: LabProjectId,
       date: ISODate,
-      data: { selectedOptionIds: string[]; note?: string }
+      data: { selectedOptionIds: string[]; tags?: LabTagUse[]; noTags?: boolean; note?: string }
     ) {
       setState(setLabMultiChoiceLog(state, projectId, date, data))
     },

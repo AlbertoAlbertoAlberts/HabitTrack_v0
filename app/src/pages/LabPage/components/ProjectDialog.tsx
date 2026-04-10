@@ -71,6 +71,12 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
   const [mcRequireChoice, setMcRequireChoice] = useState(
     existingProject?.config.kind === 'daily-multi-choice' ? existingProject.config.completion.requireAtLeastOneChoice : true
   )
+  const [mcTagsEnabled, setMcTagsEnabled] = useState(
+    existingProject?.config.kind === 'daily-multi-choice' ? (existingProject.config.tagsEnabled === true) : false
+  )
+  const [mcAllowExplicitNoTags, setMcAllowExplicitNoTags] = useState(
+    existingProject?.config.kind === 'daily-multi-choice' ? (existingProject.config.allowExplicitNoTags === true) : false
+  )
 
   // --- Event config ---
   const [eventName, setEventName] = useState(
@@ -230,6 +236,8 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
           kind: 'daily-multi-choice',
           selectionMode,
           options: mcOptions,
+          tagsEnabled: mcTagsEnabled || undefined,
+          allowExplicitNoTags: mcTagsEnabled && mcAllowExplicitNoTags ? true : undefined,
           completion: {
             requireAtLeastOneChoice: mcRequireChoice,
           },
@@ -554,6 +562,30 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
                   />
                   <span>Require at least one choice per day</span>
                 </label>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.radioLabel}>
+                  <input
+                    type="checkbox"
+                    checked={mcTagsEnabled}
+                    onChange={(e) => {
+                      setMcTagsEnabled(e.target.checked)
+                      if (!e.target.checked) setMcAllowExplicitNoTags(false)
+                    }}
+                  />
+                  <span>With tags</span>
+                </label>
+                {mcTagsEnabled && (
+                  <label className={styles.radioLabel} style={{ marginTop: 6, marginLeft: 24 }}>
+                    <input
+                      type="checkbox"
+                      checked={mcAllowExplicitNoTags}
+                      onChange={(e) => setMcAllowExplicitNoTags(e.target.checked)}
+                    />
+                    <span>Allow explicit "No tags today"</span>
+                  </label>
+                )}
               </div>
             </>
           )}

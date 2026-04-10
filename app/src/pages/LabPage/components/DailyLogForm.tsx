@@ -489,6 +489,25 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
+  // --- Tag state (only used when tagsEnabled) ---
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set())
+  const [tagIntensities, setTagIntensities] = useState<Record<string, number>>({})
+  const [noTags, setNoTags] = useState(false)
+
+  const mcTagsEnabled = config.tagsEnabled === true
+
+  const projectTags = useMemo(() => {
+    return Object.values(state.lab?.tagsByProject[projectId] ?? {})
+  }, [state.lab?.tagsByProject[projectId]]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const showTags = mcTagsEnabled && projectTags.length > 0
+
+  const selectedIntensityTags = projectTags.filter(
+    (t) => selectedTags.has(t.id) && t.intensity?.enabled
+  )
+
+  const { tagGroups, hasCategories } = useTagGroups(projectId, projectTags)
+
   const activeOptions = useMemo(
     () => config.options.filter((o) => !o.archived),
     [config.options]
@@ -499,9 +518,27 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
     if (existingLog) {
       setSelectedOptionIds(new Set(existingLog.selectedOptionIds))
       setNote(existingLog.note ?? '')
+      // Restore tag state
+      if (existingLog.tags) {
+        setSelectedTags(new Set(existingLog.tags.map((t) => t.tagId)))
+        setTagIntensities(() => {
+          const m: Record<string, number> = {}
+          for (const t of existingLog.tags!) {
+            if (t.intensity !== undefined) m[t.tagId] = t.intensity
+          }
+          return m
+        })
+      } else {
+        setSelectedTags(new Set())
+        setTagIntensities({})
+      }
+      setNoTags(existingLog.noTags ?? false)
     } else {
       setSelectedOptionIds(new Set())
       setNote('')
+      setSelectedTags(new Set())
+      setTagIntensities({})
+      setNoTags(false)
     }
     setSaveError(null)
     setSaved(false)
@@ -529,8 +566,30 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
   const handleSave = () => {
     setSaveError(null)
 
+    // Build tags if enabled
+    let tags: LabTagUse[] | undefined
+    if (mcTagsEnabled && selectedTags.size > 0) {
+      tags = Array.from(selectedTags).map((tagId) => ({
+        tagId,
+        intensity: tagIntensities[tagId],
+      }))
+
+      // Validate tag intensities
+      for (const t of tags) {
+        const tagDef = projectTags.find((x) => x.id === t.tagId)
+        if (!tagDef) continue
+        const res = appStore.selectors.validateLabTagIntensity(tagDef, t.intensity)
+        if (!res.valid) {
+          setSaveError(`"${formatTagNameDisplay(tagDef.name)}": ${res.error}`)
+          return
+        }
+      }
+    }
+
     appStore.actions.setLabMultiChoiceLog(projectId, date, {
       selectedOptionIds: Array.from(selectedOptionIds),
+      tags,
+      noTags: mcTagsEnabled && noTags ? true : undefined,
       note: note.trim() || undefined,
     })
 
@@ -543,6 +602,9 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
     appStore.actions.deleteLabMultiChoiceLog(projectId, date)
     setSelectedOptionIds(new Set())
     setNote('')
+    setSelectedTags(new Set())
+    setTagIntensities({})
+    setNoTags(false)
     setSaved(false)
   }
 
@@ -589,6 +651,22 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
           })}
         </div>
       </div>
+
+      {/* Tags (when enabled) */}
+      {showTags && (
+        <TagSelector
+          tagGroups={tagGroups}
+          hasCategories={hasCategories}
+          selectedTags={selectedTags}
+          setSelectedTags={setSelectedTags}
+          tagIntensities={tagIntensities}
+          setTagIntensities={setTagIntensities}
+          selectedIntensityTags={selectedIntensityTags}
+          noTags={noTags}
+          setNoTags={setNoTags}
+          showNoTags={config.allowExplicitNoTags === true}
+        />
+      )}
 
       <div className={styles.noteSection}>
         <label className={styles.noteLabel}>

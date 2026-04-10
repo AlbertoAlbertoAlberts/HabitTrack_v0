@@ -90,6 +90,8 @@ export interface LabDailyMultiChoiceProjectConfig {
   kind: 'daily-multi-choice'
   selectionMode: 'single' | 'multiple'
   options: LabMultiChoiceOption[]
+  tagsEnabled?: boolean              // default false for backward compat
+  allowExplicitNoTags?: boolean      // "No tags today" option when tags enabled
   completion: {
     requireAtLeastOneChoice: boolean
   }
@@ -157,6 +159,8 @@ export interface LabMultiChoiceLog {
   date: ISODate
   updatedAt: ISOTimestamp
   selectedOptionIds: string[]
+  tags?: LabTagUse[]       // present only when project has tagsEnabled
+  noTags?: boolean         // explicit "no tags today" marker
   note?: string
 }
 

@@ -418,7 +418,7 @@ export function LabPage() {
           )}
         </div>
 
-        {activeProject && activeProject.config.kind === 'daily-multi-choice' ? (
+        {activeProject && activeProject.config.kind === 'daily-multi-choice' && !activeProject.config.tagsEnabled ? (
           <div className={styles.tagsArea}>
             <section className={sharedStyles.panel}>
               <DailyLogForm projectId={activeProjectId!} />
@@ -607,7 +607,7 @@ export function LabPage() {
                 />
               )}
 
-              {(activeProject.mode === 'daily' || activeProject.mode === 'daily-tag-only') && (
+              {(activeProject.mode === 'daily' || activeProject.mode === 'daily-tag-only' || activeProject.mode === 'daily-multi-choice') && (
                 <DailyLogForm projectId={activeProjectId!} />
               )}
             </section>
