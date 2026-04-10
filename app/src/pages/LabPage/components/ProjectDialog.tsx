@@ -77,6 +77,9 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
   const [mcAllowExplicitNoTags, setMcAllowExplicitNoTags] = useState(
     existingProject?.config.kind === 'daily-multi-choice' ? (existingProject.config.allowExplicitNoTags === true) : false
   )
+  const [mcChoiceDependentTags, setMcChoiceDependentTags] = useState(
+    existingProject?.config.kind === 'daily-multi-choice' ? (existingProject.config.choiceDependentTags === true) : false
+  )
 
   // --- Event config ---
   const [eventName, setEventName] = useState(
@@ -238,6 +241,7 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
           options: mcOptions,
           tagsEnabled: mcTagsEnabled || undefined,
           allowExplicitNoTags: mcTagsEnabled && mcAllowExplicitNoTags ? true : undefined,
+          choiceDependentTags: mcTagsEnabled && mcChoiceDependentTags ? true : undefined,
           completion: {
             requireAtLeastOneChoice: mcRequireChoice,
           },
@@ -571,7 +575,10 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
                     checked={mcTagsEnabled}
                     onChange={(e) => {
                       setMcTagsEnabled(e.target.checked)
-                      if (!e.target.checked) setMcAllowExplicitNoTags(false)
+                      if (!e.target.checked) {
+                        setMcAllowExplicitNoTags(false)
+                        setMcChoiceDependentTags(false)
+                      }
                     }}
                   />
                   <span>With tags</span>
@@ -584,6 +591,14 @@ export function ProjectDialog({ open, onClose, projectId }: ProjectDialogProps) 
                       onChange={(e) => setMcAllowExplicitNoTags(e.target.checked)}
                     />
                     <span>Allow explicit "No tags today"</span>
+                  </label>
+                  <label className={styles.radioLabel} style={{ marginTop: 6, marginLeft: 24 }}>
+                    <input
+                      type="checkbox"
+                      checked={mcChoiceDependentTags}
+                      onChange={(e) => setMcChoiceDependentTags(e.target.checked)}
+                    />
+                    <span>Link tags to choices</span>
                   </label>
                 )}
               </div>

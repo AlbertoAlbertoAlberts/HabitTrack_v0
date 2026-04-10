@@ -92,6 +92,7 @@ export interface LabDailyMultiChoiceProjectConfig {
   options: LabMultiChoiceOption[]
   tagsEnabled?: boolean              // default false for backward compat
   allowExplicitNoTags?: boolean      // "No tags today" option when tags enabled
+  choiceDependentTags?: boolean      // filter visible tags by historical choice–tag co-occurrence
   completion: {
     requireAtLeastOneChoice: boolean
   }

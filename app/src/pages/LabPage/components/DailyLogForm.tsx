@@ -502,11 +502,48 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
 
   const showTags = mcTagsEnabled && projectTags.length > 0
 
+  // --- Choice-dependent tag filtering ---
+  const allLogs = state.lab?.multiChoiceLogsByProject[projectId] ?? {}
+  const tagBanks = useMemo(() => {
+    if (!config.choiceDependentTags) return null
+    const banks: Record<string, Set<string>> = {}
+    for (const log of Object.values(allLogs)) {
+      if (!log.tags || log.tags.length === 0) continue
+      for (const optId of log.selectedOptionIds) {
+        if (!banks[optId]) banks[optId] = new Set()
+        for (const t of log.tags) banks[optId].add(t.tagId)
+      }
+    }
+    return banks
+  }, [config.choiceDependentTags, allLogs])
+
+  const visibleTagIds = useMemo(() => {
+    if (!tagBanks) return null // feature off → show all
+    if (selectedOptionIds.size === 0) return new Set<string>() // no choice → hide tags
+    const hasAnyHistory = Array.from(selectedOptionIds).some((id) => tagBanks[id])
+    if (!hasAnyHistory) return null // bootstrap: no history → show all
+    const ids = new Set<string>()
+    for (const optId of selectedOptionIds) {
+      const bank = tagBanks[optId]
+      if (bank) for (const tid of bank) ids.add(tid)
+    }
+    return ids
+  }, [tagBanks, selectedOptionIds])
+
   const selectedIntensityTags = projectTags.filter(
     (t) => selectedTags.has(t.id) && t.intensity?.enabled
   )
 
   const { tagGroups, hasCategories } = useTagGroups(projectId, projectTags)
+
+  const displayTagGroups = useMemo(() => {
+    if (!visibleTagIds) return tagGroups // no filter active
+    return tagGroups
+      .map((g) => ({ ...g, tags: g.tags.filter((t) => visibleTagIds.has(t.id)) }))
+      .filter((g) => g.tags.length > 0)
+  }, [tagGroups, visibleTagIds])
+
+  const shouldShowTagSelector = showTags && (!config.choiceDependentTags || selectedOptionIds.size > 0)
 
   const activeOptions = useMemo(
     () => config.options.filter((o) => !o.archived),
@@ -653,9 +690,9 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
       </div>
 
       {/* Tags (when enabled) */}
-      {showTags && (
+      {shouldShowTagSelector && (
         <TagSelector
-          tagGroups={tagGroups}
+          tagGroups={displayTagGroups}
           hasCategories={hasCategories}
           selectedTags={selectedTags}
           setSelectedTags={setSelectedTags}
