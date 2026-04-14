@@ -95,9 +95,6 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
     new Set(existingMultiChoiceLog?.selectedOptionIds ?? [])
   )
   const [mcNote, setMcNote] = useState(existingMultiChoiceLog?.note ?? '')
-  const [mcSaved, setMcSaved] = useState(false)
-  // Tag-only saved indicator
-  const [tagOnlySaved, setTagOnlySaved] = useState(false)
 
   const projectTags = Object.values(state.lab?.tagsByProject[project.id] || {})
     .sort((a, b) => a.name.localeCompare(b.name, 'lv'))
@@ -148,7 +145,6 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
       }
       return next
     })
-    setTagOnlySaved(false)
     setSaveError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isExpanded, project.mode, existingLog?.updatedAt])
@@ -176,7 +172,6 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
       setTagIntensities({})
     }
     setNoTags(log?.noTags ?? false)
-    setMcSaved(false)
     setSaveError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isExpanded, project.mode, existingMultiChoiceLog?.updatedAt])
@@ -349,16 +344,6 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
     onToggle()
   }
 
-  const handleClearTagOnly = () => {
-    if (!existingLog) return
-    appStore.actions.deleteLabDailyLog(project.id, date)
-    setSelectedTags(new Set())
-    setTagIntensities({})
-    setNoTags(false)
-    setDailyNote('')
-    setTagOnlySaved(false)
-  }
-
   const handleSaveMultiChoice = () => {
     setSaveError(null)
 
@@ -393,17 +378,6 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
     })
 
     onToggle()
-  }
-
-  const handleClearMultiChoice = () => {
-    if (!existingMultiChoiceLog) return
-    appStore.actions.deleteLabMultiChoiceLog(project.id, date)
-    setMcSelectedOptionIds(new Set())
-    setMcNote('')
-    setSelectedTags(new Set())
-    setTagIntensities({})
-    setNoTags(false)
-    setMcSaved(false)
   }
 
   const toggleMcOption = (optionId: string) => {
