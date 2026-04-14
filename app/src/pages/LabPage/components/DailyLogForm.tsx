@@ -105,7 +105,6 @@ function DailyOutcomeForm({ projectId, project, date }: DailyOutcomeFormProps) {
   const [noTags, setNoTags] = useState(false)
   const [note, setNote] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
 
   // Load existing log when date changes
   useEffect(() => {
@@ -135,7 +134,6 @@ function DailyOutcomeForm({ projectId, project, date }: DailyOutcomeFormProps) {
       setNote('')
     }
     setSaveError(null)
-    setSaved(false)
   }, [date, projectId, existingLog?.updatedAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const projectTags = useMemo(() => {
@@ -205,21 +203,6 @@ function DailyOutcomeForm({ projectId, project, date }: DailyOutcomeFormProps) {
       noTags: noTags || undefined,
       note: note.trim() || undefined,
     })
-
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  const handleClear = () => {
-    if (!existingLog) return
-    appStore.actions.deleteLabDailyLog(projectId, date)
-    setOutcome('')
-    setAdditionalOutcomes({})
-    setSelectedTags(new Set())
-    setTagIntensities({})
-    setNoTags(false)
-    setNote('')
-    setSaved(false)
   }
 
   return (
@@ -296,16 +279,6 @@ function DailyOutcomeForm({ projectId, project, date }: DailyOutcomeFormProps) {
 
       {/* Actions */}
       <div className={styles.formActions}>
-        {saved && (
-          <span className={styles.savedIndicator}>
-            <span className={styles.savedCheck}>✓</span> Saved
-          </span>
-        )}
-        {existingLog && (
-          <button type="button" className={styles.clearButton} onClick={handleClear}>
-            Clear
-          </button>
-        )}
         <button type="button" className={styles.saveButton} onClick={handleSave}>
           {existingLog ? 'Update' : 'Save'}
         </button>
@@ -335,7 +308,6 @@ function DailyTagOnlyForm({ projectId, project, date }: DailyTagOnlyFormProps) {
   const [noTags, setNoTags] = useState(false)
   const [note, setNote] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
 
   // Load existing log when date changes
   useEffect(() => {
@@ -357,7 +329,6 @@ function DailyTagOnlyForm({ projectId, project, date }: DailyTagOnlyFormProps) {
       setNote('')
     }
     setSaveError(null)
-    setSaved(false)
   }, [date, projectId, existingLog?.updatedAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const projectTags = useMemo(() => {
@@ -394,19 +365,6 @@ function DailyTagOnlyForm({ projectId, project, date }: DailyTagOnlyFormProps) {
       noTags: noTags || undefined,
       note: note.trim() || undefined,
     })
-
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  const handleClear = () => {
-    if (!existingLog) return
-    appStore.actions.deleteLabDailyLog(projectId, date)
-    setSelectedTags(new Set())
-    setTagIntensities({})
-    setNoTags(false)
-    setNote('')
-    setSaved(false)
   }
 
   if (projectTags.length === 0) {
@@ -450,16 +408,6 @@ function DailyTagOnlyForm({ projectId, project, date }: DailyTagOnlyFormProps) {
       </div>
 
       <div className={styles.formActions}>
-        {saved && (
-          <span className={styles.savedIndicator}>
-            <span className={styles.savedCheck}>✓</span> Saved
-          </span>
-        )}
-        {existingLog && (
-          <button type="button" className={styles.clearButton} onClick={handleClear}>
-            Clear
-          </button>
-        )}
         <button type="button" className={styles.saveButton} onClick={handleSave}>
           {existingLog ? 'Update' : 'Save'}
         </button>
@@ -487,7 +435,6 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
   const [selectedOptionIds, setSelectedOptionIds] = useState<Set<string>>(new Set())
   const [note, setNote] = useState('')
   const [saveError, setSaveError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
 
   // --- Tag state (only used when tagsEnabled) ---
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set())
@@ -592,7 +539,6 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
       setNoTags(false)
     }
     setSaveError(null)
-    setSaved(false)
   }, [date, projectId, existingLog?.updatedAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isSingleSelect = config.selectionMode === 'single'
@@ -643,20 +589,6 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
       noTags: mcTagsEnabled && noTags ? true : undefined,
       note: note.trim() || undefined,
     })
-
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  const handleClear = () => {
-    if (!existingLog) return
-    appStore.actions.deleteLabMultiChoiceLog(projectId, date)
-    setSelectedOptionIds(new Set())
-    setNote('')
-    setSelectedTags(new Set())
-    setTagIntensities({})
-    setNoTags(false)
-    setSaved(false)
   }
 
   if (activeOptions.length === 0) {
@@ -738,16 +670,6 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
       </div>
 
       <div className={styles.formActions}>
-        {saved && (
-          <span className={styles.savedIndicator}>
-            <span className={styles.savedCheck}>✓</span> Saved
-          </span>
-        )}
-        {existingLog && (
-          <button type="button" className={styles.clearButton} onClick={handleClear}>
-            Clear
-          </button>
-        )}
         <button type="button" className={styles.saveButton} onClick={handleSave}>
           {existingLog ? 'Update' : 'Save'}
         </button>
