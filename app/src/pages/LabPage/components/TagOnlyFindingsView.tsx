@@ -19,8 +19,7 @@ interface TagOnlyFindingsViewProps {
 
 export function TagOnlyFindingsView({ projectId }: TagOnlyFindingsViewProps) {
   const state = useAppState()
-  const [activeTab, setActiveTab] = useState<TabKey>('frequency')
-  const [selectedDotTagIds, setSelectedDotTagIds] = useState<string[]>([])
+  const [activeTab, setActiveTab] = useState<TabKey>('dotTable')
   const [dotStartDate, setDotStartDate] = useState<string | undefined>(undefined)
 
   const project = state.lab?.projects[projectId]
@@ -52,38 +51,45 @@ export function TagOnlyFindingsView({ projectId }: TagOnlyFindingsViewProps) {
     [result.findings],
   )
 
-  // Build dot table data
+  // Build dot table data for all tags
   const dotTableData = useMemo(() => {
-    if (selectedDotTagIds.length === 0) return {}
+    const allIds = Object.keys(tags)
+    if (allIds.length === 0) return {}
     const dataset = buildTagOnlyDataset(state, projectId)
-    return buildTagDotTableData(dataset, selectedDotTagIds, dotStartDate)
-  }, [state, projectId, selectedDotTagIds, dotStartDate])
+    return buildTagDotTableData(dataset, allIds, dotStartDate)
+  }, [state, projectId, tags, dotStartDate])
 
   const dotTableLabels = useMemo(() => {
     const map: Record<string, string> = {}
-    for (const tagId of selectedDotTagIds) {
+    for (const tagId of Object.keys(tags)) {
       map[tagId] = formatTagNameDisplay(tags[tagId]?.name || 'Unknown')
     }
     return map
-  }, [selectedDotTagIds, tags])
+  }, [tags])
 
-  const allTagIds = useMemo(() => Object.keys(tags), [tags])
+  // All tag IDs sorted by frequency (most frequent first)
+  const sortedTagIds = useMemo(() => {
+    const freqMap = new Map<string, number>()
+    for (const f of frequencyFindings) {
+      freqMap.set(f.tagId, f.effect)
+    }
+    return Object.keys(tags).sort((a, b) => (freqMap.get(b) ?? 0) - (freqMap.get(a) ?? 0))
+  }, [tags, frequencyFindings])
 
   if (!project) return null
 
   const notEnoughData = result.findings.length === 0
 
-  const toggleDotTag = (tagId: string) => {
-    setSelectedDotTagIds((prev) => {
-      if (prev.includes(tagId)) return prev.filter((id) => id !== tagId)
-      if (prev.length >= 5) return prev // max 5
-      return [...prev, tagId]
-    })
-  }
-
   return (
     <div className={styles.container}>
       <div className={styles.tabs}>
+        <button
+          type="button"
+          className={[styles.tab, activeTab === 'dotTable' && styles.tabActive].filter(Boolean).join(' ')}
+          onClick={() => setActiveTab('dotTable')}
+        >
+          30-Day Table
+        </button>
         <button
           type="button"
           className={[styles.tab, activeTab === 'frequency' && styles.tabActive].filter(Boolean).join(' ')}
@@ -97,13 +103,6 @@ export function TagOnlyFindingsView({ projectId }: TagOnlyFindingsViewProps) {
           onClick={() => setActiveTab('cooccurrence')}
         >
           Co-occurrence
-        </button>
-        <button
-          type="button"
-          className={[styles.tab, activeTab === 'dotTable' && styles.tabActive].filter(Boolean).join(' ')}
-          onClick={() => setActiveTab('dotTable')}
-        >
-          30-Day Table
         </button>
         <div style={{ marginLeft: 'auto' }}>
           <DataMaturityView projectId={projectId} />
@@ -130,10 +129,7 @@ export function TagOnlyFindingsView({ projectId }: TagOnlyFindingsViewProps) {
       )}
       {activeTab === 'dotTable' && (
         <DotTableTab
-          allTagIds={allTagIds}
-          tags={tags}
-          selectedTagIds={selectedDotTagIds}
-          onToggleTag={toggleDotTag}
+          sortedTagIds={sortedTagIds}
           data={dotTableData}
           labels={dotTableLabels}
           startDate={dotStartDate}
@@ -236,70 +232,37 @@ function CoOccurrenceTab({ findings, tags }: { findings: LabFinding[]; tags: Rec
 // ── 30-Day Dot Table Tab ────────────────────────────────────
 
 function DotTableTab({
-  allTagIds,
-  tags,
-  selectedTagIds,
-  onToggleTag,
+  sortedTagIds,
   data,
   labels,
   startDate,
   onStartDateChange,
 }: {
-  allTagIds: string[]
-  tags: Record<string, LabTagDef>
-  selectedTagIds: string[]
-  onToggleTag: (tagId: string) => void
+  sortedTagIds: string[]
   data: Record<string, Record<string, boolean>>
   labels: Record<string, string>
   startDate?: string
   onStartDateChange: (date: string) => void
 }) {
-  if (allTagIds.length === 0) {
+  if (sortedTagIds.length === 0) {
     return <div className={styles.emptyHint}>No tags defined for this project.</div>
+  }
+
+  // Build ordered labels so DotTable rows follow frequency order
+  const orderedLabels: Record<string, string> = {}
+  for (const tagId of sortedTagIds) {
+    if (labels[tagId]) orderedLabels[tagId] = labels[tagId]
   }
 
   return (
     <section className={styles.section}>
       <h3 className={styles.sectionTitle}>30-Day Tag Presence</h3>
-      <div className={styles.tagSelectorHint}>
-        Select up to 5 tags to display ({selectedTagIds.length}/5 selected)
-      </div>
-      <div className={styles.tagSelector}>
-        {allTagIds.map((tagId) => {
-          const isActive = selectedTagIds.includes(tagId)
-          const isDisabled = !isActive && selectedTagIds.length >= 5
-          return (
-            <button
-              key={tagId}
-              type="button"
-              className={[
-                styles.tagSelectorBtn,
-                isActive && styles.tagSelectorBtnActive,
-                isDisabled && styles.tagSelectorBtnDisabled,
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => {
-                if (!isDisabled) onToggleTag(tagId)
-              }}
-              disabled={isDisabled}
-            >
-              {formatTagNameDisplay(tags[tagId]?.name || 'Unknown')}
-            </button>
-          )
-        })}
-      </div>
-
-      {selectedTagIds.length > 0 ? (
-        <DotTable
-          data={data}
-          labels={labels}
-          startDate={startDate}
-          onStartDateChange={onStartDateChange}
-        />
-      ) : (
-        <div className={styles.emptyHint}>Select tags above to see the presence table.</div>
-      )}
+      <DotTable
+        data={data}
+        labels={orderedLabels}
+        startDate={startDate}
+        onStartDateChange={onStartDateChange}
+      />
     </section>
   )
 }

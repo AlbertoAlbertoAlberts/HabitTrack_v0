@@ -517,6 +517,16 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
     return banks
   }, [config.choiceDependentTags, allLogs])
 
+  // All tag IDs that have appeared in ANY historical log for this project
+  const allBankedTagIds = useMemo(() => {
+    if (!tagBanks) return null
+    const ids = new Set<string>()
+    for (const bank of Object.values(tagBanks)) {
+      for (const tid of bank) ids.add(tid)
+    }
+    return ids
+  }, [tagBanks])
+
   const visibleTagIds = useMemo(() => {
     if (!tagBanks) return null // feature off → show all
     if (selectedOptionIds.size === 0) return new Set<string>() // no choice → hide tags
@@ -527,8 +537,12 @@ function DailyMultiChoiceForm({ projectId, project, date }: DailyMultiChoiceForm
       const bank = tagBanks[optId]
       if (bank) for (const tid of bank) ids.add(tid)
     }
+    // Include newly created tags (not yet in any log) so they remain visible
+    for (const t of projectTags) {
+      if (!allBankedTagIds!.has(t.id)) ids.add(t.id)
+    }
     return ids
-  }, [tagBanks, selectedOptionIds])
+  }, [tagBanks, selectedOptionIds, projectTags, allBankedTagIds])
 
   const selectedIntensityTags = projectTags.filter(
     (t) => selectedTags.has(t.id) && t.intensity?.enabled

@@ -346,8 +346,7 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
       note: dailyNote.trim() || undefined,
     })
 
-    setTagOnlySaved(true)
-    setTimeout(() => setTagOnlySaved(false), 2000)
+    onToggle()
   }
 
   const handleClearTagOnly = () => {
@@ -392,8 +391,8 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
       noTags: mcTagsOn && noTags ? true : undefined,
       note: mcNote.trim() || undefined,
     })
-    setMcSaved(true)
-    setTimeout(() => setMcSaved(false), 2000)
+
+    onToggle()
   }
 
   const handleClearMultiChoice = () => {
@@ -935,6 +934,17 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
         })()
       : null
 
+    // All tag IDs that have appeared in ANY historical log for this project
+    const allBankedTagIds: Set<string> | null = tagBanks
+      ? (() => {
+          const ids = new Set<string>()
+          for (const bank of Object.values(tagBanks)) {
+            for (const tid of bank) ids.add(tid)
+          }
+          return ids
+        })()
+      : null
+
     const visibleTagIds: Set<string> | null = (() => {
       if (!tagBanks) return null
       if (mcSelectedOptionIds.size === 0) return new Set<string>()
@@ -944,6 +954,10 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
       for (const optId of mcSelectedOptionIds) {
         const bank = tagBanks[optId]
         if (bank) for (const tid of bank) ids.add(tid)
+      }
+      // Include newly created tags (not yet in any log) so they remain visible
+      for (const t of projectTags) {
+        if (!allBankedTagIds!.has(t.id)) ids.add(t.id)
       }
       return ids
     })()

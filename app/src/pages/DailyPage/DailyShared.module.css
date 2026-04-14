@@ -11,10 +11,16 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* IE / Edge */
   transition:
     background-color var(--t-med) var(--ease-out),
     border-color var(--t-fast) var(--ease-out),
     box-shadow var(--t-med) var(--ease-out);
+}
+
+.panel::-webkit-scrollbar {
+  display: none;
 }
 
 .subCard {
@@ -41,6 +47,12 @@
   flex: 1;
   overflow: auto;
   padding-right: 6px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollArea::-webkit-scrollbar {
+  display: none;
 }
 
 .panelHeaderRow {
