@@ -4,7 +4,8 @@
  */
 
 import type { LabFinding } from './types'
-import type { TagOnlyDataset } from './datasetBuilders'
+import type { TagOnlyDataset, DailyDataset, EventDataset, MultiChoiceDataset } from './datasetBuilders'
+import { toLocalDateString } from '../../utils/localDate'
 
 // ── T1: Tag Frequency ───────────────────────────────────────
 
@@ -177,21 +178,16 @@ export function tagCoOccurrence(dataset: TagOnlyDataset, projectId: string): Lab
 // ── T3: Tag 30-Day Dot Table Data ───────────────────────────
 
 /**
- * T3: Build dot-table data for selected tags over a date range.
- * Not a finding — returns raw presence data for UI rendering.
- *
- * @param dataset   The tag-only dataset
- * @param tagIds    Tag IDs to include
- * @param startDate First date to include (YYYY-MM-DD); defaults to 30 days before today
- * @param days      Number of days to include (default 30)
+ * Generic dot-table builder: works with any flat rows that have { date, tags: Record<string, boolean> }.
+ * All mode-specific builders delegate to this.
  */
-export function buildTagDotTableData(
-  dataset: TagOnlyDataset,
+export function buildGenericTagDotData(
+  rows: { date: string; tags: Record<string, boolean> }[],
   tagIds: string[],
   startDate?: string,
   days: number = 30,
 ): Record<string, Record<string, boolean>> {
-  if (tagIds.length === 0 || dataset.rows.length === 0) return {}
+  if (tagIds.length === 0 || rows.length === 0) return {}
 
   // Determine date window — default to ending at today (not last log date)
   let start: Date
@@ -213,7 +209,7 @@ export function buildTagDotTableData(
 
   // Index logs by date for fast lookup
   const logsByDate: Record<string, Record<string, boolean>> = {}
-  for (const row of dataset.rows) {
+  for (const row of rows) {
     if (!dateSet.has(row.date)) continue
     logsByDate[row.date] = row.tags
   }
@@ -229,4 +225,94 @@ export function buildTagDotTableData(
   }
 
   return result
+}
+
+/**
+ * T3: Build dot-table data for selected tags over a date range.
+ * Not a finding — returns raw presence data for UI rendering.
+ *
+ * @param dataset   The tag-only dataset
+ * @param tagIds    Tag IDs to include
+ * @param startDate First date to include (YYYY-MM-DD); defaults to 30 days before today
+ * @param days      Number of days to include (default 30)
+ */
+export function buildTagDotTableData(
+  dataset: TagOnlyDataset,
+  tagIds: string[],
+  startDate?: string,
+  days: number = 30,
+): Record<string, Record<string, boolean>> {
+  return buildGenericTagDotData(dataset.rows, tagIds, startDate, days)
+}
+
+// ── Dot-table builders for other project modes ──────────────
+
+/**
+ * Build dot-table tag presence data from a DailyDataset (daily mode with outcome + tags).
+ * Converts { present: boolean } tag map to simple boolean map.
+ */
+export function buildDailyTagDotData(
+  dataset: DailyDataset,
+  tagIds: string[],
+  startDate?: string,
+  days: number = 30,
+): Record<string, Record<string, boolean>> {
+  const rows = dataset.rows.map((r) => ({
+    date: r.date,
+    tags: Object.fromEntries(
+      Object.entries(r.tags).map(([id, v]) => [id, v.present])
+    ),
+  }))
+  return buildGenericTagDotData(rows, tagIds, startDate, days)
+}
+
+/**
+ * Build dot-table tag presence data from an EventDataset.
+ * Events are timestamp-based; a tag is "present" on a day if it appeared in ANY event that day.
+ */
+export function buildEventTagDotData(
+  dataset: EventDataset,
+  tagIds: string[],
+  startDate?: string,
+  days: number = 30,
+): Record<string, Record<string, boolean>> {
+  // Bucket events by local date, merging tag presence with OR
+  const byDate = new Map<string, Record<string, boolean>>()
+
+  for (const row of dataset.rows) {
+    const date = toLocalDateString(new Date(row.timestamp)) // local date, consistent with event frequency views
+    let existing = byDate.get(date)
+    if (!existing) {
+      existing = {}
+      byDate.set(date, existing)
+    }
+    for (const [tagId, val] of Object.entries(row.tags)) {
+      if (val.present) existing[tagId] = true
+      else if (!(tagId in existing)) existing[tagId] = false
+    }
+  }
+
+  const rows = Array.from(byDate.entries()).map(([date, tags]) => ({ date, tags }))
+  return buildGenericTagDotData(rows, tagIds, startDate, days)
+}
+
+/**
+ * Build dot-table tag presence data from a MultiChoiceDataset (when tags are enabled).
+ * Extracts the optional tags map, converting { present: boolean } to simple boolean.
+ */
+export function buildMultiChoiceTagDotData(
+  dataset: MultiChoiceDataset,
+  tagIds: string[],
+  startDate?: string,
+  days: number = 30,
+): Record<string, Record<string, boolean>> {
+  const rows = dataset.rows
+    .filter((r) => r.tags != null)
+    .map((r) => ({
+      date: r.date,
+      tags: Object.fromEntries(
+        Object.entries(r.tags!).map(([id, v]) => [id, v.present])
+      ),
+    }))
+  return buildGenericTagDotData(rows, tagIds, startDate, days)
 }

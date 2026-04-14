@@ -1,6 +1,8 @@
 import { useAppState } from '../../../domain/store/useAppStore'
 import { appStore } from '../../../domain/store/appStore'
 import { runAnalysisForProject } from '../../../domain/lab/analysis/runner'
+import { buildDailyDataset, buildEventDataset } from '../../../domain/lab/analysis/datasetBuilders'
+import { buildDailyTagDotData, buildEventTagDotData } from '../../../domain/lab/analysis/tagOnlyMethods'
 import type { LabFinding } from '../../../domain/lab/analysis/types'
 import type { LabTagDef, LabOutcomeDef } from '../../../domain/types'
 import { getConfidenceExplanation } from '../../../domain/lab/analysis/summaryBuilder'
@@ -10,13 +12,14 @@ import { DataMaturityView, TagCoverageView } from './DataMaturityView'
 import { LabResultsTabs, type LabResultsTabDef, type LabResultsTabKey } from './LabResultsTabs'
 import { EventFrequencyView } from './EventFrequencyView'
 import { EventEpisodesView } from './EventEpisodesView'
+import { DotTable } from './DotTable'
 import styles from './FindingsView.module.css'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 function isTabKey(
   value: string | null
-): value is 'top' | 'occurrence' | 'eventFrequency' | 'positive' | 'negative' | 'stats' | 'coverage' | 'uncertain' | 'crossOutcome' {
+): value is 'top' | 'occurrence' | 'eventFrequency' | 'positive' | 'negative' | 'stats' | 'coverage' | 'uncertain' | 'crossOutcome' | 'tagPresence' {
   return (
     value === 'top' ||
     value === 'occurrence' ||
@@ -26,7 +29,8 @@ function isTabKey(
     value === 'stats' ||
     value === 'coverage' ||
     value === 'uncertain' ||
-    value === 'crossOutcome'
+    value === 'crossOutcome' ||
+    value === 'tagPresence'
   )
 }
 
@@ -42,6 +46,7 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
   const state = useAppState()
   const [searchParams, setSearchParams] = useSearchParams()
   const [selectedStatsTagId, setSelectedStatsTagId] = useState<string | null>(null)
+  const [tagDotStartDate, setTagDotStartDate] = useState<string | undefined>(undefined)
   const tabPanelRef = useRef<HTMLDivElement | null>(null)
   const [tabPanelMinHeight, setTabPanelMinHeight] = useState(0)
   const [selectedOutcomeId, setSelectedOutcomeId] = useState<string>('primary')
@@ -81,14 +86,18 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
   const primaryOutcomeName =
     project?.config.kind === 'daily' ? project.config.outcome.name : 'Primary'
 
+  const hasProjectTags = Object.keys(tags).length > 0
+  const dailyTagsEnabled = project?.mode === 'daily' && project.config.kind === 'daily' && project.config.tagsEnabled !== false
+  const showTagPresence = hasProjectTags && (dailyTagsEnabled || project?.mode === 'event')
+
   const availableTabs: LabResultsTabKey[] =
     project?.mode === 'event' && !severityTabsAvailable
-      ? ['top', 'occurrence', 'stats', 'eventFrequency', 'coverage']
+      ? [...(showTagPresence ? ['tagPresence' as const] : []), 'top', 'occurrence', 'stats', 'eventFrequency', 'coverage']
       : project?.mode === 'event'
-        ? ['top', 'occurrence', 'positive', 'negative', 'stats', 'eventFrequency', 'coverage', 'uncertain']
+        ? [...(showTagPresence ? ['tagPresence' as const] : []), 'top', 'occurrence', 'positive', 'negative', 'stats', 'eventFrequency', 'coverage', 'uncertain']
         : hasAdditionalOutcomes
-          ? ['top', 'positive', 'negative', 'crossOutcome', 'stats', 'coverage', 'uncertain']
-          : ['top', 'positive', 'negative', 'stats', 'coverage', 'uncertain']
+          ? [...(showTagPresence ? ['tagPresence' as const] : []), 'top', 'positive', 'negative', 'crossOutcome', 'stats', 'coverage', 'uncertain']
+          : [...(showTagPresence ? ['tagPresence' as const] : []), 'top', 'positive', 'negative', 'stats', 'coverage', 'uncertain']
 
   const activeTab: LabResultsTabKey = availableTabs.includes(parsedTab) ? parsedTab : availableTabs[0]
 
@@ -144,6 +153,31 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
       appStore.actions.updateFindingsCache(result.updatedCache)
     }
   }, [result.updatedCache])
+
+  // Tag presence dot-table data (for daily + event modes)
+  const tagDotTableData = useMemo(() => {
+    if (!showTagPresence) return {}
+    const tagIds = Object.keys(tags)
+    if (tagIds.length === 0) return {}
+
+    if (project?.mode === 'daily') {
+      const dataset = buildDailyDataset(state, projectId)
+      return buildDailyTagDotData(dataset, tagIds, tagDotStartDate)
+    }
+    if (project?.mode === 'event') {
+      const dataset = buildEventDataset(state, projectId)
+      return buildEventTagDotData(dataset, tagIds, tagDotStartDate)
+    }
+    return {}
+  }, [showTagPresence, state, projectId, tags, tagDotStartDate, project?.mode])
+
+  const tagDotTableLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const [tagId, tag] of Object.entries(tags)) {
+      map[tagId] = formatTagNameDisplay(tag.name)
+    }
+    return map
+  }, [tags])
 
   const { top10ByAbsEffect, occurrenceInsights, episodeInsights, negative, positive, uncertain } = useMemo(() => {
     if (project?.mode === 'event') {
@@ -288,11 +322,15 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
 
   const tabDefs: LabResultsTabDef[] = useMemo(() => {
     if (project?.mode !== 'event') {
-      const baseTabs: LabResultsTabDef[] = [
+      const baseTabs: LabResultsTabDef[] = []
+      if (showTagPresence) {
+        baseTabs.push({ key: 'tagPresence', label: '30-Day Tags' })
+      }
+      baseTabs.push(
         { key: 'top', label: 'Top findings' },
         { key: 'positive', label: 'Positive effects' },
         { key: 'negative', label: 'Negative effects' },
-      ]
+      )
       if (hasAdditionalOutcomes) {
         baseTabs.push({ key: 'crossOutcome', label: 'Cross-outcome' })
       }
@@ -306,15 +344,17 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
 
     if (!severityTabsAvailable) {
       return [
+        ...(showTagPresence ? [{ key: 'tagPresence' as const, label: '30-Day Tags' }] : []),
         { key: 'top', label: viewMode === 'groups' ? 'Group frequency' : 'Tag frequency' },
         { key: 'occurrence', label: viewMode === 'groups' ? 'Occurrence (groups)' : 'Occurrence insights' },
         { key: 'stats', label: 'Tag Statistics' },
         { key: 'eventFrequency', label: 'Event frequency' },
         { key: 'coverage', label: 'Tag coverage' },
-      ]
+      ] as LabResultsTabDef[]
     }
 
     return [
+      ...(showTagPresence ? [{ key: 'tagPresence' as const, label: '30-Day Tags' }] : []),
       { key: 'top', label: viewMode === 'groups' ? 'Group frequency' : 'Tag frequency' },
       { key: 'occurrence', label: viewMode === 'groups' ? 'Occurrence (groups)' : 'Occurrence insights' },
       { key: 'positive', label: viewMode === 'groups' ? 'Higher severity (groups)' : 'Higher severity' },
@@ -323,8 +363,8 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
       { key: 'eventFrequency', label: 'Event frequency' },
       { key: 'coverage', label: 'Tag coverage' },
       { key: 'uncertain', label: 'Uncertain' },
-    ]
-  }, [project?.mode, severityTabsAvailable, viewMode, hasAdditionalOutcomes])
+    ] as LabResultsTabDef[]
+  }, [project?.mode, severityTabsAvailable, viewMode, hasAdditionalOutcomes, showTagPresence])
 
   if (!project) return null
 
@@ -456,14 +496,26 @@ export function FindingsView({ projectId, onEditProject }: FindingsViewProps) {
         aria-labelledby={tabId}
         style={tabPanelMinHeight > 0 ? { minHeight: tabPanelMinHeight } : undefined}
       >
-        {notEnoughData ? (
+        {activeTab === 'tagPresence' && showTagPresence && (
+          <section className={styles.section}>
+            <h3 className={styles.sectionTitle}>30-Day Tag Presence</h3>
+            <DotTable
+              data={tagDotTableData}
+              labels={tagDotTableLabels}
+              startDate={tagDotStartDate}
+              onStartDateChange={setTagDotStartDate}
+            />
+          </section>
+        )}
+
+        {activeTab !== 'tagPresence' && notEnoughData ? (
           <div className={styles.emptyStateBox}>
             <div className={styles.emptyIcon}>📊</div>
             <div className={styles.emptyTitle}>Not enough data yet</div>
             <div className={styles.emptyHint}>{notEnoughDataHint}</div>
             {isComputing && <div className={styles.computing}>Analyzing...</div>}
           </div>
-        ) : (
+        ) : activeTab !== 'tagPresence' && (
           <>
             {activeTab === 'eventFrequency' && project.mode === 'event' && (
               <section className={styles.section}>

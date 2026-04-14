@@ -4,13 +4,15 @@ import { appStore } from '../../../domain/store/appStore'
 import { runAnalysisForProject } from '../../../domain/lab/analysis/runner'
 import { buildMultiChoiceDataset } from '../../../domain/lab/analysis/datasetBuilders'
 import { buildChoiceGridData } from '../../../domain/lab/analysis/multiChoiceMethods'
+import { buildMultiChoiceTagDotData } from '../../../domain/lab/analysis/tagOnlyMethods'
 import type { LabFinding } from '../../../domain/lab/analysis/types'
 import type { LabMultiChoiceOption } from '../../../domain/types'
+import { formatTagNameDisplay } from '../../../domain/lab/utils/tagDisplay'
 import { DataMaturityView } from './DataMaturityView'
 import { DotTable } from './DotTable'
 import styles from './MultiChoiceFindingsView.module.css'
 
-type TabKey = 'overview' | 'dotTable'
+type TabKey = 'overview' | 'dotTable' | 'tagDotTable'
 
 interface MultiChoiceFindingsViewProps {
   projectId: string
@@ -20,6 +22,7 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
   const state = useAppState()
   const [activeTab, setActiveTab] = useState<TabKey>('dotTable')
   const [dotStartDate, setDotStartDate] = useState<string | undefined>(undefined)
+  const [tagDotStartDate, setTagDotStartDate] = useState<string | undefined>(undefined)
 
   const project = state.lab?.projects[projectId]
 
@@ -69,14 +72,18 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
   }, [allOptions])
 
   // Tag ID → name lookup
+  const tags = state.lab?.tagsByProject[projectId] ?? {}
   const tagLabels = useMemo(() => {
     const map: Record<string, string> = {}
-    const tags = state.lab?.tagsByProject[projectId] ?? {}
     for (const [id, tag] of Object.entries(tags)) {
       map[id] = tag.name
     }
     return map
-  }, [state.lab?.tagsByProject, projectId])
+  }, [tags])
+
+  const tagsEnabled = project?.config.kind === 'daily-multi-choice' && project.config.tagsEnabled === true
+  const hasProjectTags = Object.keys(tags).length > 0
+  const showTagPresence = tagsEnabled && hasProjectTags
 
   // Build 30-day grid data
   const activeOptionIds = useMemo(() => options.map((o) => o.id), [options])
@@ -95,6 +102,23 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
     return map
   }, [activeOptionIds, optionLabels])
 
+  // Build tag presence dot-table data (only when tags enabled)
+  const tagDotTableData = useMemo(() => {
+    if (!showTagPresence) return {}
+    const tagIds = Object.keys(tags)
+    if (tagIds.length === 0) return {}
+    const dataset = buildMultiChoiceDataset(state, projectId)
+    return buildMultiChoiceTagDotData(dataset, tagIds, tagDotStartDate)
+  }, [showTagPresence, state, projectId, tags, tagDotStartDate])
+
+  const tagDotTableLabels = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const [tagId, tag] of Object.entries(tags)) {
+      map[tagId] = formatTagNameDisplay(tag.name)
+    }
+    return map
+  }, [tags])
+
   if (!project) return null
 
   const notEnoughData = result.findings.length === 0
@@ -109,6 +133,15 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
         >
           30-Day Table
         </button>
+        {showTagPresence && (
+          <button
+            type="button"
+            className={[styles.tab, activeTab === 'tagDotTable' && styles.tabActive].filter(Boolean).join(' ')}
+            onClick={() => setActiveTab('tagDotTable')}
+          >
+            Tag Presence
+          </button>
+        )}
         <button
           type="button"
           className={[styles.tab, activeTab === 'overview' && styles.tabActive].filter(Boolean).join(' ')}
@@ -137,6 +170,18 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
             />
           </section>
         )
+      )}
+
+      {activeTab === 'tagDotTable' && showTagPresence && (
+        <section className={styles.section}>
+          <h3 className={styles.sectionTitle}>30-Day Tag Presence</h3>
+          <DotTable
+            data={tagDotTableData}
+            labels={tagDotTableLabels}
+            startDate={tagDotStartDate}
+            onStartDateChange={setTagDotStartDate}
+          />
+        </section>
       )}
 
       {activeTab === 'overview' && (

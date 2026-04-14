@@ -11,6 +11,7 @@ export type LabResultsTabKey =
   | 'coverage'
   | 'uncertain'
   | 'crossOutcome'
+  | 'tagPresence'
 
 export type LabResultsTabDef = { key: LabResultsTabKey; label: string }
 
