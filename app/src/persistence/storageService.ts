@@ -430,10 +430,14 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
   let overviewSelectedCategoryId = state.uiState.overviewSelectedCategoryId
   let overviewSelectedHabitId = state.uiState.overviewSelectedHabitId
   let overviewSelectedLabProjectId = (state.uiState as unknown as Record<string, unknown>).overviewSelectedLabProjectId ?? null
+  let overviewSelectedLabOutcomeId = (state.uiState as unknown as Record<string, unknown>).overviewSelectedLabOutcomeId ?? null
 
   if (overviewMode !== 'category') overviewSelectedCategoryId = null
   if (overviewMode !== 'habit') overviewSelectedHabitId = null
-  if (overviewMode !== 'lab') overviewSelectedLabProjectId = null
+  if (overviewMode !== 'lab') {
+    overviewSelectedLabProjectId = null
+    overviewSelectedLabOutcomeId = null
+  }
 
   if (overviewMode === 'category') {
     if (overviewSelectedCategoryId && !categoryIds.has(overviewSelectedCategoryId)) {
@@ -456,6 +460,7 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
         : {}
       if (!labProjects[overviewSelectedLabProjectId]) {
         overviewSelectedLabProjectId = null
+        overviewSelectedLabOutcomeId = null
       }
     }
   }
@@ -632,6 +637,7 @@ function repairStateV1(state: AppStateV1): AppStateV1 {
       overviewSelectedCategoryId,
       overviewSelectedHabitId,
       overviewSelectedLabProjectId: overviewSelectedLabProjectId as string | null,
+      overviewSelectedLabOutcomeId: (typeof overviewSelectedLabOutcomeId === 'string' ? overviewSelectedLabOutcomeId : null) as string | null,
       overviewMultiSelectCount,
       overviewMultiSelections,
     },
@@ -680,6 +686,7 @@ export function createDefaultState(now: Date = new Date()): AppStateV1 {
       overviewSelectedCategoryId: null,
       overviewSelectedHabitId: null,
       overviewSelectedLabProjectId: null,
+      overviewSelectedLabOutcomeId: null,
 
       overviewMultiSelectCount: 1,
       overviewMultiSelections: [],

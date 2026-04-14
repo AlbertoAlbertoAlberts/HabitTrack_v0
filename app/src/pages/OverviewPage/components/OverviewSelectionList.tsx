@@ -1,4 +1,4 @@
-import type { OverviewMode, OverviewSelection, Category, Habit, LabProject } from '../../../domain/types'
+import type { OverviewMode, OverviewSelection, Category, Habit, LabProject, LabDailyProjectConfig } from '../../../domain/types'
 import { appStore } from '../../../domain/store/appStore'
 import sharedStyles from '../../../components/ui/shared.module.css'
 import styles from './OverviewSelectionList.module.css'
@@ -14,12 +14,13 @@ type OverviewSelectionListProps = {
   selectedHabitId: string | null
   labProjects: LabProject[]
   selectedLabProjectId: string | null
+  selectedLabOutcomeId: string | null
   multiSelectCount: 1 | 2 | 3
   multiSelections: OverviewSelection[]
 }
 
-function getSlotColorIndex(id: string, kind: string, selections: OverviewSelection[]): number | null {
-  const idx = selections.findIndex((s) => s.kind === kind && s.id === id)
+function getSlotColorIndex(id: string, kind: string, selections: OverviewSelection[], outcomeId?: string): number | null {
+  const idx = selections.findIndex((s) => s.kind === kind && s.id === id && (s.outcomeId ?? undefined) === outcomeId)
   return idx >= 0 ? idx : null
 }
 
@@ -32,6 +33,7 @@ export function OverviewSelectionList({
   selectedHabitId,
   labProjects,
   selectedLabProjectId,
+  selectedLabOutcomeId,
   multiSelectCount,
   multiSelections,
 }: OverviewSelectionListProps) {
@@ -43,8 +45,8 @@ export function OverviewSelectionList({
   const showWeeklyEntry = isMulti && multiModes.has(mode)
 
   // In multi-select, clicking adds/removes from selections
-  function handleMultiClick(kind: OverviewSelection['kind'], id?: string) {
-    appStore.actions.addOverviewSelection({ kind, id })
+  function handleMultiClick(kind: OverviewSelection['kind'], id?: string, outcomeId?: string) {
+    appStore.actions.addOverviewSelection({ kind, id, outcomeId })
   }
 
   return (
@@ -135,13 +137,76 @@ export function OverviewSelectionList({
             <p className={styles.muted} style={{ marginTop: 0 }}>Lab projekti</p>
           )}
           <div className={styles.list}>
-            {labProjects.map((p) => {
+            {labProjects.flatMap((p) => {
               const badge = p.mode === 'event' ? 'E' : p.mode === 'daily-tag-only' ? 'T' : p.mode === 'daily-multi-choice' ? 'M' : 'D'
               const multiKind = p.mode === 'event' ? 'labEvent' : 'labDaily'
+
+              // Build list of selectable outcome items for daily projects with additional outcomes
+              const isDailyWithOutcomes =
+                p.mode === 'daily' &&
+                (p.config as LabDailyProjectConfig).additionalOutcomes &&
+                (p.config as LabDailyProjectConfig).additionalOutcomes!.length > 0
+
+              if (isDailyWithOutcomes) {
+                const config = p.config as LabDailyProjectConfig
+                const outcomeItems: Array<{ id: string; outcomeId: string | undefined; label: string }> = [
+                  { id: p.id, outcomeId: undefined, label: `${p.name} – ${config.outcome.name}` },
+                  ...config.additionalOutcomes!.map((o) => ({
+                    id: p.id,
+                    outcomeId: o.id,
+                    label: `${p.name} – ${o.name}`,
+                  })),
+                ]
+
+                return outcomeItems.map((item) => {
+                  if (isMulti) {
+                    const slotIdx = getSlotColorIndex(item.id, 'labDaily', multiSelections, item.outcomeId)
+                    const selected = slotIdx !== null
+                    return (
+                      <div
+                        key={`${item.id}-${item.outcomeId ?? 'primary'}`}
+                        className={`${styles.listItem} ${selected ? styles.listItemActive : ''}`}
+                        onClick={() => handleMultiClick('labDaily', item.id, item.outcomeId)}
+                        role="button"
+                        tabIndex={0}
+                        style={selected ? { borderColor: SLOT_COLORS[slotIdx] } : undefined}
+                      >
+                        {selected && (
+                          <span className={styles.slotDot} style={{ background: SLOT_COLORS[slotIdx] }} />
+                        )}
+                        <span className={styles.modeBadge}>{badge}</span>
+                        <span className={styles.itemTitle}>{item.label}</span>
+                      </div>
+                    )
+                  }
+                  const active =
+                    selectedLabProjectId === item.id &&
+                    (selectedLabOutcomeId ?? undefined) === item.outcomeId
+                  return (
+                    <div
+                      key={`${item.id}-${item.outcomeId ?? 'primary'}`}
+                      className={`${styles.listItem} ${active ? styles.listItemActive : ''}`}
+                      onClick={() =>
+                        appStore.actions.selectOverviewLabProject(
+                          active ? null : item.id,
+                          active ? null : (item.outcomeId ?? null),
+                        )
+                      }
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <span className={styles.modeBadge}>{badge}</span>
+                      <span className={styles.itemTitle}>{item.label}</span>
+                    </div>
+                  )
+                })
+              }
+
+              // Non-daily or daily without additional outcomes → single item (existing behavior)
               if (isMulti) {
                 const slotIdx = getSlotColorIndex(p.id, multiKind, multiSelections)
                 const selected = slotIdx !== null
-                return (
+                return [(
                   <div
                     key={p.id}
                     className={`${styles.listItem} ${selected ? styles.listItemActive : ''}`}
@@ -156,10 +221,10 @@ export function OverviewSelectionList({
                     <span className={styles.modeBadge}>{badge}</span>
                     <span className={styles.itemTitle}>{p.name}</span>
                   </div>
-                )
+                )]
               }
               const active = selectedLabProjectId === p.id
-              return (
+              return [(
                 <div
                   key={p.id}
                   className={`${styles.listItem} ${active ? styles.listItemActive : ''}`}
@@ -170,7 +235,7 @@ export function OverviewSelectionList({
                   <span className={styles.modeBadge}>{badge}</span>
                   <span className={styles.itemTitle}>{p.name}</span>
                 </div>
-              )
+              )]
             })}
             {labProjects.length === 0 ? <p className={styles.muted}>Nav Lab projektu.</p> : null}
           </div>

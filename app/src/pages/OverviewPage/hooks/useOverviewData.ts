@@ -104,24 +104,42 @@ function clampInt(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n))
 }
 
-/** Build chart series for a lab daily project */
+/** Build chart series for a lab daily project (primary or additional outcome) */
 function buildLabDailySeries(
   dates: LocalDateString[],
-  logs: Record<string, { outcome?: number }> | undefined,
+  logs: Record<string, { outcome?: number; additionalOutcomes?: Record<string, number> }> | undefined,
   config: LabDailyProjectConfig,
+  outcomeId?: string | null,
 ): ChartPoint[] {
   const today = todayLocalDateString()
-  const scaleMin = config.outcome.scale.min
-  const scaleMax = config.outcome.scale.max
+
+  // Resolve scale for the target outcome
+  let scaleMin: number
+  let scaleMax: number
+  if (outcomeId) {
+    const def = config.additionalOutcomes?.find((o) => o.id === outcomeId)
+    if (!def) return dates.map((d) => ({ date: d, value: NaN, earned: 0, maxPossible: 0 }))
+    scaleMin = def.scale.min
+    scaleMax = def.scale.max
+  } else {
+    scaleMin = config.outcome.scale.min
+    scaleMax = config.outcome.scale.max
+  }
   const range = scaleMax - scaleMin
 
   return dates.map((date) => {
     if (date > today) return { date, value: NaN, earned: 0, maxPossible: 0 }
     const log = logs?.[date]
-    if (!log || log.outcome == null) return { date, value: NaN, earned: 0, maxPossible: 0 }
+    if (!log) return { date, value: NaN, earned: 0, maxPossible: 0 }
 
-    const pct = range > 0 ? (log.outcome - scaleMin) / range : 0
-    return { date, value: Math.max(0, Math.min(1, pct)), earned: log.outcome, maxPossible: scaleMax }
+    const rawValue = outcomeId
+      ? log.additionalOutcomes?.[outcomeId]
+      : log.outcome
+
+    if (rawValue == null) return { date, value: NaN, earned: 0, maxPossible: 0 }
+
+    const pct = range > 0 ? (rawValue - scaleMin) / range : 0
+    return { date, value: Math.max(0, Math.min(1, pct)), earned: rawValue, maxPossible: scaleMax }
   })
 }
 
@@ -313,12 +331,14 @@ export function useOverviewData() {
     [dates, state.dailyScores, habitIds, state.habits, weighted],
   )
 
+  const selectedLabOutcomeId = state.uiState.overviewSelectedLabOutcomeId
+
   // Lab daily series — only when a daily lab project is selected
   const labDailySeries: ChartPoint[] = useMemo(() => {
     if (mode !== 'lab' || !selectedLabProject || selectedLabProject.mode !== 'daily') return []
     const logs = state.lab?.dailyLogsByProject[selectedLabProject.id]
-    return buildLabDailySeries(dates, logs, selectedLabProject.config as LabDailyProjectConfig)
-  }, [mode, selectedLabProject, dates, state.lab?.dailyLogsByProject])
+    return buildLabDailySeries(dates, logs, selectedLabProject.config as LabDailyProjectConfig, selectedLabOutcomeId)
+  }, [mode, selectedLabProject, dates, state.lab?.dailyLogsByProject, selectedLabOutcomeId])
 
   // Lab event bars — only when an event lab project is selected
   const labEventBars: EventBar[] = useMemo(() => {
@@ -362,12 +382,18 @@ export function useOverviewData() {
 
       if (sel.kind === 'labDaily' && sel.id) {
         const proj = state.lab?.projects[sel.id]
-        const label = proj?.name ?? 'Lab'
         if (proj && proj.mode === 'daily') {
+          const config = proj.config as LabDailyProjectConfig
+          const outcomeDef = sel.outcomeId
+            ? config.additionalOutcomes?.find((o) => o.id === sel.outcomeId)
+            : null
+          const outcomeName = outcomeDef ? outcomeDef.name : config.outcome.name
+          const label = `${proj.name} – ${outcomeName}`
           const logs = state.lab?.dailyLogsByProject[proj.id]
-          const s = buildLabDailySeries(dates, logs, proj.config as LabDailyProjectConfig)
+          const s = buildLabDailySeries(dates, logs, config, sel.outcomeId)
           return { label, color, series: s, kind: sel.kind }
         }
+        const label = proj?.name ?? 'Lab'
         return { label, color, series: [], kind: sel.kind }
       }
 
@@ -430,6 +456,7 @@ export function useOverviewData() {
     selectedCategoryId: state.uiState.overviewSelectedCategoryId,
     selectedHabitId: state.uiState.overviewSelectedHabitId,
     selectedLabProjectId,
+    selectedLabOutcomeId,
     
     // Weekly data
     weeklyTasks,

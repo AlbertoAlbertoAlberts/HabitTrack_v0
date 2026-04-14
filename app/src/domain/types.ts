@@ -341,6 +341,7 @@ export type OverviewSelectionKind = 'habit' | 'labDaily' | 'labEvent' | 'weekly'
 export interface OverviewSelection {
   kind: OverviewSelectionKind
   id?: string   // habitId or labProjectId — omitted for weekly/overall/priority
+  outcomeId?: string  // for labDaily: specific outcome id; undefined = primary outcome
 }
 
 export type DailyLeftMode = 'normal' | 'reorder' | 'delete' | 'priorityEdit' | 'rename'
@@ -359,6 +360,7 @@ export interface UiStateV1 {
   overviewSelectedCategoryId: CategoryId | null
   overviewSelectedHabitId: HabitId | null
   overviewSelectedLabProjectId: LabProjectId | null
+  overviewSelectedLabOutcomeId: string | null  // null = primary outcome
   overviewWindowEndDate: LocalDateString
 
   overviewMultiSelectCount: 1 | 2 | 3

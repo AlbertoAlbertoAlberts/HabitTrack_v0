@@ -238,8 +238,8 @@ export const appStore = {
     selectOverviewHabit(habitId: HabitId | null) {
       setUiState(selectOverviewHabit(state, habitId))
     },
-    selectOverviewLabProject(projectId: LabProjectId | null) {
-      setUiState(selectOverviewLabProject(state, projectId))
+    selectOverviewLabProject(projectId: LabProjectId | null, outcomeId?: string | null) {
+      setUiState(selectOverviewLabProject(state, projectId, outcomeId))
     },
     setOverviewWindowEndDate(date: LocalDateString) {
       setUiState(setOverviewWindowEndDate(state, date))

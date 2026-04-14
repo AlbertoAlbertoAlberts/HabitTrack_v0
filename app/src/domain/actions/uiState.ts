@@ -96,7 +96,10 @@ export function setOverviewMode(state: AppStateV1, mode: OverviewMode): AppState
   // Enforce exclusivity: only keep selections when relevant.
   if (mode !== 'category') nextUi.overviewSelectedCategoryId = null
   if (mode !== 'habit') nextUi.overviewSelectedHabitId = null
-  if (mode !== 'lab') nextUi.overviewSelectedLabProjectId = null
+  if (mode !== 'lab') {
+    nextUi.overviewSelectedLabProjectId = null
+    nextUi.overviewSelectedLabOutcomeId = null
+  }
 
   // Reset multi-select when switching to modes that don't support it
   const multiSelectModes: OverviewMode[] = ['habit', 'lab', 'weekly']
@@ -162,11 +165,12 @@ export function shiftOverviewWindow(state: AppStateV1, direction: -1 | 1): AppSt
 
 // ── Lab project selection ──
 
-export function selectOverviewLabProject(state: AppStateV1, projectId: string | null): AppStateV1 {
+export function selectOverviewLabProject(state: AppStateV1, projectId: string | null, outcomeId?: string | null): AppStateV1 {
   const nextUi: UiStateV1 = {
     ...state.uiState,
     overviewMode: 'lab',
     overviewSelectedLabProjectId: projectId,
+    overviewSelectedLabOutcomeId: outcomeId ?? null,
     overviewSelectedCategoryId: null,
     overviewSelectedHabitId: null,
   }
@@ -204,7 +208,7 @@ export function addOverviewSelection(state: AppStateV1, selection: OverviewSelec
 
   // Check if already selected — if so, remove it (toggle)
   const existingIndex = current.findIndex(
-    (s) => s.kind === selection.kind && s.id === selection.id,
+    (s) => s.kind === selection.kind && s.id === selection.id && s.outcomeId === selection.outcomeId,
   )
   if (existingIndex >= 0) {
     return removeOverviewSelection(state, existingIndex)

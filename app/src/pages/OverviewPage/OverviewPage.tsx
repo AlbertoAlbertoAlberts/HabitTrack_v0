@@ -41,6 +41,7 @@ export function OverviewPage() {
     selectedCategoryId,
     selectedHabitId,
     selectedLabProjectId,
+    selectedLabOutcomeId,
     weeklyTasks,
     overviewWeekStart,
     overviewWeekEnd,
@@ -158,6 +159,7 @@ export function OverviewPage() {
             selectedHabitId={selectedHabitId}
             labProjects={labProjects}
             selectedLabProjectId={selectedLabProjectId}
+            selectedLabOutcomeId={selectedLabOutcomeId}
             multiSelectCount={multiSelectCount}
             multiSelections={multiSelections}
           />
