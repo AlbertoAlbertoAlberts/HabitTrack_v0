@@ -45,6 +45,7 @@ export function createTestState(labState: Partial<LabState> = {}): AppStateV1 {
       overviewSelectedCategoryId: null,
       overviewSelectedHabitId: null,
       overviewSelectedLabProjectId: null,
+      overviewSelectedLabOutcomeId: null,
       overviewMultiSelectCount: 1,
       overviewMultiSelections: [],
       overviewWindowEndDate: selectedDate,
