@@ -177,12 +177,12 @@ export function tagCoOccurrence(dataset: TagOnlyDataset, projectId: string): Lab
 // ── T3: Tag 30-Day Dot Table Data ───────────────────────────
 
 /**
- * T3: Build dot-table data for up to 5 selected tags over a date range.
+ * T3: Build dot-table data for selected tags over a date range.
  * Not a finding — returns raw presence data for UI rendering.
  *
  * @param dataset   The tag-only dataset
- * @param tagIds    Up to 5 tag IDs to include
- * @param startDate First date to include (YYYY-MM-DD); defaults to 30 days before last log date
+ * @param tagIds    Tag IDs to include
+ * @param startDate First date to include (YYYY-MM-DD); defaults to 30 days before today
  * @param days      Number of days to include (default 30)
  */
 export function buildTagDotTableData(
@@ -191,18 +191,14 @@ export function buildTagDotTableData(
   startDate?: string,
   days: number = 30,
 ): Record<string, Record<string, boolean>> {
-  const limited = tagIds.slice(0, 5)
-  if (limited.length === 0 || dataset.rows.length === 0) return {}
+  if (tagIds.length === 0 || dataset.rows.length === 0) return {}
 
-  // Determine date window
-  const sortedDates = dataset.rows.map((r) => r.date).sort()
-  const lastDate = sortedDates[sortedDates.length - 1]
-
+  // Determine date window — default to ending at today (not last log date)
   let start: Date
   if (startDate) {
     start = new Date(startDate + 'T00:00:00')
   } else {
-    start = new Date(lastDate + 'T00:00:00')
+    start = new Date()
     start.setDate(start.getDate() - (days - 1))
   }
 
@@ -224,7 +220,7 @@ export function buildTagDotTableData(
 
   // Build result: tagId → { date → present }
   const result: Record<string, Record<string, boolean>> = {}
-  for (const tagId of limited) {
+  for (const tagId of tagIds) {
     const tagData: Record<string, boolean> = {}
     for (const date of dateSet) {
       tagData[date] = logsByDate[date]?.[tagId] ?? false

@@ -245,13 +245,13 @@ describe('Tag-only analysis methods', () => {
       expect(result.tagA['2025-01-03']).toBe(true)
     })
 
-    it('limits to 5 tags', () => {
+    it('includes all tags without limit', () => {
       const dataset = {
         rows: [{ date: '2025-01-01', tags: { a: true, b: true, c: true, d: true, e: true, f: true } }],
         coverage: { totalLogs: 1, validRows: 1, skippedRows: 0 },
       }
       const result = buildTagDotTableData(dataset, ['a', 'b', 'c', 'd', 'e', 'f'], '2025-01-01', 1)
-      expect(Object.keys(result).length).toBe(5)
+      expect(Object.keys(result).length).toBe(6)
     })
   })
 })
