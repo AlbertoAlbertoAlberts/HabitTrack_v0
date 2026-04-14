@@ -897,12 +897,6 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
           ) : null}
 
           <div className={styles.formActions}>
-            {tagOnlySaved && <span className={styles.savedIndicator}>✓ Saved</span>}
-            {existingLog && (
-              <button type="button" className={styles.clearButton} onClick={handleClearTagOnly}>
-                Clear
-              </button>
-            )}
             <button className={styles.saveButton} onClick={handleSaveTagOnly}>
               {existingLog ? 'Update' : 'Save'}
             </button>
@@ -1224,12 +1218,6 @@ function ProjectEntry({ project, date, isExpanded, onToggle }: ProjectEntryProps
           ) : null}
 
           <div className={styles.formActions}>
-            {mcSaved && <span className={styles.savedIndicator}>✓ Saved</span>}
-            {existingMultiChoiceLog && (
-              <button type="button" className={styles.clearButton} onClick={handleClearMultiChoice}>
-                Clear
-              </button>
-            )}
             <button className={styles.saveButton} onClick={handleSaveMultiChoice}>
               {existingMultiChoiceLog ? 'Update' : 'Save'}
             </button>
