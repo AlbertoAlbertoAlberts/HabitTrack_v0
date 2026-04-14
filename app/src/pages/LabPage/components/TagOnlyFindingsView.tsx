@@ -60,12 +60,19 @@ export function TagOnlyFindingsView({ projectId }: TagOnlyFindingsViewProps) {
   }, [state, projectId, tags, dotStartDate])
 
   const dotTableLabels = useMemo(() => {
+    const tagIds = Object.keys(tags)
+    // Sort by presence count descending (most frequent tags on top)
+    tagIds.sort((a, b) => {
+      const aCount = Object.values(dotTableData[a] ?? {}).filter(Boolean).length
+      const bCount = Object.values(dotTableData[b] ?? {}).filter(Boolean).length
+      return bCount - aCount
+    })
     const map: Record<string, string> = {}
-    for (const tagId of Object.keys(tags)) {
+    for (const tagId of tagIds) {
       map[tagId] = formatTagNameDisplay(tags[tagId]?.name || 'Unknown')
     }
     return map
-  }, [tags])
+  }, [tags, dotTableData])
 
   // All tag IDs sorted by frequency (most frequent first)
   const sortedTagIds = useMemo(() => {

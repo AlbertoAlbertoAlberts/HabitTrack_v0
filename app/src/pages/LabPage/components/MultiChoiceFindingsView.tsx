@@ -112,12 +112,19 @@ export function MultiChoiceFindingsView({ projectId }: MultiChoiceFindingsViewPr
   }, [showTagPresence, state, projectId, tags, tagDotStartDate])
 
   const tagDotTableLabels = useMemo(() => {
+    const entries = Object.entries(tags)
+    // Sort by presence count descending (most frequent tags on top)
+    entries.sort(([aId], [bId]) => {
+      const aCount = Object.values(tagDotTableData[aId] ?? {}).filter(Boolean).length
+      const bCount = Object.values(tagDotTableData[bId] ?? {}).filter(Boolean).length
+      return bCount - aCount
+    })
     const map: Record<string, string> = {}
-    for (const [tagId, tag] of Object.entries(tags)) {
+    for (const [tagId, tag] of entries) {
       map[tagId] = formatTagNameDisplay(tag.name)
     }
     return map
-  }, [tags])
+  }, [tags, tagDotTableData])
 
   if (!project) return null
 
